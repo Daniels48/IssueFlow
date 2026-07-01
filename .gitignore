@@ -5,6 +5,7 @@ venv/
 
 # Python
 __pycache__/
+.idea/
 *.py[cod]
 *$py.class
 
