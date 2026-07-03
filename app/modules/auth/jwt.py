@@ -22,11 +22,7 @@ class JWTService:
             "exp": now + timedelta(minutes=cls.expire_minutes),
         }
 
-        return jwt.encode(
-            claims=payload,
-            key=cls.secret_key,
-            algorithm=cls.algorithm,
-        )
+        return jwt.encode(claims=payload, key=cls.secret_key, algorithm=cls.algorithm)
 
     @classmethod
     def decode_access_token(cls, token: str) -> AccessTokenPayload:
