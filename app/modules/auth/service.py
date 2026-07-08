@@ -32,13 +32,13 @@ class AuthService:
 
         return user
 
-    async def login(self, data: UserLogin) -> Token:
-        user = await self.repository.get_by_username(self.db, data.username)
+    async def login(self, username: str, password: str) -> Token:
+        user = await self.repository.get_by_username(self.db, username)
 
         if not user:
             raise ValueError("Invalid credentials")
 
-        if not PasswordService.verify_password(data.password,user.password_hash):
+        if not PasswordService.verify_password(password, user.password_hash):
             raise ValueError("Invalid credentials")
 
         access_token = JWTService.create_access_token(user.public_id)

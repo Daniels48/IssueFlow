@@ -1,6 +1,13 @@
 fastapi
 uvicorn[standard]
 
+aio-pika
+redis
+websockets
+
+jinja2
+aiosmtplib
+
 sqlalchemy
 asyncpg
 alembic
@@ -8,6 +15,7 @@ alembic
 pydantic
 pydantic-settings
 email-validator
+python-multipart
 
 pwdlib[argon2]
 python-jose[cryptography]

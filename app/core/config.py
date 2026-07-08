@@ -9,6 +9,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 class LoggingSettings(BaseModel):
     log_level: str = "INFO"
 
+class RabbitSettings(BaseModel):
+    host: str
+    port: int
+    user: str
+    password: str
+
 
 # class EmailSettings(BaseModel):
 #     user: str
@@ -47,6 +53,7 @@ class SecuritySettings(BaseModel):
 class Settings(BaseSettings):
     db: DbSettings
     security: SecuritySettings
+    rabbit: RabbitSettings
     # logging: LoggingSettings
     # email: EmailSettings
 

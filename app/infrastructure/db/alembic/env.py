@@ -13,10 +13,7 @@ import app.infrastructure.db.models
 
 config = context.config
 
-config.set_main_option(
-    "sqlalchemy.url",
-    settings.async_db_url,
-)
+config.set_main_option("sqlalchemy.url", settings.async_db_url)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

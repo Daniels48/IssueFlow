@@ -17,5 +17,4 @@ class ProjectResponse(BaseModel):
     public_id: UUID
     name: str
     description: str | None
-    owner_id: UUID   # или public_id владельца — это уже обсудим
     created_at: datetime

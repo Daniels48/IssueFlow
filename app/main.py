@@ -1,8 +1,23 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
+from app.infrastructure.rabbit.connection import RabbitConnection
 from app.router import api_router
 
-app = FastAPI(title="IssueFlow")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+
+    await RabbitConnection.connect()
+
+    yield
+
+    await RabbitConnection.close()
+
+
+app = FastAPI(lifespan=lifespan, title="issueflow")
+
 
 
 @app.get("/health")

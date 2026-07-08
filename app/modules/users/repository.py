@@ -31,6 +31,8 @@ class UserRepository:
     @staticmethod
     async def get_by_public_id(db: AsyncSession, public_id: UUID) -> User | None:
         result = await db.execute(
-            select(User).where(User.public_id == public_id)
+            select(User).where(
+                User.public_id == public_id,
+            )
         )
         return result.scalar_one_or_none()

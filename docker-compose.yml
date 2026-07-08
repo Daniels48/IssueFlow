@@ -1,7 +1,7 @@
 services:
   api:
     build: .
-    container_name: issueflow_api
+    container_name: isf_api
     ports:
       - "8000:8000"
     volumes:
@@ -15,7 +15,7 @@ services:
 
   db:
     image: postgres:16-alpine
-    container_name: issueflow_db
+    container_name: isf_db
     environment:
       POSTGRES_DB: ${DB__NAME}
       POSTGRES_USER: ${DB__USER}
@@ -29,6 +29,17 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    container_name: isf_rabbit
+    hostname: ${RABBIT__HOST}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBIT__USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBIT__PASSWORD}
 
 volumes:
   postgres_data:
