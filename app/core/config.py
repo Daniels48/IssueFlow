@@ -12,7 +12,7 @@ class LoggingSettings(BaseModel):
 class RabbitSettings(BaseModel):
     host: str
     port: int
-    user: str
+    login: str
     password: str
 
 

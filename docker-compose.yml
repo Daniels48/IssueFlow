@@ -38,7 +38,7 @@ services:
       - "5672:5672"
       - "15672:15672"
     environment:
-      RABBITMQ_DEFAULT_USER: ${RABBIT__USER}
+      RABBITMQ_DEFAULT_USER: ${RABBIT__LOGIN}
       RABBITMQ_DEFAULT_PASS: ${RABBIT__PASSWORD}
 
 volumes:

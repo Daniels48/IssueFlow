@@ -1,37 +1,37 @@
-import json
+from aio_pika import DeliveryMode, Message
+from aio_pika.abc import AbstractExchange, AbstractRobustChannel
 
-import aio_pika
-from pydantic import BaseModel
-
+from app.events.schemas import Event
 from app.infrastructure.rabbit.connection import RabbitConnection
+from app.infrastructure.rabbit.exchanges import ExchangeManager
+
 
 
 class RabbitPublisher:
-    EXCHANGE_NAME = "issueflow.events"
+    _channel: AbstractRobustChannel | None = None
+    _exchange: AbstractExchange | None = None
 
     @classmethod
-    async def publish(cls, event: BaseModel) -> None:
-        if RabbitConnection.connection is None:
-            raise RuntimeError("RabbitMQ is not connected")
+    async def connect(cls):
+        if cls._channel and not cls._channel.is_closed:
+            return
 
-        channel = await RabbitConnection.connection.channel()
+        cls._channel = await RabbitConnection.create_channel()
+        cls._exchange = await ExchangeManager.get_events_exchange(cls._channel)
 
-        exchange = await channel.declare_exchange(
-            cls.EXCHANGE_NAME,
-            aio_pika.ExchangeType.TOPIC,
-            durable=True,
-        )
+    @classmethod
+    async def publish(cls, event: Event):
+        if cls._exchange is None:
+            await cls.connect()
 
-        routing_key = event.__class__.__name__
-
-        await exchange.publish(
-            aio_pika.Message(
-                body=json.dumps(
-                    event.model_dump(mode="json")
-                ).encode(),
+        message = Message(body=event.model_dump_json().encode(),
                 content_type="application/json",
-            ),
-            routing_key=routing_key,
+                delivery_mode=DeliveryMode.PERSISTENT
         )
 
-        await channel.close()
+        await cls._exchange.publish(message=message, routing_key=event.ROUTING_KEY)
+
+    @classmethod
+    async def close(cls):
+        if cls._channel and not cls._channel.is_closed:
+            await cls._channel.close()
