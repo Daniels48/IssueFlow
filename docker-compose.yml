@@ -13,6 +13,40 @@ services:
         condition: service_healthy
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
+  ws:
+    build: .
+
+    container_name: isf_ws
+
+    command: python -m app.workers.ws
+
+    env_file:
+      - .env
+
+    volumes:
+      - .:/app
+
+    depends_on:
+      rabbitmq:
+        condition: service_started
+
+  celery:
+    build: .
+
+    container_name: isf_celery
+
+    command: celery -A app.workers.celery_app worker --loglevel=info
+
+    env_file:
+      - .env
+
+    volumes:
+      - .:/app
+
+    depends_on:
+      rabbitmq:
+        condition: service_started
+
   db:
     image: postgres:16-alpine
     container_name: isf_db

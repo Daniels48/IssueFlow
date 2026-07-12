@@ -2,14 +2,13 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.infrastructure.rabbit.connection import RabbitConnection
-from app.infrastructure.rabbit.publisher import RabbitPublisher
+from app.infrastructure.rabbitmq.connection import RabbitConnection
+from app.infrastructure.rabbitmq.publisher import RabbitPublisher
 from app.router import api_router
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
-    await RabbitConnection.connect()
+async def lifespan(_: FastAPI):
     await RabbitPublisher.connect()
 
     yield
@@ -17,10 +16,21 @@ async def lifespan(app: FastAPI):
     await RabbitPublisher.close()
     await RabbitConnection.close()
 
-
 app = FastAPI(lifespan=lifespan, title="issueflow")
 
 
+# @asynccontextmanager
+# async def lifespan(app: FastAPI):
+#     await RabbitConsumer.subscribe(
+#         queue_name="email_queue",
+#         routing_key="issue.created",
+#         handler=email_handler,
+#     )
+#
+#     yield
+#
+#     await RabbitConsumer.close()
+#     await RabbitConnection.close()
 
 @app.get("/health")
 async def health_check():
