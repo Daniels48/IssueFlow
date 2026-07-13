@@ -1,10 +1,12 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from starlette.staticfiles import StaticFiles
 
 from app.infrastructure.rabbitmq.connection import RabbitConnection
 from app.infrastructure.rabbitmq.publisher import RabbitPublisher
 from app.router import api_router
+from app.web.router import router as web_router
 
 
 @asynccontextmanager
@@ -17,6 +19,8 @@ async def lifespan(_: FastAPI):
     await RabbitConnection.close()
 
 app = FastAPI(lifespan=lifespan, title="issueflow")
+
+app.mount("/static",StaticFiles(directory="app/web/static"), name="static")
 
 
 # @asynccontextmanager
@@ -38,3 +42,4 @@ async def health_check():
 
 
 app.include_router(api_router)
+app.include_router(web_router)

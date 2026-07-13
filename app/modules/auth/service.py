@@ -32,7 +32,7 @@ class AuthService:
 
         return user
 
-    async def login(self, username: str, password: str) -> Token:
+    async def login(self, username: str, password: str) -> str:
         user = await self.repository.get_by_username(self.db, username)
 
         if not user:
@@ -43,4 +43,4 @@ class AuthService:
 
         access_token = JWTService.create_access_token(user.public_id)
 
-        return Token(access_token=access_token)
+        return access_token

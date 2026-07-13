@@ -4,6 +4,7 @@ uvicorn[standard]
 aio-pika
 redis
 websockets
+celery
 
 jinja2
 aiosmtplib

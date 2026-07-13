@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Issue</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<header>
+    <a href="/projects">← Projects</a>
+    <h1 id="title">Issue</h1>
+</header>
+
+<section>
+    <h2>Description</h2>
+    <p id="description"></p>
+</section>
+
+<section>
+    <h2>Comments</h2>
+    <ul id="comments"></ul>
+</section>
+
+<section>
+    <textarea id="comment" placeholder="Write comment..."></textarea>
+    <button id="send-comment">Send</button>
+</section>
+
+<script src="/static/js/api.js"></script>
+<script src="/static/js/websocket.js"></script>
+<script src="/static/js/issue.js"></script>
+
+</body>
+</html>

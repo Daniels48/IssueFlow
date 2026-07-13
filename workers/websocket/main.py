@@ -26,6 +26,6 @@ async def lifespan(_: FastAPI):
         await RabbitConnection.close()
 
 
-app = FastAPI(title="IssueFlow WebSocket",lifespan=lifespan)
+app = FastAPI(title="IssueFlow WebSocket", lifespan=lifespan)
 
 app.include_router(router)

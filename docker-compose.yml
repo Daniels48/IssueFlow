@@ -11,6 +11,9 @@ services:
     depends_on:
       db:
         condition: service_healthy
+
+      rabbitmq:
+        condition: service_healthy
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   ws:
@@ -18,7 +21,10 @@ services:
 
     container_name: isf_ws
 
-    command: python -m app.workers.ws
+    command: uvicorn app.workers.websocket.main:app --host 0.0.0.0 --port 8001
+
+    ports:
+      - "8001:8001"
 
     env_file:
       - .env
@@ -28,14 +34,36 @@ services:
 
     depends_on:
       rabbitmq:
-        condition: service_started
+        condition: service_healthy
+
+      db:
+        condition: service_healthy
+
+
+  event_worker:
+    build: .
+    container_name: isf_event_worker
+
+    command: python -m app.workers.event_worker.main
+
+    env_file:
+      - .env
+
+    volumes:
+      - .:/app
+
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+      db:
+        condition: service_healthy
 
   celery:
     build: .
-
     container_name: isf_celery
 
-    command: celery -A app.workers.celery_app worker --loglevel=info
+    command: celery -A app.workers.celery.app:celery_app worker --loglevel=info
 
     env_file:
       - .env
@@ -45,7 +73,10 @@ services:
 
     depends_on:
       rabbitmq:
-        condition: service_started
+        condition: service_healthy
+
+      db:
+        condition: service_healthy
 
   db:
     image: postgres:16-alpine
@@ -74,6 +105,10 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBIT__LOGIN}
       RABBITMQ_DEFAULT_PASS: ${RABBIT__PASSWORD}
-
+    healthcheck:
+        test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+        interval: 10s
+        timeout: 5s
+        retries: 5
 volumes:
   postgres_data:

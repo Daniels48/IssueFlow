@@ -9,7 +9,7 @@ class ConnectionManager:
     def __init__(self):
         self._connections: dict[UUID, set[WebSocket]] = defaultdict(set)
 
-    async def connect(self,user_public_id: UUID, websocket: WebSocket) -> None:
+    async def connect(self, user_public_id: UUID, websocket: WebSocket) -> None:
         await websocket.accept()
 
         self._connections[user_public_id].add(websocket)
@@ -25,7 +25,7 @@ class ConnectionManager:
         if not connections:
             self._connections.pop(user_public_id, None)
 
-    async def send_to_user(self,user_public_id: UUID,message: dict) -> None:
+    async def send_to_user(self, user_public_id: UUID,message: dict) -> None:
         connections = self._connections.get(user_public_id)
 
         if connections is None:

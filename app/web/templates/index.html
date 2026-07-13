@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IssueFlow</title>
+    <link rel="stylesheet" href="/static/css/index.css">
+</head>
+<body>
+<header class="header">
+    <div class="container">
+        <div class="logo">IssueFlow</div>
+        <nav id="nav">
+            <a href="/login">Login</a>
+            <a href="/register" class="btn primary">Register</a>
+        </nav>
+    </div>
+</header>
+<section class="hero">
+    <div class="container">
+        <span class="badge">🚀 Open Source Issue Tracker</span>
+        <h1>Manage projects with real-time collaboration</h1>
+        <p>
+            IssueFlow is a lightweight issue tracker powered by FastAPI,
+            RabbitMQ, WebSocket and Celery.
+        </p>
+        <div class="buttons">
+            <a href="/login" class="btn primary">Get Started</a>
+            <a href="https://github.com" class="btn secondary">GitHub</a>
+        </div>
+    </div>
+</section>
+<section class="features">
+    <div class="container cards">
+        <div class="card">
+            <h2>⚡ Real-time</h2>
+            <p>Instant updates through WebSocket.</p>
+        </div>
+        <div class="card">
+            <h2>📨 Event Driven</h2>
+            <p>RabbitMQ routes every domain event.</p>
+        </div>
+        <div class="card">
+            <h2>⚙️ Background Jobs</h2>
+            <p>Celery executes heavy tasks asynchronously.</p>
+        </div>
+    </div>
+</section>
+<footer>
+    <div class="container">© 2026 IssueFlow</div>
+</footer>
+<script src="/static/js/api.js"></script>
+<script src="/static/js/index.js"></script>
+</body>
+</html>
