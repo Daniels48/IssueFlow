@@ -1,6 +1,6 @@
 document.addEventListener("DOMContentLoaded", async () => {
     const nav = document.getElementById("nav");
-    const res = await api.post("/api/users/me");
+    const res = await api.get("/api/users/me");
 
     if (!res || !res.ok) {
         nav.innerHTML = `

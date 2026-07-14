@@ -18,6 +18,12 @@ async def login():
 async def projects():
     return FileResponse("app/web/templates/projects.html")
 
+
 @router.get("/register")
 async def register():
     return FileResponse("app/web/templates/register.html")
+
+
+@router.get("/profile")
+async def profile():
+    return FileResponse("app/web/templates/profile.html")

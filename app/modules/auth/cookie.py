@@ -34,10 +34,10 @@ def _set_cookie(response: Response, token:str, name_cookie:str) -> None:
         secure=False,
         samesite="lax",
         path=data["path"],
-        max_age=data["max_age"],
+        max_age=int(data["max_age"]),
     )
 
-def set_access_cookie(response: Response,access_token: str) -> None:
+def set_access_cookie(response: Response, access_token: str) -> None:
     _set_cookie(response=response, name_cookie=ACCESS_COOKIE, token=access_token)
 
 

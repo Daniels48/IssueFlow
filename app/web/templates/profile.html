@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile • IssueFlow</title>
+    <link rel="stylesheet" href="/static/css/profile.css">
+</head>
+<body>
+<header>
+    <div class="container">
+        <a href="/" class="logo">
+            IssueFlow
+        </a>
+        <nav>
+            <a href="/projects">Projects</a>
+            <button id="logout">
+                Logout
+            </button>
+        </nav>
+    </div>
+</header>
+<main class="container">
+    <div class="profile-card">
+        <div class="avatar" id="avatar">
+            U
+        </div>
+        <h1 id="username">
+            Loading...
+        </h1>
+        <p id="email"></p>
+        <span id="status" class="status"></span>
+        <div class="info">
+            <div class="item">
+                <span>Public ID</span>
+                <strong id="public_id"></strong>
+            </div>
+            <div class="item">
+                <span>Created</span>
+                <strong id="created_at"></strong>
+            </div>
+            <div class="item">
+                <span>Email verified</span>
+                <strong id="verified"></strong>
+            </div>
+        </div>
+    </div>
+</main>
+<script src="/static/js/api.js"></script>
+<script src="/static/js/profile.js"></script>
+</body>
+</html>

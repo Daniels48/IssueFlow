@@ -1,4 +1,7 @@
-from datetime import datetime, timedelta, timezone
+import hashlib
+import hmac
+import secrets
+from datetime import timedelta, datetime
 from uuid import UUID
 
 from jose import JWTError, ExpiredSignatureError, jwt
@@ -9,12 +12,12 @@ from app.modules.auth.schemas import AccessTokenPayload
 
 class JWTService:
     secret_key = settings.security.jwt_secret
+    refresh_key = settings.security.refresh_secret
     algorithm = settings.security.algorithm
     expire_minutes = settings.security.access_token_expire_min
 
     @classmethod
-    def create_access_token(cls, public_id: UUID) -> str:
-        now = datetime.now(timezone.utc)
+    def create_access_token(cls, public_id: UUID, now: datetime) -> str:
 
         payload = {
             "sub": str(public_id),
@@ -35,3 +38,11 @@ class JWTService:
 
         except JWTError:
             raise ValueError("Invalid token")
+
+    @staticmethod
+    def hash_refresh_token(token: str) -> str:
+        return hmac.new(settings.security.refresh_secret.encode(), token.encode(), hashlib.sha256).hexdigest()
+
+    @staticmethod
+    def generate_refresh_token() -> str:
+        return secrets.token_urlsafe(64)
