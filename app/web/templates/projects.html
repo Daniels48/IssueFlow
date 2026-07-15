@@ -7,28 +7,114 @@
     <link rel="stylesheet" href="/static/css/projects.css">
 </head>
 <body>
-<header>
+<header class="header">
     <div class="container">
         <a href="/" class="logo">IssueFlow</a>
-        <div class="user">
-            <span id="username"></span>
-            <button id="logout">Logout</button>
-        </div>
+        <nav class="nav">
+            <a href="/projects" class="active">Projects</a>
+            <a href="/profile">Profile</a>
+            <div class="user">
+                <span id="username"></span>
+                <button id="logout">Logout</button>
+            </div>
+        </nav>
     </div>
 </header>
 <main class="container">
-    <div class="toolbar">
-        <h1>Projects</h1>
-        <button id="create-project">+ New project</button>
-    </div>
-    <div id="projects" class="projects">
-    </div>
-
+    <section class="hero">
+        <div>
+            <h1>Projects</h1>
+            <p>Manage all your software projects in one place.</p>
+        </div>
+        <button class="create-btn">
+            + New Project
+        </button>
+    </section>
+    <section class="projects">
+        <article class="project-card">
+            <div class="project-top">
+                <div>
+                    <h2>IssueFlow Backend</h2>
+                    <p>
+                        FastAPI backend with JWT authentication,
+                        RabbitMQ, WebSocket and Celery.
+                    </p>
+                </div>
+            </div>
+            <div class="stats">
+                <div>
+                    <strong>12</strong>
+                    <span>Issues</span>
+                </div>
+                <div>
+                    <strong>4</strong>
+                    <span>Members</span>
+                </div>
+                <div>
+                    <strong>18</strong>
+                    <span>Comments</span>
+                </div>
+            </div>
+            <footer>
+                <span>Owner:<strong>Alexander</strong></span>
+                <span>Updated 5 min ago</span>
+            </footer>
+        </article>
+        <article class="project-card">
+            <div class="project-top">
+                <div>
+                    <h2>Frontend</h2>
+                    <p>Vanilla JavaScript interface for IssueFlow.</p>
+                </div>
+            </div>
+            <div class="stats">
+                <div>
+                    <strong>6</strong>
+                    <span>Issues</span>
+                </div>
+                <div>
+                    <strong>2</strong>
+                    <span>Members</span>
+                </div>
+                <div>
+                    <strong>11</strong>
+                    <span>Comments</span>
+                </div>
+            </div>
+            <footer>
+                <span>Owner:<strong>Alexander</strong></span>
+                <span>Updated yesterday</span>
+            </footer>
+        </article>
+        <article class="project-card">
+            <div class="project-top">
+                <div>
+                    <h2>Mobile App</h2>
+                    <p>Flutter application for IssueFlow.</p>
+                </div>
+            </div>
+            <div class="stats">
+                <div>
+                    <strong>25</strong>
+                    <span>Issues</span>
+                </div>
+                <div>
+                    <strong>7</strong>
+                    <span>Members</span>
+                </div>
+                <div>
+                    <strong>74</strong>
+                    <span>Comments</span>
+                </div>
+            </div>
+            <footer>
+                <span>Owner:<strong>Alexander</strong></span>
+                <span>Updated 3 days ago</span>
+            </footer>
+        </article>
+    </section>
 </main>
-
 <script src="/static/js/api.js"></script>
 <script src="/static/js/projects.js"></script>
-
 </body>
-
 </html>

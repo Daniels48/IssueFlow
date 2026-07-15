@@ -17,6 +17,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         <button id="logout" class="btn primary">Logout</button>
     `;
 
-    document.getElementById("logout").addEventListener("click", logout);
+    document.getElementById("logout").addEventListener("click", window.logout);
 
 });

@@ -1,68 +1,78 @@
 "use strict";
 
-const container = document.getElementById("projects");
-
 const username = document.getElementById("username");
+const projectsContainer = document.getElementById("projects");
 
-const logout = document.getElementById("logout");
+document.getElementById("logout").addEventListener("click", window.logout);
 
-logout.onclick = async () => {
+// document
+//     .getElementById("create-project")
+//     .addEventListener("click", () => {
+//         alert("Create project");
+//     });
 
-    await api.post("/auth/logout");
-
-    window.location="/";
-
-};
-
-async function loadUser(){
-
-    const res = await api.get("/auth/me");
-
-    if(!res.ok){
-
-        window.location="/login";
-
+async function loadUser() {
+    const res = await api.get(window.data_url.me);
+    if (!res) {return;}
+    if (!res.ok) {
+        // location.href = "/login";
         return;
-
     }
-
     const user = await res.json();
-
-    username.textContent=user.username;
-
+    username.textContent = user.username;
 }
 
-async function loadProjects(){
-
-    const res = await api.get("/projects");
-
-    if(!res.ok){
-
-        return;
-
-    }
+async function loadProjects() {
+    const res = await api.get(window.data_url.projects);
+    if (!res) {return;}
+    if (!res.ok) {return;}
     const projects = await res.json();
+    renderProjects(projects);
+}
 
-    container.innerHTML="";
-
-    for(const project of projects){
-
-        container.innerHTML += `
-            <div
-                class="project"
-                onclick="location='/project/${project.public_id}'"
-            >
-                <h2>${project.name}</h2>
-                <p>${project.description ?? ""}</p>
-                <footer>
-                    <span>${project.issues_count} issues</span>
-                </footer>
+function renderProjects(projects) {
+    if (projects.length === 0) {
+        projectsContainer.innerHTML = `
+            <div class="empty">
+                <h2>No projects yet</h2>
+                <p>Create your first project.</p>
             </div>
         `;
+        return;
     }
+
+    projectsContainer.innerHTML = projects
+        .map(project => `
+            <article class="project-card" data-id="${project.public_id}">
+                <div class="project-top">
+                    <div>
+                        <h2>${project.name}</h2>
+                        <p>${project.description ?? "No description"}</p>
+                    </div>
+                </div>
+                <footer> <span>Created${formatDate(project.created_at)}</span> </footer>
+            </article>
+        `)
+        .join("");
+
+    document
+        .querySelectorAll(".project-card")
+        .forEach(card => {
+            card.addEventListener("click", () => {
+                location.href =
+                    `/projects/${card.dataset.id}`;
+            });
+        });
 
 }
 
-loadUser();
+function formatDate(date) {
+    return new Date(date).toLocaleDateString();
+}
 
-loadProjects();
+async function init() {
+    await loadUser();
+    // await loadProjects();
+}
+
+init();

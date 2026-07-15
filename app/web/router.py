@@ -27,3 +27,11 @@ async def register():
 @router.get("/profile")
 async def profile():
     return FileResponse("app/web/templates/profile.html")
+
+@router.get("/project/{project_id}")
+async def project(project_id: int):
+    return FileResponse("app/web/templates/project.html")
+
+@router.get("/issue/{issue_id}")
+async def project(issue_id: int):
+    return FileResponse("app/web/templates/issue.html")

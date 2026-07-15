@@ -1,0 +1,340 @@
+/* ===========================
+   PAGE
+=========================== */
+
+.page {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 32px;
+    margin-top: 32px;
+    margin-bottom: 60px;
+}
+
+/* ===========================
+   BACK
+=========================== */
+
+.back {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 24px;
+    color: var(--muted);
+    transition: .2s;
+}
+
+.back:hover {
+    color: white;
+}
+
+/* ===========================
+   ISSUE HEADER
+=========================== */
+
+.issue-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 24px;
+    margin-bottom: 28px;
+}
+
+.issue-header h1 {
+    font-size: 2.3rem;
+    margin-bottom: 14px;
+    line-height: 1.2;
+}
+
+.badges {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.actions {
+    display: flex;
+    gap: 12px;
+}
+
+/* ===========================
+   DESCRIPTION
+=========================== */
+
+.description h2 {
+    margin-bottom: 16px;
+}
+
+.description p {
+    color: var(--muted);
+    line-height: 1.8;
+}
+
+/* ===========================
+   COMMENTS
+=========================== */
+
+.comments {
+    margin-top: 40px;
+}
+
+.comments-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.comments-header span {
+    color: var(--muted);
+}
+
+.comment {
+    display: flex;
+    gap: 18px;
+    margin-bottom: 18px;
+}
+
+.comment:last-child {
+    margin-bottom: 0;
+}
+
+.reply {
+    margin-left: 60px;
+}
+
+.avatar {
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+
+    border-radius: 50%;
+
+    background: var(--primary);
+
+    color: white;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    font-weight: 700;
+}
+
+.comment-content {
+    flex: 1;
+}
+
+.comment-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 12px;
+}
+
+.comment-header span {
+    color: var(--muted);
+    font-size: .9rem;
+}
+
+.comment-content p {
+    color: var(--muted);
+    line-height: 1.7;
+}
+
+/* ===========================
+   REPLY PREVIEW
+=========================== */
+
+.reply-preview {
+    margin-bottom: 16px;
+
+    padding: 14px;
+
+    border-left: 4px solid var(--primary);
+
+    background: rgba(255,255,255,.03);
+
+    border-radius: 10px;
+}
+
+.reply-preview span {
+    display: block;
+
+    color: var(--primary);
+
+    font-size: .85rem;
+
+    margin-bottom: 8px;
+
+    font-weight: 600;
+}
+
+.reply-preview blockquote {
+    color: var(--muted);
+    font-style: italic;
+    line-height: 1.6;
+}
+
+/* ===========================
+   COMMENT ACTIONS
+=========================== */
+
+.comment-actions {
+    display: flex;
+    gap: 16px;
+    margin-top: 18px;
+}
+
+.comment-actions button {
+    border: none;
+    background: none;
+    color: var(--muted);
+    transition: .2s;
+}
+
+.comment-actions button:hover {
+    color: white;
+}
+
+/* ===========================
+   NEW COMMENT
+=========================== */
+
+.new-comment {
+    margin-top: 42px;
+}
+
+.new-comment h2 {
+    margin-bottom: 16px;
+}
+
+.new-comment textarea {
+    min-height: 170px;
+}
+
+.editor-footer {
+    margin-top: 18px;
+
+    display: flex;
+
+    justify-content: flex-end;
+}
+
+/* ===========================
+   SIDEBAR
+=========================== */
+
+.sidebar {
+    position: sticky;
+    top: 96px;
+    height: fit-content;
+}
+
+.sidebar-card h3 {
+    margin-bottom: 22px;
+}
+
+.info {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    padding-bottom: 12px;
+
+    border-bottom: 1px solid var(--border);
+}
+
+.info-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.info-item span {
+    color: var(--muted);
+}
+
+.info-item strong {
+    font-weight: 600;
+}
+
+.due {
+    color: var(--warning);
+}
+
+/* ===========================
+   HOVER
+=========================== */
+
+.comment {
+    transition: .2s;
+}
+
+.comment:hover {
+    border-color: rgba(59,130,246,.3);
+}
+
+/* ===========================
+   RESPONSIVE
+=========================== */
+
+@media (max-width: 1000px) {
+
+    .page {
+        grid-template-columns: 1fr;
+    }
+
+    .sidebar {
+        position: static;
+    }
+
+}
+
+@media (max-width: 768px) {
+
+    .issue-header {
+        flex-direction: column;
+    }
+
+    .actions {
+        width: 100%;
+    }
+
+    .actions button {
+        flex: 1;
+    }
+
+    .comment {
+        flex-direction: column;
+    }
+
+    .reply {
+        margin-left: 20px;
+    }
+
+    .comment-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+    }
+
+}
+
+@media (max-width: 600px) {
+
+    .reply {
+        margin-left: 0;
+    }
+
+    .comment-actions {
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+}

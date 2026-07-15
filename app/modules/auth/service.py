@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -83,3 +83,10 @@ class AuthService:
         access_token = JWTService.create_access_token(public_id=user.public_id, now=now)
 
         return access_token
+
+    async def logout(self, refresh_token: str) -> None:
+        refresh_hash = JWTService.hash_refresh_token(refresh_token)
+        session = await SessionRepository.get_by_refresh_hash(self.db, refresh_hash)
+        await SessionRepository.delete(db=self.db, session=session)
+
+

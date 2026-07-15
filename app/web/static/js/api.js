@@ -1,9 +1,16 @@
 "use strict";
 
-const URL_REFRESH = "/api/auth/refresh";
-const URL_LOGIN = "/login";
-const URL_LOGOUT = "/api/auth/logout";
 let refreshPromise = null;
+
+const data_url = {
+    "refresh": "/api/auth/refresh",
+    "logout": "/api/auth/logout",
+    "login": "/login",
+    "register": "/register",
+    "projects": "/api/projects",
+    "me": "/api/users/me",
+
+}
 
 
 async function request(url, options = {}) {
@@ -23,14 +30,14 @@ async function apiFetch(url, options = {}) {
     const refreshed = await refreshToken();
 
     if (!refreshed) {
-        window.location.href = URL_LOGIN;
+        window.location.href = data_url.login;
         return null;
     }
 
     const retry = await request(url, options);
 
     if (retry.status === 401) {
-        window.location.href = URL_LOGIN;
+        window.location.href = data_url.login;
         return null;
     }
 
@@ -61,7 +68,7 @@ async function refreshToken() {
     }
 
     refreshPromise = (async () => {
-        const res = await fetch(URL_REFRESH, {
+        const res = await fetch(data_url.refresh, {
             method: "POST",
             credentials: "include",
         });
@@ -77,7 +84,7 @@ async function refreshToken() {
 }
 async function logout() {
 
-    await fetch(URL_LOGOUT, {
+    await fetch(data_url.logout, {
         method: "POST",
         credentials: "include",
     });
@@ -88,3 +95,5 @@ async function logout() {
 
 
 window.api = api;
+window.logout = logout;
+window.data_url = data_url;

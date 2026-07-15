@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <title>Backend API • IssueFlow</title>
+
+    <link rel="stylesheet" href="/static/css/project.css">
+
+</head>
+
+<body>
+
+<header class="header">
+
+    <div class="container">
+
+        <a href="/" class="logo">
+            IssueFlow
+        </a>
+
+        <nav>
+
+            <a href="/projects">
+                Projects
+            </a>
+
+            <a href="/profile">
+                Profile
+            </a>
+
+            <button id="logout">
+                Logout
+            </button>
+
+        </nav>
+
+    </div>
+
+</header>
+
+<main class="container">
+
+    <a href="/projects" class="back">
+
+        ← Back to projects
+
+    </a>
+
+    <section class="project-info">
+
+        <div>
+
+            <h1>
+
+                Backend API
+
+            </h1>
+
+            <p>
+
+                FastAPI backend with RabbitMQ,
+                WebSocket and Celery.
+
+            </p>
+
+        </div>
+
+        <button>
+
+            Edit Project
+
+        </button>
+
+    </section>
+
+    <section class="members">
+
+        <h3>
+
+            Members
+
+        </h3>
+
+        <div class="avatars">
+
+            <div>A</div>
+
+            <div>B</div>
+
+            <div>K</div>
+
+            <div>+</div>
+
+        </div>
+
+    </section>
+
+    <section class="issues-header">
+
+        <h2>
+
+            Issues
+
+        </h2>
+
+        <button>
+
+            + New Issue
+
+        </button>
+
+    </section>
+
+    <input
+        type="text"
+        placeholder="Search issues..."
+    >
+
+    <section class="issues">
+
+        <article class="issue">
+
+            <div>
+
+                <h3>
+
+                    Fix refresh token
+
+                </h3>
+
+                <span>
+
+                    Assigned to Alexander
+
+                </span>
+
+            </div>
+
+            <div class="badges">
+
+                <span class="open">
+
+                    OPEN
+
+                </span>
+
+                <span class="high">
+
+                    HIGH
+
+                </span>
+
+            </div>
+
+        </article>
+
+        <article class="issue">
+
+            <div>
+
+                <h3>
+
+                    RabbitMQ reconnect
+
+                </h3>
+
+                <span>
+
+                    Assigned to Bob
+
+                </span>
+
+            </div>
+
+            <div class="badges">
+
+                <span class="progress">
+
+                    IN PROGRESS
+
+                </span>
+
+                <span class="medium">
+
+                    MEDIUM
+
+                </span>
+
+            </div>
+
+        </article>
+
+        <article class="issue">
+
+            <div>
+
+                <h3>
+
+                    Docker cleanup
+
+                </h3>
+
+                <span>
+
+                    Assigned to Kate
+
+                </span>
+
+            </div>
+
+            <div class="badges">
+
+                <span class="done">
+
+                    DONE
+
+                </span>
+
+                <span class="low">
+
+                    LOW
+
+                </span>
+
+            </div>
+
+        </article>
+
+    </section>
+
+</main>
+
+<script src="/static/js/api.js"></script>
+<script src="/static/js/project.js"></script>
+
+</body>
+
+</html>

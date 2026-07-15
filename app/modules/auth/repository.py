@@ -4,6 +4,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.db.models.model_session import Session
+from app.utils.func_utils import get_now_dt
 
 
 class SessionRepository:
@@ -15,7 +16,7 @@ class SessionRepository:
         return session
 
     @staticmethod
-    async def get_by_refresh_hash(db: AsyncSession,refresh_token_hash: str) -> Session | None:
+    async def get_by_refresh_hash(db: AsyncSession, refresh_token_hash: str) -> Session | None:
         stmt = (
             select(Session)
             .where(Session.refresh_token_hash == refresh_token_hash)
@@ -31,8 +32,8 @@ class SessionRepository:
         return session
 
     @staticmethod
-    async def revoke(db: AsyncSession, session: Session) -> None:
-        session.revoked_at = datetime.utcnow()
+    async def delete(db: AsyncSession, session: Session | None) -> None:
+        session.deleted_at = get_now_dt()
         await db.commit()
 
     @staticmethod
@@ -47,7 +48,7 @@ class SessionRepository:
 
         result = await db.execute(stmt)
         sessions = result.scalars().all()
-        now = datetime.utcnow()
+        now = get_now_dt()
 
         for session in sessions:
             session.revoked_at = now
@@ -55,9 +56,10 @@ class SessionRepository:
         await db.commit()
 
     @staticmethod
-    async def delete(db: AsyncSession, session: Session) -> None:
-        await db.delete(session)
-        await db.commit()
+    async def revoke(db: AsyncSession, session: Session) -> None:
+        if session is not None:
+            await db.delete(session)
+            await db.commit()
 
     @staticmethod
     async def delete_expired(db: AsyncSession) -> None:

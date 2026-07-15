@@ -9,16 +9,16 @@ const created = document.getElementById("created_at");
 const verified = document.getElementById("verified");
 const status = document.getElementById("status");
 
-document.getElementById("logout").onclick = logout;
+document.getElementById("logout").addEventListener("click", window.logout);
 
 async function loadProfile() {
 
-    const res = await api.get("/api/users/me");
+    const res = await api.get(window.data_url.me);
 
     if (!res) return;
 
     if (!res.ok) {
-        location.href = "/login";
+        location.href = window.data_url.login;
         return;
     }
 

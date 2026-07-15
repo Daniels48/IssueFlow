@@ -1,35 +1,508 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
+
 <head>
+
     <meta charset="UTF-8">
-    <title>Issue</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Issue • IssueFlow</title>
+
+    <link rel="stylesheet" href="/static/css/layout.css">
+    <link rel="stylesheet" href="/static/css/issue.css">
+
 </head>
+
 <body>
 
-<header>
-    <a href="/projects">← Projects</a>
-    <h1 id="title">Issue</h1>
+<header class="header">
+
+    <div class="container">
+
+        <a href="/" class="logo">
+            IssueFlow
+        </a>
+
+        <nav>
+
+            <a href="/projects" class="active">
+                Projects
+            </a>
+
+            <a href="/profile">
+                Profile
+            </a>
+
+            <div class="user">
+
+                <span>
+                    Alexander
+                </span>
+
+                <button
+                    id="logout"
+                    class="btn btn-danger"
+                >
+                    Logout
+                </button>
+
+            </div>
+
+        </nav>
+
+    </div>
+
 </header>
 
-<section>
-    <h2>Description</h2>
-    <p id="description"></p>
-</section>
+<main class="container">
 
-<section>
-    <h2>Comments</h2>
-    <ul id="comments"></ul>
-</section>
+    <a href="/projects/019f..." class="back">
 
-<section>
-    <textarea id="comment" placeholder="Write comment..."></textarea>
-    <button id="send-comment">Send</button>
-</section>
+        ← Back to project
+
+    </a>
+
+    <div class="page">
+
+        <section class="content">
+
+            <header class="issue-header">
+
+                <div>
+
+                    <h1>
+
+                        Fix refresh token rotation
+
+                    </h1>
+
+                    <div class="badges">
+
+                        <span class="badge badge-danger">
+
+                            OPEN
+
+                        </span>
+
+                        <span class="badge badge-warning">
+
+                            HIGH
+
+                        </span>
+
+                    </div>
+
+                </div>
+
+                <div class="actions">
+
+                    <button class="btn btn-secondary">
+
+                        Edit
+
+                    </button>
+
+                    <button class="btn btn-danger">
+
+                        Close
+
+                    </button>
+
+                </div>
+
+            </header>
+
+            <section class="card description">
+
+                <h2>
+
+                    Description
+
+                </h2>
+
+                <p>
+
+                    Refresh token should be rotated after every successful
+                    refresh request. The previous refresh token must become
+                    invalid immediately after a new one is issued.
+
+                </p>
+
+            </section>
+
+            <section class="comments">
+
+                <div class="comments-header">
+
+                    <h2>
+
+                        Comments
+
+                    </h2>
+
+                    <span>
+
+                        3 comments
+
+                    </span>
+
+                </div>
+
+                <!-- COMMENT -->
+
+                <article class="comment card">
+
+                    <div class="avatar">
+
+                        A
+
+                    </div>
+
+                    <div class="comment-content">
+
+                        <div class="comment-header">
+
+                            <strong>
+
+                                Alexander
+
+                            </strong>
+
+                            <span>
+
+                                Jul 15, 2026 • 14:25
+
+                            </span>
+
+                        </div>
+
+                        <p>
+
+                            I think we should rotate the refresh token
+                            after every refresh request.
+
+                        </p>
+
+                        <div class="comment-actions">
+
+                            <button>
+
+                                Reply
+
+                            </button>
+
+                            <button>
+
+                                Edit
+
+                            </button>
+
+                            <button>
+
+                                Delete
+
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </article>
+
+                <!-- REPLY -->
+
+                <article class="comment reply card">
+
+                    <div class="avatar">
+
+                        B
+
+                    </div>
+
+                    <div class="comment-content">
+
+                        <div class="reply-preview">
+
+                            <span>
+
+                                Replying to Alexander
+
+                            </span>
+
+                            <blockquote>
+
+                                I think we should rotate the refresh token
+                                after every refresh request.
+
+                            </blockquote>
+
+                        </div>
+
+                        <div class="comment-header">
+
+                            <strong>
+
+                                Bob
+
+                            </strong>
+
+                            <span>
+
+                                Jul 15, 2026 • 14:42
+
+                            </span>
+
+                        </div>
+
+                        <p>
+
+                            Agreed.
+                            I'll implement it together with session
+                            invalidation.
+
+                        </p>
+
+                        <div class="comment-actions">
+
+                            <button>
+
+                                Reply
+
+                            </button>
+
+                            <button>
+
+                                Edit
+
+                            </button>
+
+                            <button>
+
+                                Delete
+
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </article>
+
+                <!-- COMMENT -->
+
+                <article class="comment card">
+
+                    <div class="avatar">
+
+                        K
+
+                    </div>
+
+                    <div class="comment-content">
+
+                        <div class="comment-header">
+
+                            <strong>
+
+                                Kate
+
+                            </strong>
+
+                            <span>
+
+                                Jul 15, 2026 • 15:05
+
+                            </span>
+
+                        </div>
+
+                        <p>
+
+                            Don't forget to update the tests.
+
+                        </p>
+
+                        <div class="comment-actions">
+
+                            <button>
+
+                                Reply
+
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </article>
+
+            </section>
+
+            <section class="new-comment">
+
+                <h2>
+
+                    Add Comment
+
+                </h2>
+
+                <textarea
+                    rows="6"
+                    placeholder="Write your comment..."
+                ></textarea>
+
+                <div class="editor-footer">
+
+                    <button class="btn btn-primary">
+
+                        Post Comment
+
+                    </button>
+
+                </div>
+
+            </section>
+
+        </section>
+
+        <aside class="sidebar">
+
+            <section class="sidebar-card card">
+
+                <h3>
+
+                    Issue Details
+
+                </h3>
+
+                <div class="info">
+
+                    <div class="info-item">
+
+                        <span>
+
+                            Status
+
+                        </span>
+
+                        <strong>
+
+                            OPEN
+
+                        </strong>
+
+                    </div>
+
+                    <div class="info-item">
+
+                        <span>
+
+                            Priority
+
+                        </span>
+
+                        <strong>
+
+                            HIGH
+
+                        </strong>
+
+                    </div>
+
+                    <div class="info-item">
+
+                        <span>
+
+                            Reporter
+
+                        </span>
+
+                        <strong>
+
+                            Alexander
+
+                        </strong>
+
+                    </div>
+
+                    <div class="info-item">
+
+                        <span>
+
+                            Assignee
+
+                        </span>
+
+                        <strong>
+
+                            Bob
+
+                        </strong>
+
+                    </div>
+
+                    <div class="info-item">
+
+                        <span>
+
+                            Due Date
+
+                        </span>
+
+                        <strong class="due">
+
+                            Jul 25, 2026
+
+                        </strong>
+
+                    </div>
+
+                    <div class="info-item">
+
+                        <span>
+
+                            Created
+
+                        </span>
+
+                        <strong>
+
+                            Jul 15, 2026
+
+                        </strong>
+
+                    </div>
+
+                    <div class="info-item">
+
+                        <span>
+
+                            Updated
+
+                        </span>
+
+                        <strong>
+
+                            5 minutes ago
+
+                        </strong>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+        </aside>
+
+    </div>
+
+</main>
 
 <script src="/static/js/api.js"></script>
-<script src="/static/js/websocket.js"></script>
 <script src="/static/js/issue.js"></script>
 
 </body>
+
 </html>

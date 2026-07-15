@@ -11,7 +11,7 @@ CookieName = Literal["access_token", "refresh_token"]
 ACCESS_COOKIE = "access_token"
 REFRESH_COOKIE = "refresh_token"
 PATH_ACCESS_COOKIE = "/"
-PATH_REFRESH_COOKIE = "/api/auth/refresh"
+PATH_REFRESH_COOKIE = "/api/auth"
 
 
 COOKIE_CONFIG = {
