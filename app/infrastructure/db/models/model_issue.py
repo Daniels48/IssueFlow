@@ -11,7 +11,7 @@ from app.modules.issue.status import IssueStatus
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from app.infrastructure.db.models.model_projects import Project
+    from app.infrastructure.db.models import Project, User, Comment
 
 class Issue(BaseModel):
     __tablename__ = "issues"
@@ -35,3 +35,19 @@ class Issue(BaseModel):
     project: Mapped["Project"] = relationship(
         back_populates="issues",
     )
+
+    reporter: Mapped["User"] = relationship(
+        foreign_keys=[reporter_id],
+        back_populates="reported_issues",
+    )
+
+    assignee: Mapped["User"] = relationship(
+        foreign_keys=[assignee_id],
+        back_populates="assigned_issues",
+    )
+
+    comments: Mapped[list["Comment"]] = relationship(
+        back_populates="issue",
+        cascade="all, delete-orphan",
+    )
+

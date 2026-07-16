@@ -26,6 +26,10 @@ class Project(BaseModel):
         nullable=False,
     )
 
+    owner: Mapped["User"] = relationship(
+        back_populates="owned_projects",
+    )
+
     issues: Mapped[list["Issue"]] = relationship(
         back_populates="project",
         cascade="all, delete-orphan",

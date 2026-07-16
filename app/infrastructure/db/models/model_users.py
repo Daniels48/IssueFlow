@@ -67,12 +67,10 @@ class User(BaseModel):
         back_populates="reporter",
     )
 
-    # Назначенные задачи
     assigned_issues: Mapped[list["Issue"]] = relationship(
         foreign_keys="Issue.assignee_id",
         back_populates="assignee",
     )
-
     # Комментарии
     comments: Mapped[list["Comment"]] = relationship(
         back_populates="author",

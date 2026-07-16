@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from fastapi import APIRouter
 from fastapi.responses import FileResponse
 
@@ -23,13 +25,12 @@ async def projects():
 async def register():
     return FileResponse("app/web/templates/register.html")
 
-
 @router.get("/profile")
 async def profile():
     return FileResponse("app/web/templates/profile.html")
 
-@router.get("/project/{project_id}")
-async def project(project_id: int):
+@router.get("/projects/{project_id}")
+async def project(project_id: UUID):
     return FileResponse("app/web/templates/project.html")
 
 @router.get("/issue/{issue_id}")

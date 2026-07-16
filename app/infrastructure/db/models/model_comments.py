@@ -1,7 +1,14 @@
+from typing import TYPE_CHECKING
+
 from sqlalchemy import ForeignKey, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.db.base import BaseModel
+
+
+if TYPE_CHECKING:
+    from app.infrastructure.db.models import Issue, User
+
 
 
 class Comment(BaseModel):
@@ -16,3 +23,10 @@ class Comment(BaseModel):
     )
 
     content: Mapped[str] = mapped_column(Text,nullable=False)
+
+    issue: Mapped[list["Issue"]] = relationship(
+        back_populates="comments",
+    )
+    author: Mapped[list["User"]] = relationship(
+        back_populates="comments",
+    )
