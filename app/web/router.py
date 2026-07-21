@@ -30,9 +30,9 @@ async def profile():
     return FileResponse("app/web/templates/profile.html")
 
 @router.get("/projects/{project_id}")
-async def project(project_id: UUID):
+async def projects(project_id: UUID):
     return FileResponse("app/web/templates/project.html")
 
-@router.get("/issue/{issue_id}")
-async def project(issue_id: int):
+@router.get("/projects/{project_id}/issues/{issue_id}")
+async def issue(project_id: UUID, issue_id: UUID):
     return FileResponse("app/web/templates/issue.html")

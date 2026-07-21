@@ -3,6 +3,7 @@ from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.infrastructure.db.models import Comment
 
@@ -16,7 +17,7 @@ class CommentRepository:
         return comment
 
     @staticmethod
-    async def get_by_public_id(db: AsyncSession,public_id: UUID) -> Comment | None:
+    async def get_by_public_id_issue(db: AsyncSession, public_id: UUID) -> Comment | None:
         result = await db.execute(
             select(Comment).where(
                 Comment.public_id == public_id,
@@ -25,6 +26,19 @@ class CommentRepository:
         )
 
         return result.scalar_one_or_none()
+
+    @staticmethod
+    async def get_by_issue(db: AsyncSession,issue_id: int) -> list[Comment]:
+        result = await db.execute(
+            select(Comment)
+            .options(selectinload(Comment.author))
+            .where(
+                Comment.issue_id == issue_id,
+                Comment.deleted_at.is_(None),
+            )
+        )
+
+        return list(result.scalars().all())
 
     @staticmethod
     async def get_all_by_issue(db: AsyncSession,issue_id: int) -> list[Comment]:

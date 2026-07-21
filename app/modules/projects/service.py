@@ -3,10 +3,11 @@ from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import Depends
-from sqlalchemy import Row
+from sqlalchemy import Row, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
-from app.infrastructure.db.models import User, ProjectMember
+from app.infrastructure.db.models import User, ProjectMember, Issue
 from app.infrastructure.db.models.model_projects import Project
 from app.modules.auth.dependencies import DBSession
 from app.modules.project_members.project_role import ProjectRole
@@ -50,6 +51,27 @@ class ProjectService:
             for project, members_count, issues_count, comments_count in rows
         ]
 
+    async def get_by_public_id_one(self,public_id: UUID, user_id: int) -> Project | None:
+        stmt = (
+            select(Project)
+            .join(ProjectMember, ProjectMember.project_id == Project.id)
+            .where(
+                Project.public_id == public_id,
+                ProjectMember.user_id == user_id,
+                ProjectMember.deleted_at.is_(None),
+                Project.deleted_at.is_(None),
+            )
+            .options(
+                selectinload(Project.members).selectinload(ProjectMember.user),
+                selectinload(Project.issues).selectinload(Issue.reporter),
+                selectinload(Project.issues).selectinload(Issue.assignee),
+            )
+        )
+
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
+
     async def get_by_public_id(self, public_id: UUID, current_user: User) -> ProjectDetailResponse:
         project = await self.repository.get_by_public_id(db=self.db, public_id=public_id, user_id=current_user.id)
         if not project:
@@ -59,8 +81,10 @@ class ProjectService:
             public_id=project.public_id,
             name=project.name,
             description=project.description,
+            owner=project.owner.username,
             created_at=project.created_at,
             updated_at=project.updated_at,
+            roles=[role.value for role in ProjectRole if role != ProjectRole.OWNER],
             members=[
                 ProjectMemberResponse(
                     public_id=member.user.public_id,
@@ -89,8 +113,8 @@ class ProjectService:
             ],
         )
 
-    async def update(self, public_id: UUID, data: ProjectUpdate, current_user: User) -> Project:
-        project = await self.get_by_public_id(public_id, current_user)
+    async def update(self, public_id: UUID, data: ProjectUpdate, current_user: User) -> Project | None:
+        project = await self.get_by_public_id_one(public_id, current_user.id)
 
         if data.name is not None:
             project.name = data.name
@@ -98,12 +122,12 @@ class ProjectService:
         if data.description is not None:
             project.description = data.description
 
-        project = await self.repository.update( db=self.db, project=project)
+        project = await self.repository.update(db=self.db, project=project)
         await self.db.commit()
         return project
 
     async def delete(self, public_id: UUID, current_user: User) -> None:
-        project = await self.get_by_public_id(public_id, current_user)
+        project = await self.get_by_public_id_one(public_id, current_user.id)
         await self.repository.delete(db=self.db,project=project)
         await self.db.commit()
 

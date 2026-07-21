@@ -3,6 +3,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.modules.projects.schema import UserShortResponse
+
 
 class CommentCreate(BaseModel):
     content: str = Field( min_length=1,max_length=5000)
@@ -14,16 +16,18 @@ class CommentUpdate(BaseModel):
     content: str = Field(min_length=1,max_length=5000)
 
 
-class CommentResponse(BaseModel):
+class CommentResponseBase(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     public_id: UUID
-
     content: str
-
+    author: UserShortResponse
     created_at: datetime
     updated_at: datetime
 
 
-class CommentTreeResponse(CommentResponse):
-    replies: list["CommentTreeResponse"] = []
+class CommentResponse(CommentResponseBase):
+    children: list["CommentResponse"] = Field(default_factory=list)
+
+
+CommentResponse.model_rebuild()

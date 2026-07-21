@@ -16,9 +16,9 @@ class ProjectMember(BaseModel):
         UniqueConstraint( "project_id","user_id",name="uq_project_member"),
     )
 
-    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"),nullable=False)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
 
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"),nullable=False)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
 
     role: Mapped[ProjectRole] = mapped_column(
         Enum(ProjectRole, name="project_role"), nullable=False, default=ProjectRole.MEMBER

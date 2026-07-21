@@ -1,39 +1,41 @@
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
 }
 
-:root {
-    --bg: #0f172a;
-    --surface: #1e293b;
-    --surface-hover: #273449;
-    --border: rgba(255,255,255,.08);
+:root{
+    --bg:#0f172a;
+    --surface:#1e293b;
+    --surface-hover:#273449;
+    --border:rgba(255,255,255,.08);
 
-    --text: #f8fafc;
-    --muted: #94a3b8;
+    --text:#f8fafc;
+    --muted:#94a3b8;
 
-    --primary: #3b82f6;
+    --primary:#3b82f6;
 
-    --danger: #ef4444;
-    --warning: #f59e0b;
-    --success: #22c55e;
+    --danger:#ef4444;
+    --warning:#f59e0b;
+    --success:#22c55e;
 }
 
 body{
-    font-family: Inter,sans-serif;
-    background: var(--bg);
-    color: var(--text);
+    font-family:Inter,sans-serif;
+    background:var(--bg);
+    color:var(--text);
 }
 
 a{
     color:inherit;
     text-decoration:none;
+    transition:.2s;
 }
 
 button{
     font:inherit;
     cursor:pointer;
+    transition:.2s;
 }
 
 .container{
@@ -44,9 +46,13 @@ button{
 /* ================= HEADER ================= */
 
 .header{
+    position:sticky;
+    top:0;
+    z-index:100;
     height:72px;
+    background:rgba(15,23,42,.92);
+    backdrop-filter:blur(12px);
     border-bottom:1px solid var(--border);
-    backdrop-filter: blur(12px);
 }
 
 .header .container{
@@ -64,12 +70,11 @@ button{
 nav{
     display:flex;
     align-items:center;
-    gap:24px;
+    gap:32px;
 }
 
 nav a{
     color:var(--muted);
-    transition:.2s;
 }
 
 nav a:hover{
@@ -84,14 +89,19 @@ nav button{
     color:white;
 }
 
+nav button:hover{
+    background:#b91c1c;
+}
+
 /* ================= MAIN ================= */
 
 main{
-    padding:40px 0 60px;
+    padding:42px 0 60px;
 }
 
 .back{
     color:var(--muted);
+    font-size: 19px;
 }
 
 .back:hover{
@@ -101,331 +111,239 @@ main{
 /* ================= PROJECT ================= */
 
 .project-info{
-
     margin-top:30px;
+    padding:24px 32px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:18px;
+}
 
+.project-header{
     display:flex;
-
     justify-content:space-between;
-
     align-items:flex-start;
+    gap:32px;
+}
 
-    gap:30px;
-
+.project-content{
+    flex:1;
 }
 
 .project-info h1{
-
     font-size:2.3rem;
-
-    margin-bottom:10px;
-
+    margin-bottom:12px;
 }
 
 .project-info p{
-
     color:var(--muted);
-
-    max-width:650px;
-
+    max-width:700px;
     line-height:1.6;
-
 }
 
-.project-info button{
-
-    border:none;
-
-    background:var(--primary);
-
-    color:white;
-
-    padding:12px 22px;
-
-    border-radius:12px;
-
-}
-
-/* ================= MEMBERS ================= */
-
-.members{
-
-    margin-top:40px;
-
-}
-
-.members h3{
-
-    margin-bottom:18px;
-
-}
-
-.avatars{
-
+.project-meta{
+    margin-top:18px;
     display:flex;
-
-    gap:14px;
-
-}
-
-.avatars div{
-
-    width:48px;
-
-    height:48px;
-
-    border-radius:50%;
-
-    background:#334155;
-
-    display:flex;
-
-    justify-content:center;
-
-    align-items:center;
-
-    font-weight:bold;
-
-    transition:.2s;
-
-}
-
-.avatars div:hover{
-
-    background:var(--primary);
-
-}
-
-/* ================= ISSUES HEADER ================= */
-
-.issues-header{
-
-    margin-top:55px;
-
-    display:flex;
-
-    justify-content:space-between;
-
-    align-items:center;
-
-}
-
-.issues-header h2{
-
-    font-size:1.9rem;
-
-}
-
-.issues-header button{
-
-    border:none;
-
-    background:var(--primary);
-
-    color:white;
-
-    padding:12px 20px;
-
-    border-radius:12px;
-
-}
-
-/* ================= SEARCH ================= */
-
-input{
-
-    margin-top:22px;
-
-    width:100%;
-
-    padding:15px 18px;
-
-    border:none;
-
-    border-radius:14px;
-
-    background:var(--surface);
-
-    color:white;
-
-    outline:none;
-
-    font-size:15px;
-
-}
-
-input::placeholder{
-
+    flex-wrap:wrap;
+    gap:24px;
     color:var(--muted);
+    font-size:.95rem;
+}
 
+.project-meta span{
+    display:flex;
+    align-items:center;
+    gap:6px;
+}
+
+.project-meta strong{
+    color:var(--text);
+    font-weight:600;
+}
+
+.project-actions{
+    display:flex;
+    align-items:center;
+    gap:20px;
+    margin-left:40px;
+    flex-shrink:0;
+}
+
+.project-actions a,
+.project-actions button{
+    background:none;
+    border:none;
+    padding:0;
+    font:inherit;
+    font-weight:600;
+    color:var(--primary);
+    cursor:pointer;
+}
+
+.project-actions a:hover,
+.project-actions button:hover{
+    color:white;
+}
+
+.project-actions .danger{
+    color:var(--danger);
+}
+
+.project-actions .danger:hover{
+    color:#f87171;
 }
 
 /* ================= ISSUES ================= */
 
-.issues{
-
-    margin-top:28px;
-
+.issues-header{
+    margin-top:56px;
     display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
 
+.issues-header h2{
+    font-size:1.9rem;
+    margin-bottom: 10px;
+}
+
+.issues-header button{
+    border:none;
+    background:var(--primary);
+    color:white;
+    padding:12px 22px;
+    border-radius:12px;
+    margin-bottom: 10px;
+}
+
+.issues-header button:hover{
+    background:#2563eb;
+}
+
+
+/* ================= ISSUE LIST ================= */
+
+.issues{
+    margin-top:28px;
+    display:flex;
     flex-direction:column;
-
     gap:18px;
-
 }
 
 .issue{
-
     display:flex;
-
     justify-content:space-between;
-
     align-items:center;
-
-    background:var(--surface);
-
-    border:1px solid var(--border);
-
-    border-radius:16px;
-
+    gap:24px;
+    min-height:96px;
     padding:22px;
-
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:16px;
     cursor:pointer;
-
     transition:.25s;
-
 }
 
 .issue:hover{
-
-    transform:translateY(-2px);
-
     background:var(--surface-hover);
-
     border-color:rgba(59,130,246,.35);
-
+    transform:translateY(-2px);
 }
 
 .issue h3{
-
     margin-bottom:8px;
-
-    font-size:1.15rem;
-
+    font-size:1.12rem;
 }
 
 .issue span{
-
     color:var(--muted);
-
     font-size:.95rem;
-
 }
 
 /* ================= BADGES ================= */
 
 .badges{
-
     display:flex;
-
     gap:10px;
-
+    flex-wrap:wrap;
+    justify-content:flex-end;
 }
 
 .badges span{
-
     padding:7px 14px;
-
     border-radius:999px;
-
     font-size:.82rem;
-
     font-weight:600;
-
 }
 
 .open{
-
     background:rgba(239,68,68,.18);
-
     color:var(--danger);
-
 }
 
 .progress{
-
     background:rgba(245,158,11,.18);
-
     color:var(--warning);
-
 }
 
 .done{
-
     background:rgba(34,197,94,.18);
-
     color:var(--success);
-
 }
 
 .high{
-
     background:rgba(239,68,68,.12);
-
     color:#f87171;
-
 }
 
 .medium{
-
     background:rgba(245,158,11,.12);
-
     color:#fbbf24;
-
 }
 
 .low{
-
     background:rgba(34,197,94,.12);
-
     color:#4ade80;
-
 }
 
 /* ================= MOBILE ================= */
 
-@media (max-width:768px){
+@media(max-width:768px){
 
-    .project-info{
-
+    .project-header{
         flex-direction:column;
+        gap:24px;
+    }
 
+    .project-actions{
+        margin-left:0;
+    }
+
+    .project-meta{
+        gap:12px;
     }
 
     .issues-header{
-
         flex-direction:column;
-
         align-items:flex-start;
-
         gap:20px;
-
     }
 
     .issue{
-
         flex-direction:column;
-
         align-items:flex-start;
-
-        gap:18px;
-
     }
 
     .badges{
-
-        flex-wrap:wrap;
-
+        justify-content:flex-start;
     }
 
+    nav{
+        gap:18px;
+    }
 }
+
+.due{
+    background:rgba(255,255,255,.06);
+    color:var(--muted);
+}
+

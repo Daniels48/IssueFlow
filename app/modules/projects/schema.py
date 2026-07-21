@@ -1,6 +1,6 @@
 from datetime import datetime
 from uuid import UUID
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 from app.modules.issue.priority import IssuePriority
 from app.modules.issue.status import IssueStatus
@@ -39,6 +39,7 @@ class UserShortResponse(BaseModel):
     public_id: UUID
     username: str
 
+    model_config = ConfigDict(from_attributes=True)
 
 class ProjectMemberResponse(BaseModel):
     public_id: UUID
@@ -66,7 +67,9 @@ class ProjectDetailResponse(BaseModel):
     public_id: UUID
     name: str
     description: str | None
+    owner: str
     created_at: datetime
     updated_at: datetime
+    roles: list[str]
     members: list[ProjectMemberResponse]
     issues: list[IssueResponse]

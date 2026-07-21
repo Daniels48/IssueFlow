@@ -26,7 +26,7 @@ async def get_project(public_id: UUID, current_user: CurrentUser, service: proje
     return await service.get_by_public_id(public_id, current_user)
 
 
-@router.patch("/{public_id}", response_model=ProjectResponse)
+@router.patch("/{public_id}", response_model=ProjectUpdate)
 async def update_project(public_id: UUID, data: ProjectUpdate, current_user: CurrentUser, service: project_service):
     return await service.update(public_id, data, current_user)
 

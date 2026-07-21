@@ -1,3 +1,4 @@
+from typing import TYPE_CHECKING
 from datetime import datetime
 
 from sqlalchemy import DateTime, ForeignKey, Text
@@ -7,11 +8,9 @@ from app.infrastructure.db.base import BaseModel
 from app.modules.issue.priority import IssuePriority
 from app.modules.issue.status import IssueStatus
 
-
-from typing import TYPE_CHECKING
-
 if TYPE_CHECKING:
     from app.infrastructure.db.models import Project, User, Comment
+
 
 class Issue(BaseModel):
     __tablename__ = "issues"
@@ -51,3 +50,10 @@ class Issue(BaseModel):
         cascade="all, delete-orphan",
     )
 
+    @property
+    def members(self):
+        return self.project.users
+
+    @property
+    def statuses(self) -> list[IssueStatus]:
+        return list(IssueStatus)

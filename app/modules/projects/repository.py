@@ -65,7 +65,7 @@ class ProjectRepository:
         return list(result.scalars().all())
 
     @staticmethod
-    async def update(db: AsyncSession, project: Project) -> Project:
+    async def update(db: AsyncSession, project: Project | None) -> Project | None:
         await db.flush()
         await db.refresh(project)
         return project
@@ -175,3 +175,17 @@ class ProjectRepository:
         result = await db.execute(stmt)
 
         return list(result.all())
+
+    @staticmethod
+    async def get_by_public_id_no_full(db: AsyncSession, public_id: UUID) -> Project | None:
+        stmt = (
+            select(Project)
+            .where(
+                Project.public_id == public_id,
+                Project.deleted_at.is_(None),
+            )
+        )
+
+        result = await db.execute(stmt)
+
+        return result.scalar_one_or_none()

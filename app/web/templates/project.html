@@ -1,241 +1,113 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-
     <meta charset="UTF-8">
-
-    <title>Backend API • IssueFlow</title>
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project • IssueFlow</title>
     <link rel="stylesheet" href="/static/css/project.css">
-
+    <link rel="stylesheet" href="/static/css/modal_member.css">
 </head>
-
 <body>
+    <header class="header">
+        <div class="container">
+            <a href="/" class="logo">IssueFlow</a>
+            <nav>
+                <a href="/projects">Projects</a>
+                <a href="/profile">Profile</a>
+                <button id="logout">Logout</button>
+            </nav>
+        </div>
+    </header>
+    <main class="container">
+        <a href="/projects" class="back">← Back to projects</a>
+       <section class="project-info">
+            <div class="project-header">
+                <div class="project-content">
+                    <h1 id="project-title"></h1>
+                    <p id="project-description"></p>
+                    <div class="project-meta">
+                        <span>👤 <strong id="project-owner"></strong></span>
+                        <span>📅 <span id="project-created"></span></span>
+                        <span>👥 <span id="members-count"></span> members</span>
+                        <span>📝 <span id="issues-count"></span> issues</span>
+                    </div>
+                </div>
+                <div class="project-actions">
+                    <button id="edit-project">[Edit]</button>
+                    <button id="manage-members">[Members]</button>
+                    <button id="delete-project" class="danger">[Delete]</button>
+                </div>
+            </div>
+        </section>
+        <section class="issues-header">
+            <h2>Issues</h2>
+            <button id="create-issue">+ New Issue</button>
+        </section>
+        <input id="search_issues" class="search" type="text" placeholder="Search issues...">
+        <section class="issues" id="issues"></section>
+    </main>
 
-<header class="header">
+    <div id="members-modal" class="modal hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2>Manage Members</h2>
+                <button id="close-btn" class="close-btn">&times;</button>
+            </div>
+            <div class="invite-section">
+                <h3>Invite member</h3>
+                <div class="search-wrapper">
+                    <div class="search">
+                        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="7"/>
+                            <path d="M20 20L17 17"/>
+                        </svg>
+                        <input id="user-search" type="text" placeholder="Search users..." autocomplete="off">
+                    </div>
+                    <div id="search-results" class="search-results hidden"></div>
+                </div>
+            </div>
+            <div class="member-list-container">
+                <h3 class="member-text">List Members</h3>
+               <div class="members-list" id="members-list"></div>
+            </div>
 
-    <div class="container">
-
-        <a href="/" class="logo">
-            IssueFlow
-        </a>
-
-        <nav>
-
-            <a href="/projects">
-                Projects
-            </a>
-
-            <a href="/profile">
-                Profile
-            </a>
-
-            <button id="logout">
-                Logout
-            </button>
-
-        </nav>
-
+        </div>
     </div>
 
-</header>
+    <div id="issue-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Create Issue</h2>
+                <button id="modal-close" class="modal-close close-btn">&times;</button>
+            </div>
+            <form id="issue-form">
+                <div class="modal-body">
+                        <label>Title *</label>
+                        <input id="issue-title" type="text">
+                        <label>Description</label>
+                        <textarea id="issue-description"></textarea>
+                        <label>Assignee</label>
+                        <select id="issue-assignee"></select>
+                        <label>Priority</label>
+                        <select id="issue-priority">
+                            <option>low</option>
+                            <option selected>medium</option>
+                            <option>high</option>
+                            <option>critical</option>
+                        </select>
+                        <label>Due date</label>
+                        <input type="date" id="issue-date">
 
-<main class="container">
-
-    <a href="/projects" class="back">
-
-        ← Back to projects
-
-    </a>
-
-    <section class="project-info">
-
-        <div>
-
-            <h1>
-
-                Backend API
-
-            </h1>
-
-            <p>
-
-                FastAPI backend with RabbitMQ,
-                WebSocket and Celery.
-
-            </p>
-
+                </div>
+                <div class="modal-footer">
+                    <button id="cancel_issue_form" class="btn-secondary">Cancel</button>
+                    <button type="submit" class="btn-primary">Create Issue</button>
+                </div>
+            </form>
         </div>
+    </div>
 
-        <button>
-
-            Edit Project
-
-        </button>
-
-    </section>
-
-    <section class="members">
-
-        <h3>
-
-            Members
-
-        </h3>
-
-        <div class="avatars">
-
-            <div>A</div>
-
-            <div>B</div>
-
-            <div>K</div>
-
-            <div>+</div>
-
-        </div>
-
-    </section>
-
-    <section class="issues-header">
-
-        <h2>
-
-            Issues
-
-        </h2>
-
-        <button>
-
-            + New Issue
-
-        </button>
-
-    </section>
-
-    <input
-        type="text"
-        placeholder="Search issues..."
-    >
-
-    <section class="issues">
-
-        <article class="issue">
-
-            <div>
-
-                <h3>
-
-                    Fix refresh token
-
-                </h3>
-
-                <span>
-
-                    Assigned to Alexander
-
-                </span>
-
-            </div>
-
-            <div class="badges">
-
-                <span class="open">
-
-                    OPEN
-
-                </span>
-
-                <span class="high">
-
-                    HIGH
-
-                </span>
-
-            </div>
-
-        </article>
-
-        <article class="issue">
-
-            <div>
-
-                <h3>
-
-                    RabbitMQ reconnect
-
-                </h3>
-
-                <span>
-
-                    Assigned to Bob
-
-                </span>
-
-            </div>
-
-            <div class="badges">
-
-                <span class="progress">
-
-                    IN PROGRESS
-
-                </span>
-
-                <span class="medium">
-
-                    MEDIUM
-
-                </span>
-
-            </div>
-
-        </article>
-
-        <article class="issue">
-
-            <div>
-
-                <h3>
-
-                    Docker cleanup
-
-                </h3>
-
-                <span>
-
-                    Assigned to Kate
-
-                </span>
-
-            </div>
-
-            <div class="badges">
-
-                <span class="done">
-
-                    DONE
-
-                </span>
-
-                <span class="low">
-
-                    LOW
-
-                </span>
-
-            </div>
-
-        </article>
-
-    </section>
-
-</main>
-
-<script src="/static/js/api.js"></script>
-<script src="/static/js/project.js"></script>
-
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/project.js"></script>
 </body>
-
 </html>

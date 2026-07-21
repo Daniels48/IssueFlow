@@ -405,10 +405,10 @@ main {
 .empty {
 
     padding: 80px 24px;
-
+    font-size: 25px;
     text-align: center;
 
-    border: 2px dashed var(--border);
+    border: 3px dashed var(--border);
 
     border-radius: var(--radius);
 

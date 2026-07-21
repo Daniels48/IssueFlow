@@ -2,16 +2,33 @@
 
 let refreshPromise = null;
 
+
+
 const data_url = {
-    "refresh": "/api/auth/refresh",
-    "logout": "/api/auth/logout",
-    "login": "/login",
-    "register": "/register",
-    "projects": "/api/projects",
-    "me": "/api/users/me",
+    refresh: "/api/auth/refresh",
+    logout: "/api/auth/logout",
+    login: "/login",
+    register: "/register",
 
-}
+    projects: "/api/projects",
+    me: "/api/users/me",
 
+    project: (projectId) => `${data_url.projects}/${projectId}`,
+
+    searchUsers: (query, projectId) => `/api/users/search${getQuery(query)}&project_id=${projectId}`,
+
+    members: (projectId) => `${data_url.project(projectId)}/members`,
+    member: (projectId, userId) => `${data_url.members(projectId)}/${userId}`,
+
+    issues: (projectId, query = "") => `${data_url.project(projectId)}/issues${query ? getQuery(query) : ""}`,
+    issue: (projectId, issueId) => `${data_url.issues(projectId)}/${issueId}`,
+    issueEdit: (projectId, issueId) => `${data_url.issue(projectId, issueId)}/edit`,
+
+    comment: (projectId, issueId) => `${data_url.issue(projectId, issueId)}/comments`,
+    comments: (projectId, issueId, comId) => `${data_url.comment(projectId, issueId)}/${comId}`,
+};
+
+const getQuery = (query) => `?query=${encodeURIComponent(query)}`;
 
 async function request(url, options = {}) {
     return fetch(url, {

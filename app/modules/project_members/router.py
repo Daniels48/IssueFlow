@@ -3,15 +3,16 @@ from uuid import UUID
 from fastapi import APIRouter, status
 
 from app.modules.auth.dependencies import CurrentUser
-from app.modules.project_members.schema import ProjectMemberCreate,ProjectMemberResponse, ProjectMemberUpdate
+from app.modules.project_members.schema import ProjectMemberCreate, ProjectMemberResponse, ProjectMemberUpdate, \
+    ProjectMemberResponse_
 from app.modules.project_members.service import MemberService
 
 
 router = APIRouter(prefix="/projects/{project_id}/members",tags=["Project Members"])
 
 
-@router.post("",response_model=ProjectMemberResponse,status_code=status.HTTP_201_CREATED)
-async def add_member(project_id: UUID,data: ProjectMemberCreate,current_user: CurrentUser,service: MemberService):
+@router.post("",response_model=ProjectMemberResponse_,status_code=status.HTTP_201_CREATED)
+async def add_member(project_id: UUID, data: ProjectMemberCreate, current_user: CurrentUser,service: MemberService):
     return await service.add_member(project_id=project_id, data=data, current_user=current_user)
 
 
