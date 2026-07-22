@@ -191,6 +191,7 @@
     background: none;
     color: var(--muted);
     transition: .2s;
+    font-weight: 700;
 }
 
 .comment-actions button:hover {
@@ -582,9 +583,9 @@
 .level-0:not(:last-child) {
     margin-bottom: 34px;
 }
-.level-1 { margin-left: 28px; }
-.level-2 { margin-left: 56px; }
-.level-3 { margin-left: 84px; }
+.level-1 { margin-left: 80px; }
+.level-2 { margin-left: 160px; }
+.level-3 { margin-left: 240px; }
 
 
 
@@ -631,9 +632,9 @@
     font-size: 14px;
     font-style: italic;
 
-    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+
 }
 
 .reply-info button {
@@ -650,6 +651,74 @@
 .reply-info button:hover {
     color: #ffffff;
 }
+
+.edit-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: .75rem;
+    margin-top: .75rem;
+}
+
+.edit-actions button {
+    padding: .55rem 1rem;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    font: inherit;
+    font-weight: 500;
+    cursor: pointer;
+    transition: .2s ease;
+}
+
+.btn-save {
+    background: #3b82f6;
+    color: #fff;
+}
+
+.btn-save:hover {
+    background: #2563eb;
+}
+
+.btn-save:active {
+    transform: translateY(1px);
+}
+
+.btn-cancel {
+    background: transparent;
+    color: #94a3b8;
+    border-color: #475569;
+}
+
+.btn-cancel:hover {
+    background: rgba(148, 163, 184, .08);
+    color: #fff;
+    border-color: #64748b;
+}
+
+.comment textarea {
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+.comment textarea {
+    width: 100%;
+    background: transparent;
+}
+
+.comment-meta {
+    margin-top: .45rem;
+    font-size: 15px;
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+.content-comment{
+    font-size: 17px;
+}
+
+.comment-owner{
+    font-weight: 700;
+}
+
+
 
 .hidden{
     display: none;
