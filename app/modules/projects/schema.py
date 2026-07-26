@@ -3,6 +3,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field, ConfigDict
 
 from app.modules.issue.priority import IssuePriority
+from app.modules.issue.schema import IssueResponse
 from app.modules.issue.status import IssueStatus
 from app.modules.project_members.project_role import ProjectRole
 
@@ -35,32 +36,11 @@ class ProjectListResponse(BaseModel):
     issues_count: int
     comments_count: int
 
-class UserShortResponse(BaseModel):
-    public_id: UUID
-    username: str
-
-    model_config = ConfigDict(from_attributes=True)
 
 class ProjectMemberResponse(BaseModel):
     public_id: UUID
     username: str
     role: ProjectRole
-
-
-class IssueResponse(BaseModel):
-    public_id: UUID
-    name: str
-    description: str | None
-
-    priority: IssuePriority
-    status: IssueStatus
-
-    reporter: UserShortResponse
-    assignee: UserShortResponse | None
-
-    due_date: datetime | None
-    created_at: datetime
-    updated_at: datetime
 
 
 class ProjectDetailResponse(BaseModel):

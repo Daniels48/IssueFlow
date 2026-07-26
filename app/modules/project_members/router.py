@@ -21,7 +21,7 @@ async def get_members(project_id: UUID,current_user: CurrentUser,service: Member
     return await service.get_members(project_id=project_id,current_user=current_user)
 
 
-@router.patch("/{user_id}", response_model=ProjectMemberResponse)
+@router.patch("/{user_id}", response_model=ProjectMemberResponse_)
 async def update_member(project_id: UUID, user_id: UUID, data: ProjectMemberUpdate, current_user: CurrentUser, service: MemberService):
     return await service.update_role(project_id=project_id, user_id=user_id, data=data, current_user=current_user)
 

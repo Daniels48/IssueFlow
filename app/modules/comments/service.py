@@ -4,15 +4,18 @@ from uuid import UUID
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.events import CommentCreatedEvent, CommentUpdatedEvent, CommentDeletedEvent
 from app.infrastructure.db.models import User, Comment
+from app.infrastructure.rabbitmq import RabbitPublisher
 from app.modules.auth.dependencies import DBSession
 from app.modules.comments.repository import CommentRepository
 from app.modules.comments.schema import CommentCreate, CommentUpdate, CommentResponse, CommentResponseBase
 from app.modules.issue.repository import IssueRepository
+from app.utils.func_utils import to
 
 
 class CommentService:
-    def __init__(self,repository: CommentRepository,issue_repository: IssueRepository, db: AsyncSession):
+    def __init__(self,repository: CommentRepository, issue_repository: IssueRepository, db: AsyncSession):
         self.repository = repository
         self.issue_repository = issue_repository
         self.db = db
@@ -39,13 +42,13 @@ class CommentService:
 
         return roots
 
-    async def create(self,issue_id: UUID,data: CommentCreate,current_user: User) -> CommentResponseBase:
+    async def create(self, issue_id: UUID, data: CommentCreate, user: User) -> CommentResponseBase:
         issue = await self.issue_repository.get_by_public_id(self.db, issue_id)
 
         if issue is None:
             raise ValueError("Issue not found")
 
-        parent_comment = None
+        parent_comment_id = None
 
         if data.parent_comment_public_id is not None:
             parent_comment = await self.repository.get_by_public_id_issue(self.db, data.parent_comment_public_id)
@@ -56,10 +59,12 @@ class CommentService:
             if parent_comment.issue_id != issue.id:
                 raise ValueError("Parent comment belongs to another issue")
 
+            parent_comment_id = parent_comment.id if parent_comment else None
+
         comment = Comment(
             issue_id=issue.id,
-            author_id=current_user.id,
-            parent_comment_id=parent_comment.id if parent_comment else None,
+            author_id=user.id,
+            parent_comment_id=parent_comment_id,
             content=data.content,
         )
 
@@ -68,10 +73,15 @@ class CommentService:
 
         comment = await self.repository.get_by_public_id_issue(self.db, comment.public_id)
 
-        return CommentResponseBase.model_validate(comment)
+        event = CommentCreatedEvent.from_models(issue, user, comment)
+        await RabbitPublisher.publish(event)
 
-    async def update(self,comment_id: UUID,data: CommentUpdate,current_user: User) -> Comment:
-        comment = await self.repository.get_by_public_id(self.db, comment_id)
+        return to(CommentResponseBase, comment)
+
+    async def update(self, comment_id: UUID, issue_id: UUID, data: CommentUpdate, current_user: User) -> CommentResponseBase:
+        comment = await self.repository.get_by_public_id_issue(self.db, comment_id)
+
+        issue = await self.issue_repository.get_by_public_id(self.db, issue_id)
 
         if not comment:
             raise ValueError("Comment not found")
@@ -85,10 +95,16 @@ class CommentService:
 
         await self.db.commit()
 
-        return comment
+        comment = await self.repository.get_by_public_id_issue(self.db, comment.public_id)
 
-    async def delete(self, comment_id: UUID,current_user: User) -> None:
+        event = CommentUpdatedEvent.from_models(issue, current_user, comment)
+        await RabbitPublisher.publish(event)
+
+        return to(CommentResponseBase, comment)
+
+    async def delete(self, comment_id: UUID, issue_id: UUID, current_user: User) -> None:
         comment = await self.repository.get_by_public_id_issue(self.db, comment_id)
+        issue = await self.issue_repository.get_by_public_id(self.db, issue_id)
 
         if not comment:
             raise ValueError("Comment not found")
@@ -98,6 +114,9 @@ class CommentService:
 
         await self.repository.delete(self.db, comment)
         await self.db.commit()
+
+        event = CommentDeletedEvent.from_models(issue, current_user, comment)
+        await RabbitPublisher.publish(event)
 
 
 async def get_comments_service(db: DBSession) -> CommentService:

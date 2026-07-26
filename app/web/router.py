@@ -1,38 +1,70 @@
 from uuid import UUID
 
-from fastapi import APIRouter
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, Request
+from fastapi.templating import Jinja2Templates
+
 
 router = APIRouter()
 
 
-@router.get("/")
-async def index():
-    return FileResponse("app/web/templates/index.html")
+templates = Jinja2Templates(directory="app/web/templates")
 
+
+@router.get("/")
+async def index(request: Request):
+    list_js_files = ["index"]
+    list_css_files = ["index", "base"]
+    return templates.TemplateResponse(request=request, name="index2.html",
+        context={
+            "title": "IssueFlow",
+            "css_files": list_css_files,
+            "js_files": list_js_files,
+        })
 
 @router.get("/login")
-async def login():
-    return FileResponse("app/web/templates/login.html")
-
+async def login(request: Request):
+    return templates.TemplateResponse(request=request,name="login.html",
+        context={
+            "username": "Daniel",
+            "age": 30,
+        })
 
 @router.get("/projects")
-async def projects():
-    return FileResponse("app/web/templates/projects.html")
-
+async def projects(request: Request):
+    return templates.TemplateResponse(request=request, name="projects.html",
+        context={
+            "username": "Daniel",
+            "age": 30,
+        })
 
 @router.get("/register")
-async def register():
-    return FileResponse("app/web/templates/register.html")
+async def register(request: Request):
+    return templates.TemplateResponse(request=request, name="register.html",
+        context={
+            "username": "Daniel",
+            "age": 30,
+        })
 
 @router.get("/profile")
-async def profile():
-    return FileResponse("app/web/templates/profile.html")
+async def profile(request: Request):
+    return templates.TemplateResponse(request=request, name="profile.html",
+        context={
+            "username": "Daniel",
+            "age": 30,
+        })
 
 @router.get("/projects/{project_id}")
-async def projects(project_id: UUID):
-    return FileResponse("app/web/templates/project.html")
+async def project(request: Request, project_id: UUID):
+    return templates.TemplateResponse(request=request, name="project.html",
+        context={
+            "username": "Daniel",
+            "age": 30,
+        })
 
 @router.get("/projects/{project_id}/issues/{issue_id}")
-async def issue(project_id: UUID, issue_id: UUID):
-    return FileResponse("app/web/templates/issue.html")
+async def issue(request: Request, project_id: UUID, issue_id: UUID):
+    return templates.TemplateResponse(request=request, name="issue.html",
+        context={
+            "username": "Daniel",
+            "age": 30,
+        })

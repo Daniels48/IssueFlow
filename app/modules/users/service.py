@@ -4,12 +4,11 @@ from uuid import UUID
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.infrastructure.db.models import Project
 from app.modules.auth.dependencies import DBSession
 from app.modules.project_members.repository import ProjectMemberRepository
 from app.modules.projects.repository import ProjectRepository
-from app.modules.projects.schema import UserShortResponse
 from app.modules.users.repository import UserRepository
+from app.modules.users.schema import UserShortResponse
 
 
 class UserService:

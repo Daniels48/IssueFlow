@@ -17,18 +17,20 @@ class CommentRepository:
         return comment
 
     @staticmethod
-    async def get_by_public_id_issue(db: AsyncSession, public_id: UUID) -> Comment | None:
+    async def get_by_public_id_issue(db: AsyncSession, public_id: UUID) -> Comment:
         result = await db.execute(
-            select(Comment).where(
+            select(Comment)
+            .options(selectinload(Comment.author))
+            .where(
                 Comment.public_id == public_id,
                 Comment.deleted_at.is_(None),
             )
         )
 
-        return result.scalar_one_or_none()
+        return result.scalar_one()
 
     @staticmethod
-    async def get_by_issue(db: AsyncSession,issue_id: int) -> list[Comment]:
+    async def get_by_issue(db: AsyncSession, issue_id: int) -> list[Comment]:
         result = await db.execute(
             select(Comment)
             .options(selectinload(Comment.author))

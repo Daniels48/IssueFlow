@@ -13,6 +13,13 @@ class LoginRequest(BaseModel):
     username: str
     password: str
 
+
+class UserShortResponse(BaseModel):
+    public_id: UUID
+    username: str
+
+    model_config = ConfigDict(from_attributes=True)
+
 class UserResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

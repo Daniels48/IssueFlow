@@ -1,14 +1,12 @@
 from aio_pika import DeliveryMode, Message
-from aio_pika.abc import AbstractExchange, AbstractRobustChannel
 
-from app.infrastructure.rabbitmq.events import Event
-from app.infrastructure.rabbitmq.connection import RabbitConnection
+from app.events import Event
 from app.infrastructure.rabbitmq.exchanges import ExchangeManager
-
+from app.infrastructure.rabbitmq.connection import RabbitConnection
 
 class RabbitPublisher:
-    _channel: AbstractRobustChannel | None = None
-    _exchange: AbstractExchange | None = None
+    _channel = None
+    _exchange = None
 
     @classmethod
     async def connect(cls) -> None:
@@ -20,7 +18,11 @@ class RabbitPublisher:
 
     @classmethod
     async def publish(cls, event: Event) -> None:
-        if cls._exchange is None:
+        if (
+                cls._channel is None
+                or cls._channel.is_closed
+                or cls._exchange is None
+        ):
             await cls.connect()
 
         message = Message(
@@ -35,3 +37,5 @@ class RabbitPublisher:
     async def close(cls) -> None:
         if cls._channel and not cls._channel.is_closed:
             await cls._channel.close()
+            cls._channel = None
+            cls._exchange = None

@@ -3,7 +3,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict
 
 from app.modules.project_members.project_role import ProjectRole
-from app.modules.projects.schema import UserShortResponse
+from app.modules.users.schema import UserShortResponse
 
 
 class ProjectMemberCreate(BaseModel):
@@ -12,7 +12,6 @@ class ProjectMemberCreate(BaseModel):
 
 class ProjectMemberUpdate(BaseModel):
     role: ProjectRole
-
 
 
 

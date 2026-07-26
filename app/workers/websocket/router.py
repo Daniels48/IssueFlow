@@ -1,14 +1,18 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from workers.websocket.auth import authenticate
-from workers.websocket.manager import manager
+from app.workers.websocket.auth import authenticate
+from app.workers.websocket.manager import manager
+
 
 router = APIRouter()
 
 
-@router.websocket("/ws")
+@router.websocket("/ws")    
 async def websocket_endpoint(websocket: WebSocket):
     payload = await authenticate(websocket)
+
+    if payload is None:
+        return
 
     await manager.connect(payload.sub, websocket)
 

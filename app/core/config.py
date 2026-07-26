@@ -50,10 +50,24 @@ class SecuritySettings(BaseModel):
         return self.refresh_token_expire_days * 24 * 60 * 60
 
 
+class RedisSettings(BaseSettings):
+    host: str
+    port: int
+    db: int
+    password: str
+    prefix: str
+
+    socket_connect_timeout: float = 5
+    socket_timeout: float = 5
+
+    health_check_interval: int = 30
+
+
 class Settings(BaseSettings):
     db: DbSettings
     security: SecuritySettings
     rabbit: RabbitSettings
+    redis: RedisSettings
     # logging: LoggingSettings
     # email: EmailSettings
 

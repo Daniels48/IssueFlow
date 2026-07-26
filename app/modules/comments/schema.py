@@ -3,7 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.modules.projects.schema import UserShortResponse
+from app.modules.users.schema import UserShortResponse
 
 
 class CommentCreate(BaseModel):

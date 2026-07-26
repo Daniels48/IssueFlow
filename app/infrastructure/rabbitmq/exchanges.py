@@ -1,4 +1,4 @@
-import aio_pika
+from aio_pika import ExchangeType
 from aio_pika.abc import AbstractExchange, AbstractChannel
 
 
@@ -10,6 +10,6 @@ class ExchangeManager:
     async def get_events_exchange(cls, channel: AbstractChannel) -> AbstractExchange:
         return await channel.declare_exchange(
             cls.EVENTS_EXCHANGE,
-            aio_pika.ExchangeType.TOPIC,
+            ExchangeType.TOPIC,
             durable=True,
         )

@@ -3,7 +3,7 @@ from uuid import UUID
 
 from sqlalchemy import select, func, and_, Row
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload, with_loader_criteria
+from sqlalchemy.orm import selectinload, with_loader_criteria, joinedload
 
 from app.infrastructure.db.models import ProjectMember, Comment, Issue, User
 from app.infrastructure.db.models.model_projects import Project
@@ -85,7 +85,7 @@ class ProjectRepository:
         return list(result.scalars().all())
 
     @staticmethod
-    async def get_all_by_user(db: AsyncSession,user_id: int) -> list[Row[tuple[Any, Any, Any, Any]]]:
+    async def get_all_by_user(db: AsyncSession, user_id: int) -> list[Row[tuple[Any, Any, Any, Any]]]:
         members_subq = (
             select(
                 ProjectMember.project_id.label("project_id"),
@@ -146,6 +146,9 @@ class ProjectRepository:
                     0,
                 ).label("comments_count"),
             )
+            .options(
+                joinedload(Project.owner)
+            )
             .join(
                 ProjectMember,
                 and_(
@@ -189,3 +192,13 @@ class ProjectRepository:
         result = await db.execute(stmt)
 
         return result.scalar_one_or_none()
+
+    @staticmethod
+    async def get_all_with_users(db: AsyncSession) -> list[Project]:
+        result = await db.execute(
+            select(Project).options(
+                selectinload(Project.users)
+            )
+        )
+
+        return list(result.scalars())

@@ -5,15 +5,17 @@ from fastapi import Depends
 from pydantic import TypeAdapter
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.events import ProjectMemberAddedEvent, ProjectMemberRoleChangedEvent, ProjectMemberRemovedEvent
 from app.infrastructure.db.models import User, ProjectMember
+from app.infrastructure.rabbitmq import RabbitPublisher
 from app.modules.auth.dependencies import DBSession
 from app.modules.project_members.project_role import ProjectRole
 from app.modules.project_members.repository import ProjectMemberRepository
 from app.modules.project_members.schema import ProjectMemberCreate, ProjectMemberUpdate, ProjectMemberResponse, \
     ProjectMemberResponse_
 from app.modules.projects.repository import ProjectRepository
-from app.modules.projects.schema import UserShortResponse
 from app.modules.users.repository import UserRepository
+
 
 
 MEMBER_LIST_ADAPTER = TypeAdapter(list[ProjectMemberResponse])
@@ -54,6 +56,11 @@ class ProjectMemberService:
         member = ProjectMember(project_id=project.id, user_id=user.id, role=ProjectRole.MEMBER)
         member = await self.repository.create(self.db,member)
         await self.db.commit()
+
+        await RabbitPublisher.publish(
+            ProjectMemberAddedEvent.from_models(project, current_user, member)
+        )
+        
         return ProjectMemberResponse_(public_id=user.public_id, username=user.username, role=member.role)
 
 
@@ -70,7 +77,7 @@ class ProjectMemberService:
 
         return MEMBER_LIST_ADAPTER.validate_python(members)
 
-    async def update_role(self,project_id: UUID, user_id: UUID,data: ProjectMemberUpdate,current_user: User) -> ProjectMemberResponse:
+    async def update_role(self,project_id: UUID, user_id: UUID,data: ProjectMemberUpdate,current_user: User) -> ProjectMemberResponse_:
         project = await self.project_repository.get_by_public_id_no_full(self.db, project_id)
 
         if not project:
@@ -85,14 +92,19 @@ class ProjectMemberService:
             raise ValueError("User not found")
 
         member = await self.repository.get_by_project_and_user(self.db,project.id,user.id)
-
+        
         if not member:
             raise ValueError("Member not found")
 
         member.role = data.role
         member = await self.repository.update(self.db,member)
         await self.db.commit()
-        return ProjectMemberResponse(public_id=user.public_id, username=user.username, role=member.role)
+
+        await RabbitPublisher.publish(
+            ProjectMemberRoleChangedEvent.from_models(project, current_user, member)
+        )
+        
+        return ProjectMemberResponse_(public_id=user.public_id, username=user.username, role=member.role)
 
     async def delete_member(self,project_id: UUID,user_id: UUID,current_user: User) -> None:
         project = await self.project_repository.get_by_public_id(self.db, project_id, user_id=current_user.id)
@@ -115,6 +127,10 @@ class ProjectMemberService:
 
         await self.repository.delete(self.db,member)
         await self.db.commit()
+
+        await RabbitPublisher.publish(
+            ProjectMemberRemovedEvent.from_models(project, current_user, member)
+        )
 
     async def member_in_project(self):
         pass

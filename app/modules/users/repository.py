@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.db.models import User, ProjectMember
-from app.modules.projects.schema import UserShortResponse
+from app.modules.users.schema import UserShortResponse
 
 
 class UserRepository:

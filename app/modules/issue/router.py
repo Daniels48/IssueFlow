@@ -36,8 +36,8 @@ async def get_issue_edit(project_id: UUID, issue_id: UUID, service: issue_servic
 
 
 @router.patch("/{issue_id}", response_model=IssueResponse)
-async def update_issue(project_id: UUID, issue_id: UUID, data: IssueUpdate, service: issue_service):
-    return await service.update(public_id=issue_id, data=data)
+async def update_issue(issue_id: UUID, data: IssueUpdate, service: issue_service, current_user: CurrentUser):
+    return await service.update(public_id=issue_id, data=data, user=current_user)
 
 
 @router.delete("/{issue_id}",status_code=status.HTTP_204_NO_CONTENT)

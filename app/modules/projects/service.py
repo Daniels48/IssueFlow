@@ -1,20 +1,22 @@
 
-from typing import Annotated, Any
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import Depends
-from sqlalchemy import Row, select
+from sqlalchemy import  select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.infrastructure.db.models import User, ProjectMember, Issue
 from app.infrastructure.db.models.model_projects import Project
 from app.modules.auth.dependencies import DBSession
+from app.modules.issue.schema import IssueResponse
 from app.modules.project_members.project_role import ProjectRole
 from app.modules.project_members.repository import ProjectMemberRepository
 from app.modules.projects.repository import ProjectRepository
 from app.modules.projects.schema import ProjectCreate, ProjectUpdate, ProjectListResponse, ProjectMemberResponse, \
-    ProjectDetailResponse, IssueResponse, UserShortResponse
+    ProjectDetailResponse
+from app.modules.users.schema import UserShortResponse
 
 
 class ProjectService:
@@ -32,10 +34,7 @@ class ProjectService:
 
 
     async def get_all(self, current_user: User) -> list[ProjectListResponse]:
-        rows = await self.repository.get_all_by_user(
-            db=self.db,
-            user_id=current_user.id,
-        )
+        rows = await self.repository.get_all_by_user(db=self.db,user_id=current_user.id,)
 
         return [
             ProjectListResponse(
@@ -96,7 +95,7 @@ class ProjectService:
             issues=[
                 IssueResponse(
                     public_id=issue.public_id,
-                    name=issue.title,
+                    title=issue.title,
                     description=issue.description,
                     priority=issue.priority,
                     status=issue.status,

@@ -4,7 +4,7 @@ from fastapi import APIRouter
 
 from app.modules.auth.dependencies import CurrentUser
 from app.modules.project_members.service import MemberService
-from app.modules.projects.schema import UserShortResponse
+from app.modules.users.schema import UserShortResponse
 from app.modules.users.schema import UserResponse
 from app.modules.users.service import UserService
 

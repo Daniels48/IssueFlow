@@ -14,7 +14,7 @@ class ProjectMemberRepository:
         return member
 
     @staticmethod
-    async def get_by_project_and_user(db: AsyncSession, project_id: int, user_id: int) -> ProjectMember | None:
+    async def get_by_project_and_user(db: AsyncSession, project_id: int, user_id: int) -> ProjectMember:
         result = await db.execute(
             select(ProjectMember).where(
                 ProjectMember.project_id == project_id,
@@ -22,7 +22,7 @@ class ProjectMemberRepository:
             )
         )
 
-        return result.scalar_one_or_none()
+        return result.scalar_one()
 
     @staticmethod
     async def get_all_by_project(db: AsyncSession, project_id: int) -> list[ProjectMember]:
@@ -50,10 +50,14 @@ class ProjectMemberRepository:
 
     @staticmethod
     async def user_in_project(db: AsyncSession, project_id: int, user_id: int) -> ProjectMember | None:
-        stmt = select(ProjectMember).where(
-            ProjectMember.project_id == project_id,
-            ProjectMember.user_id == user_id,
-            ProjectMember.deleted_at.is_(None),
+        stmt = (
+            select(ProjectMember)
+            .options(selectinload(ProjectMember.user))
+            .where(
+                ProjectMember.project_id == project_id,
+                ProjectMember.user_id == user_id,
+                ProjectMember.deleted_at.is_(None),
+            )
         )
 
         result = await db.execute(stmt)

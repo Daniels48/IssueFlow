@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict
 from app.modules.comments.schema import CommentResponse
 from app.modules.issue.priority import IssuePriority
 from app.modules.issue.status import IssueStatus
-from app.modules.projects.schema import UserShortResponse
+from app.modules.users.schema import UserShortResponse
 
 
 class IssueCreate(BaseModel):
@@ -43,10 +43,10 @@ class IssueResponse(BaseModel):
     status: IssueStatus
     priority: IssuePriority
 
-    due_date: datetime | None
-
     reporter: UserShortResponse
     assignee: UserShortResponse | None
+
+    due_date: datetime | None
 
     created_at: datetime
     updated_at: datetime

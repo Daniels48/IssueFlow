@@ -17,15 +17,19 @@ class IssueRepository:
         return issue
 
     @staticmethod
-    async def get_by_public_id(db: AsyncSession,public_id: UUID) -> Issue | None:
+    async def get_by_public_id( db: AsyncSession, public_id: UUID) -> Issue:
         result = await db.execute(
-            select(Issue).where(
+            select(Issue)
+            .options(
+                selectinload(Issue.project)
+            )
+            .where(
                 Issue.public_id == public_id,
                 Issue.deleted_at.is_(None),
             )
         )
 
-        return result.scalar_one_or_none()
+        return result.scalar_one()
 
     @staticmethod
     async def get_by_public_id_full(db: AsyncSession, public_id: UUID) -> Issue | None:

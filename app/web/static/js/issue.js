@@ -93,9 +93,11 @@ function renderIssueDetails(issue, offload=false) {
     head_priority.textContent = issue.priority.toUpperCase();
     description.textContent = issue.description;
 
+
+
     if (offload !== false) {
         const count = countComments(issue.comments);
-        len_comments.textContent = `${count} comment${count === 1 ? "" : "s"}`;
+        set_count_comments(count);
     }
     function formatDate(dateString) {
     if (!dateString) return "—";
@@ -106,37 +108,6 @@ function renderIssueDetails(issue, offload=false) {
         year: "numeric",
     }).format(new Date(dateString));
 }
-
-    function formatRelativeDate(dateString) {
-        if (!dateString) return "—";
-
-        const date = new Date(dateString);
-        const now = new Date();
-
-        const seconds = Math.floor((date - now) / 1000);
-
-        const divisions = [
-            { amount: 60, name: "second" },
-            { amount: 60, name: "minute" },
-            { amount: 24, name: "hour" },
-            { amount: 7, name: "day" },
-            { amount: 4.34524, name: "week" },
-            { amount: 12, name: "month" },
-            { amount: Number.POSITIVE_INFINITY, name: "year" },
-        ];
-
-        let duration = seconds;
-
-        for (const division of divisions) {
-            if (Math.abs(duration) < division.amount) {
-                return new Intl.RelativeTimeFormat("en", {
-                    numeric: "auto",
-                }).format(Math.round(duration), division.name);
-            }
-
-            duration /= division.amount;
-        }
-    }
 
     function countComments(comments) {
         return comments.reduce((count, comment) => {
@@ -162,9 +133,29 @@ function renderComments(comments) {
     }
     return html;
 }
+}
+
+function commentHtml(comment, level, parent) {
+    const visualLevel = Math.min(level, 3);
+
+    function formatDateTime(dateString) {
+        if (!dateString) return "—";
+        const date = new Date(dateString);
+        const datePart = new Intl.DateTimeFormat("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+        }).format(date);
+        const timePart = new Intl.DateTimeFormat("en-US", {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+        }).format(date);
+        return `${datePart} • ${timePart}`;
+    }
 
     function childrenAttribute(comment) {
-        if (!comment.children.length) {return "";}
+        if (!comment.children?.length) {return "";}
         return `data-list-ids='${JSON.stringify(getChildrenIds(comment))}'`;
     }
 
@@ -183,82 +174,68 @@ function renderComments(comments) {
         return ids;
     }
 
-    function commentHtml(comment, level, parent) {
-        const visualLevel = Math.min(level, 3);
-
-        const comments_edit = comment => {
-            return `<div class="comment-edit hidden">
-                        <textarea class="comment-area">${comment.content}</textarea>
-                        <div class="edit-actions">
-                            <button class="btn-save">Save</button>
-                            <button class="btn-cancel">Cancel</button>
-                        </div>
-                    </div>`
-        }
-
-        const comments_head = comment => {
-            return `<div class="comment-head">
-                        <p class="content-comment" data-text="${comment.content}">${comment.content}</p>
-                        <div class="comment-meta">
-                            edited 2 minutes ago
-                        </div>
-                        <div class="comment-actions">
-                            <button class="btn_reply">Reply</button>
-                            <button class="btn_edit">Edit</button>
-                            <button class="btn_delete">Delete</button>
-                        </div>
-                    </div>`
-        }
-
-        let z = `<button class="toggle-replies">▼ 4 replies</button>`
-
-        return `
-            <article data-id="${comment.public_id}" ${childrenAttribute(comment)} class="comment level-${visualLevel} card">
-                <div class="avatar">${getInitial(comment.author.username)}</div>
-                <div class="comment-content">
-                    <div class="comment-header">
-                        <strong class="comment-owner" data-owner="${comment.author.username}">${comment.author.username}</strong>
-                        <span class="comment-create-date">${formatDateTime(comment.created_at)}</span>
-                    </div>
-                    ${parent ? commentReply(parent) : ""}
-                    ${comments_head(comment)}
-                    ${comments_edit(comment)}
-                </div>
-            </article>
-
-        `;
-    }
-
-    function commentReply(parent) {
-        return `
-            <div class="reply-preview">
-                <span>Replying to ${parent.author.username}</span>
-                <blockquote>${parent.content}</blockquote>
-            </div>
-        `;
-    }
-
-    function formatDateTime(dateString) {
-        if (!dateString) return "—";
-        const date = new Date(dateString);
-        const datePart = new Intl.DateTimeFormat("en-US", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-        }).format(date);
-        const timePart = new Intl.DateTimeFormat("en-US", {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: false,
-        }).format(date);
-        return `${datePart} • ${timePart}`;
-    }
-
     function getInitial(text) {
         if (!text) return "";
         return text.charAt(0).toUpperCase();
     }
+
+    function commentReply(parent) {
+    return `
+        <div class="reply-preview">
+            <span>Replying to ${parent.author.username}</span>
+            <blockquote>${parent.content}</blockquote>
+        </div>
+    `;
 }
+
+    function isEdited(comment) {
+        return (
+            comment.updated_at &&
+            Math.abs(new Date(comment.updated_at) - new Date(comment.created_at)) > 1000
+        );
+    }
+
+    const update_time = comment => isEdited(comment) ? `edited ${formatRelativeDate(comment.updated_at)}` : "";
+
+    const set_parent_id = parent => parent ? `data-parent="${parent.public_id}"` : "";
+
+    let z = `<button class="toggle-replies">▼ 4 replies</button>`
+
+    return `
+        <article ${set_parent_id(parent)} ${childrenAttribute(comment)} data-id="${comment.public_id}" class="comment level-${visualLevel} card">
+            <div class="avatar">${getInitial(comment.author.username)}</div>
+            <div class="comment-content">
+                <div class="comment-header">
+                    <strong class="comment-owner" data-owner="${comment.author.username}">${comment.author.username}</strong>
+                    <span class="comment-create-date">${formatDateTime(comment.created_at)}</span>
+                </div>
+                
+                ${parent ? commentReply(parent) : ""}
+                
+                <div class="comment-head">
+                    <p class="content-comment" data-text="${comment.content}">${comment.content}</p>
+                    <div class="comment-meta">${update_time(comment)}</div>
+                    <div class="comment-actions">
+                        <button class="btn_reply">Reply</button>
+                        <button class="btn_edit">Edit</button>
+                        <button class="btn_delete">Delete</button>
+                    </div>
+                </div>
+                
+                <div class="comment-edit hidden">
+                    <textarea class="comment-area">${comment.content}</textarea>
+                    <div class="edit-actions">
+                        <button class="btn-save">Save</button>
+                        <button class="btn-cancel">Cancel</button>
+                    </div>
+                </div>
+                
+            </div>
+        </article>
+    `;
+}
+
+const set_count_comments = count => len_comments.textContent = `${count} comment${count === 1 ? "" : "s"}`;
 // -----------------------------------------------------------------------------------------
 
 
@@ -275,13 +252,14 @@ async function comments_action(event) {
         value: obj_comment.dataset.text,
         owner: owner_comment.dataset.owner,
         container: container,
+        textarea: container.querySelector(".comment-area"),
     }
 
     if (btn.classList.contains("btn_reply")) {reply_comment(data);}
     if (btn.classList.contains("btn_edit")) {edit_comment(data);}
     if (btn.classList.contains("btn_delete")) {await delete_comment(data);}
     if (btn.classList.contains("btn-cancel")) {close_edit_comment(data);}
-    if (btn.classList.contains("btn-save")) {save_edit_comment(data);}
+    if (btn.classList.contains("btn-save")) {await save_edit_comment(data);}
 
 }
 
@@ -319,8 +297,32 @@ function close_edit_comment(data) {
     containers.edit_container.classList.add("hidden");
 }
 
-function save_edit_comment(data) {
-    console.log(commentsContainer.children.length - 1);
+async function save_edit_comment(data) {
+    const dict = {
+        content: data.textarea.value,
+    }
+    const res = await api.patch(window.data_url.comments(projectId, IssueId, data.id), dict);
+    if (!res || !res.ok) {return;}
+    else {
+        alert("Comment success update!")
+        const comment = await res.json();
+        const edit_string = data.container.querySelector(".comment-meta");
+        edit_string.textContent = "edited " + formatRelativeDate(comment.updated_at)
+        close_edit_comment(data);
+        const obj_comment = data.container.querySelector("p.content-comment");
+        obj_comment.dataset.text = comment.content;
+        obj_comment.textContent = comment.content;
+        const id_comment = data.id;
+        if (id_comment) {
+            const elements = document.querySelectorAll(`[data-parent="${id_comment}"]`);
+            if (elements.length) {
+                for (const element of elements) {
+                    let container_element = element.querySelector("blockquote")
+                    container_element.textContent = comment.content;
+                }
+            }
+        }
+    }
 }
 
 function reply_comment(data) {
@@ -335,7 +337,7 @@ function cancel_reply_comment() {
     replyInfo.classList.add("hidden");
     replyAuthor.textContent = "";
     replyPreview.textContent = "";
-    text_area_comment.dataset.id = null;
+    delete text_area_comment.dataset.id;
 }
 
 async function delete_comment(data) {
@@ -354,7 +356,7 @@ async function delete_comment(data) {
                 }
                 element.remove();
                 const count = commentsContainer.children.length - 1;
-                len_comments.innerText = `${count} comment${count === 1 ? "" : "s"}`;
+                set_count_comments(count);
 
             }
         }
@@ -362,12 +364,23 @@ async function delete_comment(data) {
 
 async function post_comment(event) {
     if (text_area_comment.value.length > 1) {
-        const id_reply = text_area_comment.dataset.id;
-        const data = {content: text_area_comment.value, parent_comment_public_id: id_reply}
+        const data = {
+            content: text_area_comment.value,
+            parent_comment_public_id: text_area_comment.dataset.id || null,
+        };
         const res = await api.post(window.data_url.comment(projectId,IssueId), data);
         if (!res || !res.ok) {return;}
         const comment = await res.json();
         text_area_comment.value = ""
+        cancel_reply_comment()
+        if (data.parent_comment_public_id) {
+
+        } else {
+            const text_comment = commentHtml(comment, 0, null);
+            commentsContainer.insertAdjacentHTML("beforeend", text_comment);
+        }
+        const count = parseInt(len_comments.textContent, 10);
+        set_count_comments(count + 1);
     }
 }
 // -----------------------------------------------------------------------------------------
@@ -470,6 +483,38 @@ function unformatEnum(value) {
         .toLowerCase()
         .replaceAll(" ", "_");
 }
+
+function formatRelativeDate(dateString) {
+        if (!dateString) return "—";
+
+        const date = new Date(dateString);
+        const now = new Date();
+
+        const seconds = Math.floor((date - now) / 1000);
+
+        const divisions = [
+            { amount: 60, name: "second" },
+            { amount: 60, name: "minute" },
+            { amount: 24, name: "hour" },
+            { amount: 7, name: "day" },
+            { amount: 4.34524, name: "week" },
+            { amount: 12, name: "month" },
+            { amount: Number.POSITIVE_INFINITY, name: "year" },
+        ];
+
+        let duration = seconds;
+
+        for (const division of divisions) {
+            if (Math.abs(duration) < division.amount) {
+                return new Intl.RelativeTimeFormat("en", {
+                    numeric: "auto",
+                }).format(Math.round(duration), division.name);
+            }
+
+            duration /= division.amount;
+        }
+    }
+
 
 
 loadIssue();

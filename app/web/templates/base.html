@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>{{ title }}</title>
+        {% for css in css_files %}
+        <link rel="stylesheet" href="/static/css/{{ css }}.css">
+        {% endfor %}
+    </head>
+    <body>
+        <header class="header">
+            <div class="container">
+                <a href="/" class="logo">IssueFlow</a>
+                <nav class="nav">
+                    <a href="/projects" >Projects</a>
+                    <a href="/profile">Profile</a>
+                    <div class="user">
+                        <span id="username"></span>
+                        <button id="logout">Logout</button>
+                    </div>
+                </nav>
+            </div>
+        </header>
+        {% block content %}{% endblock %}
+        <button id="notification-button" class="notification-button">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                <path
+                    d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm7-6V11a7 7 0 1 0-14 0v5L3 18v1h18v-1l-2-2Z"
+                    stroke="currentColor" stroke-width="2" stroke-linejoin="round"
+                />
+            </svg>
+            <span id="notification-counter" class="notification-counter hidden">0</span>
+        </button>
+        <aside id="notification-center" class="notification-center hidden">
+            <header class="notification-header">
+                <h2>Notifications</h2>
+                <button id="notification-clear" class="notification-clear">Clear All</button>
+            </header>
+            <section class="notification-section">
+                <div class="notification-section-header">
+                    <div class="personal-header">⭐ Personal<span id="personal-count">(0)</span></div>
+                    <div class="notification-section-actions">
+                        <button id="personal-toggle">▼</button>
+                        <button id="personal-clear">✕</button>
+                    </div>
+                </div>
+                <div id="notification-personal" class="notification-list"></div>
+            </section>
+            <section class="notification-section notification-section-grow">
+                <div class="notification-section-header">
+                    <div class="activity-notification">📢 Activity<span id="activity-count">(0)</span></div>
+                    <div class="notification-section-actions">
+                        <button id="activity-toggle" class="notification-toggle">▼</button>
+                        <button id="activity-clear">✕</button>
+                    </div>
+                </div>
+                <div id="notification-activity" class="notification-list"></div>
+                <button id="notification-show-more" class="notification-show-more hidden">Show older notifications</button>
+            </section>
+        </aside>
+        <script src="/static/js/notification.js"></script>
+        <script src="/static/js/api.js"></script>{% for js in js_files %}
+        <script src="/static/js/{{ js }}.js"></script>{% endfor %}
+    </body>
+</html>

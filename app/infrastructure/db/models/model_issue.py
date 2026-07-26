@@ -48,6 +48,7 @@ class Issue(BaseModel):
     comments: Mapped[list["Comment"]] = relationship(
         back_populates="issue",
         cascade="all, delete-orphan",
+        order_by="Comment.created_at",
     )
 
     @property

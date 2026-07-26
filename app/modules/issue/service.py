@@ -5,7 +5,9 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import TypeAdapter
 
+from app.events import IssueUpdatedEvent
 from app.infrastructure.db.models import User, Issue
+from app.infrastructure.rabbitmq import RabbitPublisher
 from app.modules.auth.dependencies import DBSession
 from app.modules.comments.service import CommentService
 from app.modules.issue.repository import IssueRepository
@@ -13,7 +15,7 @@ from app.modules.issue.schema import IssueCreate, IssueUpdate, IssueResponse, Is
 from app.modules.project_members.repository import ProjectMemberRepository
 from app.modules.projects.repository import ProjectRepository
 from app.modules.users.repository import UserRepository
-
+from app.utils.func_utils import to
 
 ISSUE_LIST_ADAPTER = TypeAdapter(list[IssueResponse])
 
@@ -94,7 +96,7 @@ class IssueService:
 
         return ISSUE_LIST_ADAPTER.validate_python(list_issues)
 
-    async def update(self,public_id: UUID,data: IssueUpdate) -> IssueResponse:
+    async def update(self,public_id: UUID,data: IssueUpdate, user: User) -> IssueResponse:
         issue = await self.repository.get_by_public_id(self.db, public_id)
 
         if not issue:
@@ -122,9 +124,12 @@ class IssueService:
 
         await self.db.commit()
 
+        event = IssueUpdatedEvent.from_models(issue, user)
+        await RabbitPublisher.publish(event)
+
         issue = await self.repository.get_by_public_id_full(self.db, public_id)
 
-        return IssueResponse.model_validate(issue)
+        return to(IssueResponse, issue)
 
     async def delete(self,public_id: UUID) -> None:
         issue = await self.repository.get_by_public_id(self.db, public_id)
