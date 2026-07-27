@@ -1,6 +1,5 @@
 "use strict";
 
-const username = document.getElementById("username");
 const projectsContainer = document.getElementById("projects");
 
 document.getElementById("logout").addEventListener("click", window.logout);
@@ -19,16 +18,6 @@ async function create_project(){
     loadProjects();
 }
 
-async function loadUser() {
-    const res = await api.get(window.data_url.me);
-    if (!res) {return;}
-    if (!res.ok) {
-        location.href = window.data_url.login;
-        return;
-    }
-    const user = await res.json();
-    username.textContent = user.username;
-}
 
 async function loadProjects() {
     const res = await api.get(window.data_url.projects);
@@ -116,7 +105,6 @@ function formatDate(dateString) {
 
 
 async function init() {
-    await loadUser();
     await loadProjects();
 }
 

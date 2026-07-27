@@ -1,167 +1,87 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Project • IssueFlow</title>
-    <link rel="stylesheet" href="/static/css/project.css">
-    <link rel="stylesheet" href="/static/css/modal_member.css">
-</head>
-<body>
-    <header class="header">
-        <div class="container">
-            <a href="/" class="logo">IssueFlow</a>
-            <nav>
-                <a href="/projects">Projects</a>
-                <a href="/profile">Profile</a>
-                <button id="logout">Logout</button>
-            </nav>
-        </div>
-    </header>
-    <main class="container">
-        <a href="/projects" class="back">← Back to projects</a>
-       <section class="project-info">
-            <div class="project-header">
-                <div class="project-content">
-                    <h1 id="project-title"></h1>
-                    <p id="project-description"></p>
-                    <div class="project-meta">
-                        <span>👤 <strong id="project-owner"></strong></span>
-                        <span>📅 <span id="project-created"></span></span>
-                        <span>👥 <span id="members-count"></span> members</span>
-                        <span>📝 <span id="issues-count"></span> issues</span>
+        {% extends "base.html" %}   {% block content %}
+        <main class="container">
+            <a href="/projects" class="back">← Back to projects</a>
+            <section class="project-info">
+                <div class="project-header">
+                    <div class="project-content">
+                        <h1 id="project-title"></h1>
+                        <p id="project-description"></p>
+                        <div class="project-meta">
+                            <span>👤 <strong id="project-owner"></strong></span>
+                            <span>📅 <span id="project-created"></span></span>
+                            <span>👥 <span id="members-count"></span> members</span>
+                            <span>📝 <span id="issues-count"></span> issues</span>
+                        </div>
+                    </div>
+                    <div class="project-actions">
+                        <button id="edit-project">[Edit]</button>
+                        <button id="manage-members">[Members]</button>
+                        <button id="delete-project" class="danger">[Delete]</button>
                     </div>
                 </div>
-                <div class="project-actions">
-                    <button id="edit-project">[Edit]</button>
-                    <button id="manage-members">[Members]</button>
-                    <button id="delete-project" class="danger">[Delete]</button>
+            </section>
+            <section class="issues-header">
+                <h2>Issues</h2>
+                <button id="create-issue">+ New Issue</button>
+            </section>
+            <input id="search_issues" class="search" type="text" placeholder="Search issues...">
+            <section class="issues" id="issues"></section>
+        </main>
+        <div id="members-modal" class="modal hidden">
+            <div class="modal-card">
+                <div class="modal-header">
+                    <h2>Manage Members</h2>
+                    <button id="close-btn" class="close-btn">&times;</button>
                 </div>
-            </div>
-        </section>
-        <section class="issues-header">
-            <h2>Issues</h2>
-            <button id="create-issue">+ New Issue</button>
-        </section>
-        <input id="search_issues" class="search" type="text" placeholder="Search issues...">
-        <section class="issues" id="issues"></section>
-    </main>
-
-    <div id="members-modal" class="modal hidden">
-        <div class="modal-card">
-            <div class="modal-header">
-                <h2>Manage Members</h2>
-                <button id="close-btn" class="close-btn">&times;</button>
-            </div>
-            <div class="invite-section">
-                <h3>Invite member</h3>
-                <div class="search-wrapper">
-                    <div class="search">
-                        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="11" cy="11" r="7"/>
-                            <path d="M20 20L17 17"/>
-                        </svg>
-                        <input id="user-search" type="text" placeholder="Search users..." autocomplete="off">
+                <div class="invite-section">
+                    <h3>Invite member</h3>
+                    <div class="search-wrapper">
+                        <div class="search">
+                            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="7"/>
+                                <path d="M20 20L17 17"/>
+                            </svg>
+                            <input id="user-search" type="text" placeholder="Search users..." autocomplete="off">
+                        </div>
+                        <div id="search-results" class="search-results hidden"></div>
                     </div>
-                    <div id="search-results" class="search-results hidden"></div>
                 </div>
-            </div>
-            <div class="member-list-container">
-                <h3 class="member-text">List Members</h3>
-               <div class="members-list" id="members-list"></div>
-            </div>
+                <div class="member-list-container">
+                    <h3 class="member-text">List Members</h3>
+                   <div class="members-list" id="members-list"></div>
+                </div>
 
+            </div>
         </div>
-    </div>
+        <div id="issue-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Create Issue</h2>
+                    <button id="modal-close" class="modal-close close-btn">&times;</button>
+                </div>
+                <form id="issue-form">
+                    <div class="modal-body">
+                            <label>Title *</label>
+                            <input id="issue-title" type="text">
+                            <label>Description</label>
+                            <textarea id="issue-description"></textarea>
+                            <label>Assignee</label>
+                            <select id="issue-assignee"></select>
+                            <label>Priority</label>
+                            <select id="issue-priority">
+                                <option>low</option>
+                                <option selected>medium</option>
+                                <option>high</option>
+                                <option>critical</option>
+                            </select>
+                            <label>Due date</label>
+                            <input type="date" id="issue-date">
 
-    <div id="issue-modal" class="modal hidden">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Create Issue</h2>
-                <button id="modal-close" class="modal-close close-btn">&times;</button>
+                    </div>
+                    <div class="modal-footer">
+                        <button id="cancel_issue_form" class="btn-secondary">Cancel</button>
+                        <button type="submit" class="btn-primary">Create Issue</button>
+                    </div>
+                </form>
             </div>
-            <form id="issue-form">
-                <div class="modal-body">
-                        <label>Title *</label>
-                        <input id="issue-title" type="text">
-                        <label>Description</label>
-                        <textarea id="issue-description"></textarea>
-                        <label>Assignee</label>
-                        <select id="issue-assignee"></select>
-                        <label>Priority</label>
-                        <select id="issue-priority">
-                            <option>low</option>
-                            <option selected>medium</option>
-                            <option>high</option>
-                            <option>critical</option>
-                        </select>
-                        <label>Due date</label>
-                        <input type="date" id="issue-date">
-
-                </div>
-                <div class="modal-footer">
-                    <button id="cancel_issue_form" class="btn-secondary">Cancel</button>
-                    <button type="submit" class="btn-primary">Create Issue</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-
-
-        <!-- ==========================
-            Notification Button
-    ========================== -->
-
-    <button id="notification-button" class="notification-button">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-            <path
-                d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm7-6V11a7 7 0 1 0-14 0v5L3 18v1h18v-1l-2-2Z"
-                stroke="currentColor" stroke-width="2" stroke-linejoin="round"
-            />
-        </svg>
-        <span id="notification-counter" class="notification-counter hidden">0</span>
-    </button>
-
-    <!-- ==========================
-          Notification Center
-    ========================== -->
-
-    <aside id="notification-center" class="notification-center hidden">
-        <!-- HEADER -->
-        <header class="notification-header">
-            <h2>Notifications</h2>
-            <button id="notification-clear" class="notification-clear">Clear All</button>
-        </header>
-        <!-- PERSONAL -->
-        <section class="notification-section">
-            <div class="notification-section-header">
-                <div class="personal-header">⭐ Personal<span id="personal-count">(0)</span></div>
-                <div class="notification-section-actions">
-                    <button id="personal-toggle">▼</button>
-                    <button id="personal-clear">✕</button>
-                </div>
-            </div>
-            <div id="notification-personal" class="notification-list"></div>
-        </section>
-        <!-- ACTIVITY -->
-        <section class="notification-section notification-section-grow">
-            <div class="notification-section-header">
-                <div class="activity-notification">📢 Activity<span id="activity-count">(0)</span></div>
-                <div class="notification-section-actions">
-                    <button id="activity-toggle" class="notification-toggle">▼</button>
-                    <button id="activity-clear">✕</button>
-                </div>
-            </div>
-            <div id="notification-activity" class="notification-list"></div>
-            <button id="notification-show-more" class="notification-show-more hidden">Show older notifications</button>
-        </section>
-    </aside>
-
-
-
-    <script src="/static/js/notification.js"></script>
-    <script src="/static/js/api.js"></script>
-    <script src="/static/js/project.js"></script>
-</body>
-</html>
+        </div>{% endblock %}

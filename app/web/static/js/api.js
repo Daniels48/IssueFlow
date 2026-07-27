@@ -38,25 +38,17 @@ async function request(url, options = {}) {
 
 async function apiFetch(url, options = {}) {
     const res = await request(url, options);
-
-    if (res.status !== 401) {
-        return res;
-    }
-
+    if (res.status !== 401) {return res;}
     const refreshed = await refreshToken();
-
     if (!refreshed) {
         window.location.href = data_url.login;
         return null;
     }
-
     const retry = await request(url, options);
-
     if (retry.status === 401) {
         window.location.href = data_url.login;
         return null;
     }
-
     return retry;
 }
 

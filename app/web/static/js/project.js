@@ -122,7 +122,7 @@ function renderIssues(issues, is_add=false) {
       return `<a href="/projects/${projectId}/issues/${issue.public_id}" data-id="${issue.public_id}" class="issue">
                 <div>
                     <h3>${issue.name ?? issue.title}</h3>
-                    <span>
+                    <span class="assignee-name">
                         Assigned to ${issue.assignee?.username ?? "Unassigned"} • 
                         Reported by ${issue.reporter.username}
                     </span>
@@ -130,7 +130,7 @@ function renderIssues(issues, is_add=false) {
                 <div class="badges">
                     <span class="due">${formatDate(issue.due_date)}</span>
                     <span class="progress">${uppercase(issue.status)}</span>
-                    <span class="high">${uppercase(issue.priority)}</span>
+                    <span class="${issue.priority.toLowerCase()}">${uppercase(issue.priority)}</span>
                 </div>
             </a>`
     }

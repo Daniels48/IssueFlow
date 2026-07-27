@@ -1,36 +1,11 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Projects • IssueFlow</title>
-    <link rel="stylesheet" href="/static/css/projects.css">
-</head>
-<body>
-<header class="header">
-    <div class="container">
-        <a href="/" class="logo">IssueFlow</a>
-        <nav class="nav">
-            <a href="/projects" class="active">Projects</a>
-            <a href="/profile">Profile</a>
-            <div class="user">
-                <span id="username"></span>
-                <button id="logout">Logout</button>
-            </div>
-        </nav>
-    </div>
-</header>
-<main class="container">
-    <section class="hero">
-        <div>
-            <h1>Projects</h1>
-            <p>Manage all your software projects in one place.</p>
-        </div>
-        <button class="create-btn" id="create-project">+ New Project</button>
-    </section>
-    <section class="projects" id="projects"></section>
-</main>
-<script src="/static/js/api.js"></script>
-<script src="/static/js/projects.js"></script>
-</body>
-</html>
+        {% extends "base.html" %}   {% block content %}
+        <main class="container">
+            <section class="hero">
+                <div>
+                    <h1>Projects</h1>
+                    <p>Manage all your software projects in one place.</p>
+                </div>
+                <button class="create-btn" id="create-project">+ New Project</button>
+            </section>
+            <section class="projects" id="projects"></section>
+        </main>{% endblock %}
