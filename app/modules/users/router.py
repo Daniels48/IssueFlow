@@ -3,9 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter
 
 from app.modules.auth.dependencies import CurrentUser
-from app.modules.project_members.service import MemberService
-from app.modules.users.schema import UserShortResponse
-from app.modules.users.schema import UserResponse
+from app.modules.users.schema import UserResponse, UserShortResponse
 from app.modules.users.service import UserService
 
 router = APIRouter(prefix="/users",tags=["Users"])

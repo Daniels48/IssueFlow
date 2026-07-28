@@ -1,10 +1,14 @@
 from datetime import timedelta
+from typing import Any
+
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.infrastructure.db.models import User
+from app.events import UserLoggedInEvent, UserLoggedOutEvent, UserRegisteredEvent
+from app.infrastructure.db.models import Session, User
 from app.infrastructure.db.models.model_session import Session
+from app.infrastructure.rabbitmq import RabbitPublisher
 from app.modules.auth.cookie import ACCESS_COOKIE, REFRESH_COOKIE
 from app.modules.auth.jwt import JWTService
 from app.modules.auth.password import PasswordService
@@ -19,7 +23,8 @@ class AuthService:
         self.repository = repository
         self.db = db
 
-    async def register(self, data: UserCreate) -> User:
+
+    async def register(self, data: UserCreate) -> dict[str, Any]:
         if await self.repository.get_by_email(self.db, data.email):
             raise ValueError("Email already exists")
 
@@ -36,7 +41,25 @@ class AuthService:
 
         await self.db.commit()
 
-        return user
+        data_access, session = await self._create_session_and_tokens(user)
+
+        await RabbitPublisher.publish(UserRegisteredEvent.from_models(author=user, session=session))
+
+        return {"user": user, "data": data_access}
+
+    async def _create_session_and_tokens(self, user: User) -> tuple[dict[str, str], Session]:
+        access_token = JWTService.create_access_token(user.public_id, get_now_dt())
+
+        refresh_token = JWTService.generate_refresh_token()
+        refresh_hash = JWTService.hash_refresh_token(refresh_token)
+        time_expired = get_now_dt() + timedelta(days=settings.security.refresh_token_expire_days)
+
+        session = Session(user_id=user.id, refresh_token_hash=refresh_hash, expires_at=time_expired)
+
+        await SessionRepository.create(self.db, session)
+        await self.db.commit()
+        
+        return {ACCESS_COOKIE: access_token, REFRESH_COOKIE: refresh_token}, session
 
     async def login(self, username: str, password: str) -> dict[str, str]:
         user = await self.repository.get_by_username(self.db, username)
@@ -47,17 +70,11 @@ class AuthService:
         if not PasswordService.verify_password(password, user.password_hash):
             raise ValueError("Invalid credentials")
 
-        access_token = JWTService.create_access_token(user.public_id, get_now_dt())
+        data_access, session = await self._create_session_and_tokens(user)
 
-        refresh_token = JWTService.generate_refresh_token()
-        refresh_hash = JWTService.hash_refresh_token(refresh_token)
-        time_expired = get_now_dt() + timedelta(days=settings.security.refresh_token_expire_days)
+        await RabbitPublisher.publish(UserLoggedInEvent.from_models(author=user, session=session))
 
-        session = Session(user_id=user.id, refresh_token_hash=refresh_hash, expires_at=time_expired)
-
-        await SessionRepository.create(self.db, session)
-
-        return {ACCESS_COOKIE: access_token, REFRESH_COOKIE: refresh_token}
+        return {ACCESS_COOKIE: data_access[ACCESS_COOKIE], REFRESH_COOKIE: data_access[REFRESH_COOKIE]}
 
     async def refresh(self, refresh_token: str) -> str:
         refresh_hash = JWTService.hash_refresh_token(refresh_token)
@@ -84,9 +101,9 @@ class AuthService:
 
         return access_token
 
-    async def logout(self, refresh_token: str) -> None:
+    async def logout(self, refresh_token: str, user: User) -> None:
         refresh_hash = JWTService.hash_refresh_token(refresh_token)
         session = await SessionRepository.get_by_refresh_hash(self.db, refresh_hash)
         await SessionRepository.delete(db=self.db, session=session)
 
-
+        await RabbitPublisher.publish(UserLoggedOutEvent.from_models(author=user, session=session))

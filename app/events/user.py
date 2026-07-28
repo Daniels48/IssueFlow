@@ -1,51 +1,73 @@
-from typing import ClassVar
+from datetime import datetime
+from typing import ClassVar, Self
 from uuid import UUID
 
-from app.events.base import Event
+from pydantic import BaseModel, ConfigDict
+
+from app.events.base import Event, UserData
 from app.events.routing_keys import RoutingKeys
+from app.infrastructure.db.models import Session, User
+from app.utils.func_utils import to
 
 
-class UserRegisteredEvent(Event):
+class UserDataDetail(BaseModel):
+    username: str
+    email: str  # email-validator
+    is_active: bool
+    is_superuser: bool
+    email_verified_at: datetime | None = None
+
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+    
+    
+class SessionDataDetail(BaseModel):
+    public_id: UUID
+    ip_address: str | None = None
+    user_agent: str | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class BaseUserEvent(Event):
+    author: UserData
+    session_data: SessionDataDetail
+    user_detail: UserDataDetail
+
+    @classmethod
+    def from_models(cls, author: User, session: Session) -> Self:
+        return cls(
+            author=to(UserData, author),
+            session_data=to(SessionDataDetail, session),
+            user_detail=to(UserDataDetail, author),
+        )
+
+
+class UserRegisteredEvent(BaseUserEvent):
     ROUTING_KEY: ClassVar[str] = RoutingKeys.USER_REGISTERED
 
-    user_public_id: UUID
-    email: str
-    username: str
 
-
-class UserEmailVerifiedEvent(Event):
+class UserEmailVerifiedEvent(BaseUserEvent):
     ROUTING_KEY: ClassVar[str] = RoutingKeys.USER_EMAIL_VERIFIED
 
-    user_public_id: UUID
 
-
-class UserPasswordChangedEvent(Event):
+class UserPasswordChangedEvent(BaseUserEvent):
     ROUTING_KEY: ClassVar[str] = RoutingKeys.USER_PASSWORD_CHANGED
 
-    user_public_id: UUID
 
-
-class UserLoggedInEvent(Event):
+class UserLoggedInEvent(BaseUserEvent):
     ROUTING_KEY: ClassVar[str] = RoutingKeys.USER_LOGGED_IN
 
-    user_public_id: UUID
-    session_id: UUID
 
-
-class UserLoggedOutEvent(Event):
+class UserLoggedOutEvent(BaseUserEvent):
     ROUTING_KEY: ClassVar[str] = RoutingKeys.USER_LOGGED_OUT
 
-    user_public_id: UUID
-    session_id: UUID
 
-
-class UserLoggedOutAllEvent(Event):
+class UserLoggedOutAllEvent(BaseUserEvent):
     ROUTING_KEY: ClassVar[str] = RoutingKeys.USER_LOGGED_OUT_ALL
 
-    user_public_id: UUID
 
-
-class UserDeletedEvent(Event):
+class UserDeletedEvent(BaseUserEvent):
     ROUTING_KEY: ClassVar[str] = RoutingKeys.USER_DELETED
-
-    user_public_id: UUID

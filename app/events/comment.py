@@ -4,9 +4,9 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
-from app.events.base import Event, UserData, ProjectData, IssueData
+from app.events.base import Event, IssueData, ProjectData, UserData
 from app.events.routing_keys import RoutingKeys
-from app.infrastructure.db.models import Issue, User, Comment
+from app.infrastructure.db.models import Comment, Issue, User
 from app.utils.func_utils import to
 
 
@@ -17,6 +17,7 @@ class CommentData(BaseModel):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
 
 class BaseCommentEvent(Event):
     project: ProjectData

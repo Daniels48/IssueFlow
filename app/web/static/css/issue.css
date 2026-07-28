@@ -57,16 +57,19 @@
 .comments-header span {
     color: var(--muted);
 }
+.comment:last-child {
+    margin-bottom: 0;
+}
 .comment {
+    position: relative;
+    padding-left: 28px;
+    transition: .2s;
     display: flex;
     gap: 18px;
     margin-bottom: 18px;
 }
-.comment:last-child {
-    margin-bottom: 0;
-}
-.reply {
-    margin-left: 60px;
+.comment:hover {
+    border-color: rgba(59,130,246,.3);
 }
 .avatar {
     width: 48px;
@@ -141,6 +144,14 @@
 }
 .new-comment textarea {
     min-height: 170px;
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--surface);
+    color: white;
+    padding: 14px 16px;
+    outline: none;
+
 }
 .editor-footer {
     margin-top: 18px;
@@ -152,32 +163,25 @@
     top: 96px;
     height: fit-content;
 }
-
 .sidebar-card h3 {
     margin-bottom: 22px;
 }
-
 .info {
     display: flex;
     flex-direction: column;
     gap: 18px;
 }
-
 .info-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-
     padding-bottom: 12px;
-
     border-bottom: 1px solid var(--border);
 }
-
 .info-item:last-child {
     border-bottom: none;
     padding-bottom: 0;
 }
-
 .info-item span {
     color: var(--muted);
 }
@@ -188,13 +192,6 @@
 .due {
     color: var(--warning);
 }
-.comment {
-    transition: .2s;
-}
-.comment:hover {
-    border-color: rgba(59,130,246,.3);
-}
-
 .modal{
     position:fixed;
     inset:0;
@@ -227,17 +224,14 @@
     align-items: center;
     margin-bottom: 24px;
 }
-
 .modal-header h2 {
     margin: 0;
 }
-
 .modal-body {
     display: flex;
     flex-direction: column;
     gap: 18px;
 }
-
 .modal-body label {
     display: flex;
     flex-direction: column;
@@ -246,7 +240,6 @@
     font-weight: 600;
     color: var(--text);
 }
-
 .modal-body input,
 .modal-body textarea,
 .modal-body select {
@@ -281,26 +274,13 @@
 .modal-body textarea::placeholder {
     color: var(--muted);
 }
-
-.modal-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-    margin-top: 28px;
-    padding-top: 20px;
-
-    border-top: 1px solid var(--border);
-}
-
 .modal-body label {
     display: block;
     margin-bottom: 6px;
     font-size: 14px;
     font-weight: 600;
 }
-
-
-.close-btn{
+.close-btn {
     width:36px;
     height:36px;
     display:flex;
@@ -314,7 +294,7 @@
     cursor:pointer;
     transition: .2s;
 }
-.btn-primary{
+.btn-primary {
     display:inline-flex;
     align-items:center;
     justify-content:center;
@@ -343,7 +323,6 @@
     display:inline-flex;
     align-items:center;
     justify-content:center;
-
     height:40px;
     padding:0 18px;
     border:1px solid var(--border);
@@ -382,10 +361,6 @@
     margin-top: 24px;
     padding-top: 20px;
     border-top: 1px solid var(--border);
-}
-.comment {
-    position: relative;
-    padding-left: 28px;
 }
 .level-0:not(:last-child) {
     margin-bottom: 34px;
@@ -464,12 +439,16 @@
     border-color: #64748b;
 }
 .comment textarea {
-    font-size: 0.95rem;
-    line-height: 1.6;
-}
-.comment textarea {
     width: 100%;
     background: transparent;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--surface);
+    color: white;
+    padding: 14px 16px;
+    outline: none;
 }
 .comment-meta {
     margin-top: .45rem;
@@ -483,6 +462,74 @@
 .comment-owner{
     font-weight: 700;
 }
-.hidden{
-    display: none;
+.btn {
+    border: none;
+    border-radius: 12px;
+    padding: 11px 18px;
+    transition: .2s;
+}
+.btn-danger {
+    background: var(--danger);
+    color: white;
+}
+.btn-danger:hover {
+    opacity: .9;
+}
+textarea {
+    resize: vertical;
+}
+input:focus,
+textarea:focus,
+select:focus {
+    border-color: var(--primary);
+}
+.card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    box-shadow: var(--shadow);
+}
+.badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: .8rem;
+    font-weight: 600;
+}
+.badge-success {
+    background: rgba(34,197,94,.15);
+    color: var(--success);
+}
+.badge-warning {
+    background: rgba(245,158,11,.15);
+    color: var(--warning);
+}
+.badge-danger {
+    background: rgba(239,68,68,.15);
+    color: var(--danger);
+}
+main {
+    padding: 40px 0 60px;
+}
+.flex {
+    display: flex;
+}
+::-webkit-scrollbar {
+    width: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg);
+}
+
+::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #475569;
 }

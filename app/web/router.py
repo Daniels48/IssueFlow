@@ -3,7 +3,6 @@ from uuid import UUID
 from fastapi import APIRouter, Request
 from fastapi.templating import Jinja2Templates
 
-
 router = APIRouter()
 
 
@@ -50,7 +49,7 @@ async def project(request: Request, project_id: UUID):
 @router.get("/projects/{project_id}/issues/{issue_id}")
 async def issue(request: Request, project_id: UUID, issue_id: UUID):
     list_js_files = ["issue"]
-    list_css_files = ["layout", "issue", "base"]
+    list_css_files = ["issue", "base"]
     return templates.TemplateResponse(request=request,name="issue.html",
         context={
             "title": "Issue • IssueFlow",
@@ -62,26 +61,37 @@ async def issue(request: Request, project_id: UUID, issue_id: UUID):
 
 @router.get("/register")
 async def register(request: Request):
-    return templates.TemplateResponse(request=request, name="register.html",
+    list_js_files = ["register"]
+    list_css_files = ["register", "base"]
+    return templates.TemplateResponse(request=request,name="register.html",
         context={
-            "username": "Daniel",
-            "age": 30,
-        })
+            "title": "Register • IssueFlow",
+            "css_files": list_css_files,
+            "js_files": list_js_files,
+        },
+    )
 
 
 @router.get("/login")
 async def login(request: Request):
+    list_js_files = ["login"]
+    list_css_files = ["login", "base"]
     return templates.TemplateResponse(request=request,name="login.html",
         context={
-            "username": "Daniel",
-            "age": 30,
-        })
-
+            "title": "Login • IssueFlow",
+            "css_files": list_css_files,
+            "js_files": list_js_files,
+        },
+    )
 
 @router.get("/profile")
 async def profile(request: Request):
+    list_js_files = ["profile"]
+    list_css_files = ["profile", "base"]
     return templates.TemplateResponse(request=request, name="profile.html",
         context={
-            "username": "Daniel",
-            "age": 30,
-        })
+            "title": "Profile • IssueFlow",
+            "css_files": list_css_files,
+            "js_files": list_js_files,
+        },
+    )

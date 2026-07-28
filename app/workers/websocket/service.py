@@ -3,7 +3,6 @@ from app.modules.projects.repository import ProjectRepository
 from app.workers.websocket.cache.project import ProjectCache
 
 
-
 class CacheBootstrapService:
 
     @classmethod

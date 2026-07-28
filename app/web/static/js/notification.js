@@ -1,147 +1,5 @@
 "use strict";
 
-const NotificationTypes = {
-
-    "issue.created": {
-        title: "Issue Created",
-        icon: "📝",
-        color: "#10b981",
-    },
-
-    "issue.updated": {
-        title: "Issue Updated",
-        icon: "📝",
-        color: "#3b82f6",
-    },
-
-    "issue.deleted": {
-        title: "Issue Deleted",
-        icon: "🗑️",
-        color: "#ef4444",
-    },
-
-    "issue.assigned": {
-        title: "Assigned",
-        icon: "🎯",
-        color: "#8b5cf6",
-    },
-
-    "issue.unassigned": {
-        title: "Unassigned",
-        icon: "👤",
-        color: "#64748b",
-    },
-
-    "issue.status.changed": {
-        title: "Status Changed",
-        icon: "🔄",
-        color: "#06b6d4",
-    },
-
-    "issue.priority.changed": {
-        title: "Priority Changed",
-        icon: "⚡",
-        color: "#f59e0b",
-    },
-
-    "issue.due_date.changed": {
-        title: "Due Date Changed",
-        icon: "📅",
-        color: "#f97316",
-    },
-
-    "issue.comment.created": {
-        title: "Comment Added",
-        icon: "💬",
-        color: "#3b82f6",
-    },
-
-    "issue.comment.updated": {
-        title: "Comment Updated",
-        icon: "✏️",
-        color: "#2563eb",
-    },
-
-    "issue.comment.deleted": {
-        title: "Comment Deleted",
-        icon: "🗑️",
-        color: "#dc2626",
-    },
-
-    "project.created": {
-        title: "Project Created",
-        icon: "📁",
-        color: "#10b981",
-    },
-
-    "project.updated": {
-        title: "Project Updated",
-        icon: "📁",
-        color: "#3b82f6",
-    },
-
-    "project.deleted": {
-        title: "Project Deleted",
-        icon: "🗑️",
-        color: "#ef4444",
-    },
-
-    "project.member.added": {
-        title: "Member Added",
-        icon: "👥",
-        color: "#8b5cf6",
-    },
-
-    "project.member.removed": {
-        title: "Member Removed",
-        icon: "👤",
-        color: "#ef4444",
-    },
-
-    "project.member.role.changed": {
-        title: "Role Changed",
-        icon: "🛡️",
-        color: "#f59e0b",
-    },
-
-    "user.logged_in": {
-        title: "Signed In",
-        icon: "🔑",
-        color: "#10b981",
-    },
-
-    "user.logged_out": {
-        title: "Signed Out",
-        icon: "🚪",
-        color: "#64748b",
-    },
-
-    "user.logged_out_all": {
-        title: "Signed Out Everywhere",
-        icon: "🚪",
-        color: "#ef4444",
-    },
-
-    "user.password.changed": {
-        title: "Password Changed",
-        icon: "🔒",
-        color: "#f59e0b",
-    },
-
-    "user.email.verified": {
-        title: "Email Verified",
-        icon: "✅",
-        color: "#10b981",
-    },
-
-    "user.deleted": {
-        title: "Account Deleted",
-        icon: "🗑️",
-        color: "#ef4444",
-    },
-
-};
-
 
 class NotificationCenter {
     constructor() {
@@ -270,7 +128,6 @@ class NotificationCenter {
     }
 }
 
-
 class NotificationCard {
     constructor(notification) {
         this.notification = notification;
@@ -279,10 +136,11 @@ class NotificationCard {
         this.body = null;
     }
     getType() {
-        return NotificationTypes[this.notification.type] ?? {
+        return NotificationRegistry[this.notification.type] ?? {
             title: "Notification",
             icon: "🔔",
             color: "#64748b",
+            template: BaseNotification,
         };
     }
     getTime() {
@@ -330,29 +188,8 @@ class NotificationCard {
         return card;
     }
     renderBody() {
-        return `
-        <div class="notification-row">
-            <div class="notification-label">Project</div>
-            <div class="notification-value">${this.notification.project.name}</div>
-        </div>
-        ${this.notification.issue ? `
-        <div class="notification-row">
-            <div class="notification-label">Issue</div>
-            <div class="notification-value">${this.notification.issue.title}</div>
-        </div>` : ""}
-        ${this.notification.author ? `
-        <div class="notification-row">
-            <div class="notification-label">From</div>
-            <div class="notification-value">${this.notification.author.username}</div>
-        </div>` : ""}
-        <div class="notification-row">
-            <div class="notification-label">Message</div>
-            <div class="notification-message">${this.notification.message}</div>
-        </div>
-        ${this.notification.action ? `
-        <a class="notification-open" href="${this.notification.action.url}">${this.notification.action.text} →</a>` 
-        : ""}
-    `;
+        const type = this.getType();
+        return new type.template(this.notification).render();
     }
     bindEvents() {
         const close = this.element.querySelector(".notification-close");
@@ -387,6 +224,108 @@ class NotificationCard {
     remove() {clearInterval(this.timer);notificationCenter.remove(this.notification.id);}
 }
 
+class BaseNotification {
+    constructor(notification) {this.notification = notification;}
+    row(label, value) {
+        if (!value) {return "";}
+        return `
+            <div class="notification-row">
+                <div class="notification-label">${label}</div>
+                <div class="notification-value">${value}</div>
+            </div>
+        `;
+    }
+
+    message(text = this.notification.message) {
+        if (!text) {
+            return "";
+        }
+
+        return `
+            <blockquote class="notification-message">
+                ${text}
+            </blockquote>
+        `;
+    }
+
+    action() {
+        if (!this.notification.action) {
+            return "";
+        }
+
+        return `
+            <a class="notification-open"
+               href="${this.notification.action.url}">
+                ${this.notification.action.text} →
+            </a>
+        `;
+    }
+
+    render() {
+        return this.message() + this.action();
+    }
+}
+
+class CommentNotification extends BaseNotification {
+    render() {
+        return `
+            ${this.row("Project", this.notification.project.name)}
+            ${this.row("Issue", this.notification.issue.title)}
+            ${this.row("Author", this.notification.author.username)}
+            ${this.message()}
+            ${this.action()}
+        `;
+    }
+}
+
+class ProjectNotification extends BaseNotification {
+    render() {
+        return `
+            ${this.row("Project", this.notification.project.name)}
+            ${this.row("Owner", this.notification.author.username)}
+            ${this.action()}
+        `;
+    }
+}
+
+class IssueNotification extends BaseNotification {
+    render() {
+        return `
+            ${this.row("Project", this.notification.project.name)}
+            ${this.row("Issue", this.notification.issue.title)}
+            ${this.row("Author", this.notification.author.username)}
+            ${this.action()}
+        `;
+    }
+}
+
+class UserRegisteredNotification extends BaseNotification {
+    render() {
+        return `
+            <div class="notification-big-title">🎉 ${this.notification.author.username}</div>
+            <div class="notification-description">Joined IssueFlow</div>
+            ${this.action()}
+        `;
+    }
+
+}
+
+class UserNotification extends BaseNotification {
+    render() {
+        return ` ${this.message()}${this.action()}`;
+    }
+}
+
+class ProjectMemberNotification extends BaseNotification {
+    render() {
+        return `
+            ${this.row("Project", this.notification.project.name)}
+            ${this.row("User", this.notification.member.username)}
+            ${this.row("Role", this.notification.member.role)}
+            ${this.action()}
+        `;
+    }
+}
 
 class NotificationFactory {
     static handlers = {
@@ -532,3 +471,174 @@ class NotificationFactory {
 
 window.notificationCenter = new NotificationCenter();
 window.NotificationFactory = NotificationFactory
+const NotificationRegistry = {
+
+    "issue.created": {
+        title: "Issue Created",
+        icon: "📝",
+        color: "#10b981",
+        template: IssueNotification,
+    },
+
+    "issue.updated": {
+        title: "Issue Updated",
+        icon: "📝",
+        color: "#3b82f6",
+        template: IssueNotification,
+    },
+
+    "issue.deleted": {
+        title: "Issue Deleted",
+        icon: "🗑️",
+        color: "#ef4444",
+        template: IssueNotification,
+    },
+
+    "issue.assigned": {
+        title: "Assigned",
+        icon: "🎯",
+        color: "#8b5cf6",
+        template: IssueNotification,
+    },
+
+    "issue.unassigned": {
+        title: "Unassigned",
+        icon: "👤",
+        color: "#64748b",
+        template: IssueNotification,
+    },
+
+    "issue.status.changed": {
+        title: "Status Changed",
+        icon: "🔄",
+        color: "#06b6d4",
+        template: IssueNotification,
+    },
+
+    "issue.priority.changed": {
+        title: "Priority Changed",
+        icon: "⚡",
+        color: "#f59e0b",
+        template: IssueNotification,
+    },
+
+    "issue.due_date.changed": {
+        title: "Due Date Changed",
+        icon: "📅",
+        color: "#f97316",
+        template: IssueNotification,
+    },
+
+    "issue.comment.created": {
+        title: "Comment Added",
+        icon: "💬",
+        color: "#3b82f6",
+        template: CommentNotification,
+    },
+
+    "issue.comment.updated": {
+        title: "Comment Updated",
+        icon: "✏️",
+        color: "#2563eb",
+        template: CommentNotification,
+    },
+
+    "issue.comment.deleted": {
+        title: "Comment Deleted",
+        icon: "🗑️",
+        color: "#dc2626",
+        template: CommentNotification,
+    },
+
+    "project.created": {
+        title: "Project Created",
+        icon: "📁",
+        color: "#10b981",
+        template: ProjectNotification,
+    },
+
+    "project.updated": {
+        title: "Project Updated",
+        icon: "📁",
+        color: "#3b82f6",
+        template: ProjectNotification,
+    },
+
+    "project.deleted": {
+        title: "Project Deleted",
+        icon: "🗑️",
+        color: "#ef4444",
+        template: ProjectNotification,
+    },
+
+    "project.member.added": {
+        title: "Member Added",
+        icon: "👥",
+        color: "#8b5cf6",
+        template: ProjectMemberNotification,
+    },
+
+    "project.member.removed": {
+        title: "Member Removed",
+        icon: "👤",
+        color: "#ef4444",
+        template: ProjectMemberNotification,
+    },
+
+    "project.member.role.changed": {
+        title: "Role Changed",
+        icon: "🛡️",
+        color: "#f59e0b",
+        template: ProjectMemberNotification,
+    },
+
+    "user.registered": {
+        title: "Welcome!",
+        icon: "🎉",
+        color: "#10b981",
+        template: UserRegisteredNotification,
+    },
+
+    "user.email.verified": {
+        title: "Email Verified",
+        icon: "✅",
+        color: "#10b981",
+        template: UserNotification,
+    },
+
+    "user.password.changed": {
+        title: "Password Changed",
+        icon: "🔒",
+        color: "#f59e0b",
+        template: UserNotification,
+    },
+
+    "user.logged_in": {
+        title: "Signed In",
+        icon: "🔑",
+        color: "#10b981",
+        template: UserNotification,
+    },
+
+    "user.logged_out": {
+        title: "Signed Out",
+        icon: "🚪",
+        color: "#64748b",
+        template: UserNotification,
+    },
+
+    "user.logged_out_all": {
+        title: "Signed Out Everywhere",
+        icon: "🚪",
+        color: "#ef4444",
+        template: UserNotification,
+    },
+
+    "user.deleted": {
+        title: "Account Deleted",
+        icon: "🗑️",
+        color: "#ef4444",
+        template: UserNotification,
+    },
+
+};

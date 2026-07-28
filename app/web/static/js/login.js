@@ -7,7 +7,7 @@ form.addEventListener("submit", async (e) => {
     e.preventDefault();
     error.textContent = "";
 
-    const username = document.getElementById("username").value.trim();
+    const username = document.getElementById("username_").value.trim();
     const password = document.getElementById("password").value;
     const res = await api.post("/api/auth/login", {username:username, password: password});
 

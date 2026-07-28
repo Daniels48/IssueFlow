@@ -83,14 +83,6 @@ async function refreshToken() {
     finally {refreshPromise = null;}
 }
 
-async function logout() {
-    await fetch(data_url.logout, {
-        method: "POST",
-        credentials: "include",
-    });
-    window.location.reload();
-}
-
 class WSClient {
     constructor() {
         this.socket = null;
@@ -225,7 +217,6 @@ class WSClient {
 
 window.ws = new WSClient();
 
-window.ws.connect();
 
 ws.on("*", (event) => {
     console.log(event)
@@ -238,6 +229,16 @@ window.logout = logout;
 window.data_url = data_url;
 
 const user_header = document.getElementById("username");
+const logout_btn = document.getElementById("logout");
+logout_btn.addEventListener("click", window.logout);
+
+async function logout() {
+    await fetch(data_url.logout, {
+        method: "POST",
+        credentials: "include",
+    });
+    window.location.reload();
+}
 
 async function loadUser() {
     const res = await api.get(window.data_url.me);
@@ -249,5 +250,9 @@ async function loadUser() {
     const user = await res.json();
     if (user_header) {user_header.textContent = user.username;}
 }
+const authPages = [data_url.login, data_url.register];
 
-loadUser()
+if (!authPages.includes(location.pathname)) {
+    loadUser();
+    window.ws.connect();
+}

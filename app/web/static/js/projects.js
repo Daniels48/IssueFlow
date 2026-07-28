@@ -74,11 +74,7 @@ function renderProjects(projects) {
 
 projectsContainer.onclick = (e) => {
     const card = e.target.closest(".project-card");
-
-    if (!card) {
-        return;
-    }
-
+    if (!card) {return;}
     location.href = `/projects/${card.dataset.id}`;
 };
 

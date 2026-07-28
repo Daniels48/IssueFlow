@@ -14,3 +14,7 @@ class NotificationService:
             members.discard(exclude)
 
         await manager.send_to_users(members, message)
+
+    @classmethod
+    async def notify_all(cls, message: dict) -> None:
+        await manager.broadcast(message)

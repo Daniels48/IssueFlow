@@ -1,12 +1,11 @@
 from datetime import datetime
 from typing import ClassVar, Self
-from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
 from app.events.base import Event, ProjectData, UserData
 from app.events.routing_keys import RoutingKeys
-from app.infrastructure.db.models import User, Project
+from app.infrastructure.db.models import Project, User
 from app.utils.func_utils import to
 
 

@@ -9,7 +9,6 @@ const edit_btn = document.getElementById("edit-project");
 
 const membersContainer = document.getElementById("members-list");
 const issuesContainer = document.getElementById("issues");
-const logout_btn = document.getElementById("logout");
 const del_btn = document.getElementById("delete-project");
 const manage_btn = document.getElementById("manage-members");
 const modal = document.getElementById("members-modal");
@@ -30,7 +29,6 @@ const issue_assignee = document.getElementById("issue-assignee");
 
 // --------- Event Managed -----------------------------------------
 edit_btn.addEventListener("click", editProject);
-logout_btn.addEventListener("click", window.logout);
 del_btn.addEventListener("click", deleteProject);
 manage_btn.addEventListener("click", manage_members);
 modal_close_btn.addEventListener("click", manage_members);

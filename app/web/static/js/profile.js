@@ -9,7 +9,7 @@ const created = document.getElementById("created_at");
 const verified = document.getElementById("verified");
 const status = document.getElementById("status");
 
-document.getElementById("logout").addEventListener("click", window.logout);
+
 
 async function loadProfile() {
 
