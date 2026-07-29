@@ -16,6 +16,7 @@ from app.modules.auth.repository import SessionRepository
 from app.modules.users.repository import UserRepository
 from app.modules.users.schema import UserCreate
 from app.utils.func_utils import get_now_dt
+from app.workers import send_email_task
 
 
 class AuthService:
@@ -72,7 +73,10 @@ class AuthService:
 
         data_access, session = await self._create_session_and_tokens(user)
 
-        await RabbitPublisher.publish(UserLoggedInEvent.from_models(author=user, session=session))
+        event = UserLoggedInEvent.from_models(author=user, session=session)
+        await RabbitPublisher.publish(event)
+
+        send_email_task.delay(user.email, "Welcome to IssueFlow", f"Hello {user.username}")
 
         return {ACCESS_COOKIE: data_access[ACCESS_COOKIE], REFRESH_COOKIE: data_access[REFRESH_COOKIE]}
 

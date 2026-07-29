@@ -7,6 +7,7 @@ const data_url = {
     logout: "/api/auth/logout",
     login: "/login",
     register: "/register",
+    verify_email: "/api/auth/email/verify",
 
     projects: "/api/projects",
     me: "/api/users/me",

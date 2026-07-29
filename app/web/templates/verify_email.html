@@ -1,0 +1,50 @@
+    {% extends "base.html" %} {% block content %}
+      <main class="verify-page">
+
+    <div class="verify-lock">
+        🔐
+    </div>
+
+    <h1>Email verification</h1>
+
+    <p class="verify-description">
+        We've sent a six-digit verification code to
+    </p>
+
+    <div class="verify-address">
+        dan***@gmail.com
+    </div>
+
+    <form id="verify-form">
+        <div class="verify-code">
+            <input maxlength="1" inputmode="numeric">
+            <input maxlength="1" inputmode="numeric">
+            <input maxlength="1" inputmode="numeric">
+            <input maxlength="1" inputmode="numeric">
+            <input maxlength="1" inputmode="numeric">
+            <input maxlength="1" inputmode="numeric">
+        </div>
+        <p id="verify-error" class="verify-error hidden"></p>
+        <button type="submit" class="verify-button">
+            Verify email
+        </button>
+    </form>
+
+    <p class="verify-info">
+        The verification code expires in
+        <strong>10 minutes</strong>.
+    </p>
+
+    <div class="verify-actions">
+
+        <button type="button" class="verify-link" id="resend-code">
+            Resend code
+        </button>
+
+        <button type="button" class="verify-link">
+            Change email
+        </button>
+
+    </div>
+
+</main>{% endblock %}

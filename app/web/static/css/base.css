@@ -93,23 +93,6 @@ button {
 .nav>a.active {
     color: var(--white);
 }
-
-nav {
-    display: flex;
-    align-items: center;
-    gap: 24px;
-}
-
-nav a {
-    color: var(--muted);
-    transition: .2s;
-}
-
-nav a:hover,
-nav a.active {
-    color: white;
-}
-
 .user {
     display: flex;
     align-items: center;

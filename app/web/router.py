@@ -3,6 +3,9 @@ from uuid import UUID
 from fastapi import APIRouter, Request
 from fastapi.templating import Jinja2Templates
 
+from fastapi.responses import RedirectResponse
+from app.modules.auth.dependencies import CurrentUser
+
 router = APIRouter()
 
 
@@ -84,6 +87,7 @@ async def login(request: Request):
         },
     )
 
+
 @router.get("/profile")
 async def profile(request: Request):
     list_js_files = ["profile"]
@@ -91,6 +95,25 @@ async def profile(request: Request):
     return templates.TemplateResponse(request=request, name="profile.html",
         context={
             "title": "Profile • IssueFlow",
+            "css_files": list_css_files,
+            "js_files": list_js_files,
+        },
+    )
+
+
+@router.get("/verify-email")
+async def verify_email(request: Request, user: CurrentUser):
+    if user.email_verified_at:
+        return RedirectResponse("/projects")
+
+    list_js_files = ["verify_email"]
+    list_css_files = ["verify_email", "base"]
+    return templates.TemplateResponse(request=request, name="verify_email.html",
+        context={
+            "title": "Verify-Email • IssueFlow",
+            "verify_url": "dd45512@yandex.ru",
+            "username": "dappes",
+            "email": "dd4512@yandex.ru",
             "css_files": list_css_files,
             "js_files": list_js_files,
         },
