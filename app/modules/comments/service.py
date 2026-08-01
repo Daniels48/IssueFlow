@@ -4,12 +4,18 @@ from uuid import UUID
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.events import CommentCreatedEvent, CommentUpdatedEvent, CommentDeletedEvent
-from app.infrastructure.db.models import User, Comment
+from app.events import CommentCreatedEvent, CommentDeletedEvent, CommentUpdatedEvent
+from app.infrastructure.db.models import Comment, User
 from app.infrastructure.rabbitmq import RabbitPublisher
 from app.modules.auth.dependencies import DBSession
+from app.modules.auth.email import EmailVerificationService
 from app.modules.comments.repository import CommentRepository
-from app.modules.comments.schema import CommentCreate, CommentUpdate, CommentResponse, CommentResponseBase
+from app.modules.comments.schema import (
+    CommentCreate,
+    CommentResponse,
+    CommentResponseBase,
+    CommentUpdate,
+)
 from app.modules.issue.repository import IssueRepository
 from app.utils.func_utils import to
 

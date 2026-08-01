@@ -1,4 +1,4 @@
-from app.events import CommentCreatedEvent, CommentUpdatedEvent, CommentDeletedEvent
+from app.events import CommentCreatedEvent, CommentDeletedEvent, CommentUpdatedEvent
 from app.workers.websocket.dispatcher import dispatcher
 from app.workers.websocket.notification import NotificationService
 

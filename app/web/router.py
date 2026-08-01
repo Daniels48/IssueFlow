@@ -1,9 +1,9 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Request
+from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from fastapi.responses import RedirectResponse
 from app.modules.auth.dependencies import CurrentUser
 
 router = APIRouter()

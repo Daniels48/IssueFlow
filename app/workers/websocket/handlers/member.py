@@ -1,4 +1,4 @@
-from app.workers.websocket.cache.project import ProjectCache
+from app.infrastructure.reddis.project import ProjectCache
 from app.workers.websocket.dispatcher import dispatcher
 from app.events import ProjectMemberRemovedEvent,ProjectMemberAddedEvent,ProjectMemberRoleChangedEvent
 from app.workers.websocket.notification import NotificationService

@@ -3,7 +3,7 @@ from uuid import UUID
 
 from app.core.config import settings
 from app.infrastructure.db.models import Project
-from app.workers.websocket.cache.redis import RedisConnection
+from app.infrastructure.reddis.connection import RedisConnection
 
 
 class ProjectCache:

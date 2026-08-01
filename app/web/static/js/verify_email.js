@@ -5,6 +5,7 @@ const inputs = [...document.querySelectorAll(".verify-code input")];
 const resendBtn = document.getElementById("resend-code");
 const submitBtn = form.querySelector("button");
 const error = document.getElementById("verify-error");
+const change_email = document.getElementById("change-email");
 
 inputs[0].focus();
 inputs.forEach((input, index) => {
@@ -37,6 +38,8 @@ inputs.forEach((input, index) => {
 });
 form.addEventListener("submit", verifyEmail);
 resendBtn.addEventListener("click", resendCode);
+change_email.addEventListener("click", change_email_func);
+
 async function verifyEmail(e) {
     e.preventDefault();
     clearError();
@@ -79,7 +82,7 @@ async function resendCode() {
     if (resendBtn.disabled) {return;}
     clearError();
     resendBtn.disabled = true;
-    const res = await api.post("/api/auth/email/resend");
+    const res = await api.post(window.data_url.resend_email_code, {});
     if (!res) {
         resendBtn.disabled = false;
         return;
@@ -127,4 +130,29 @@ function showError(text) {
 function clearError() {
     error.textContent = "";
     error.classList.add("hidden");
+}
+
+async function change_email_func() {
+    const email = prompt("Enter new email");
+    if (email === null) {return;}
+
+    if (!email.trim()) {
+        alert("Email cannot be empty.");
+        return;
+    }
+
+    const res = await api.patch(window.data_url.change_email, { email: email.trim() });
+
+    if (!res) {
+        alert("Unable to change email.");
+        return;
+    }
+
+    if (!res.ok) {
+        const error = await res.json().catch(() => null);
+        alert(error?.detail ?? "Unable to change email.");
+        return;
+    }
+
+    alert("Verification code has been sent to your new email.");
 }

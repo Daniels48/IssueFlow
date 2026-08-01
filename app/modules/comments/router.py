@@ -3,9 +3,12 @@ from uuid import UUID
 from fastapi import APIRouter, status
 
 from app.modules.auth.dependencies import CurrentUser
-from app.modules.comments.schema import CommentCreate, CommentUpdate, CommentResponseBase
+from app.modules.comments.schema import (
+    CommentCreate,
+    CommentResponseBase,
+    CommentUpdate,
+)
 from app.modules.comments.service import comments_service
-
 
 router = APIRouter(prefix="/projects/{project_id}/issues/{issue_id}/comments",tags=["Comments"])
 

@@ -10,6 +10,7 @@ from app.infrastructure.db.models import Session, User
 from app.infrastructure.db.models.model_session import Session
 from app.infrastructure.rabbitmq import RabbitPublisher
 from app.modules.auth.cookie import ACCESS_COOKIE, REFRESH_COOKIE
+from app.modules.auth.email import EmailVerificationService
 from app.modules.auth.jwt import JWTService
 from app.modules.auth.password import PasswordService
 from app.modules.auth.repository import SessionRepository
@@ -44,6 +45,8 @@ class AuthService:
 
         data_access, session = await self._create_session_and_tokens(user)
 
+        await EmailVerificationService.send(user)
+        
         await RabbitPublisher.publish(UserRegisteredEvent.from_models(author=user, session=session))
 
         return {"user": user, "data": data_access}

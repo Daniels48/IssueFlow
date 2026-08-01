@@ -29,3 +29,13 @@ class UserResponse(BaseModel):
     is_active: bool
     email_verified_at: datetime | None
     created_at: datetime
+
+class VerifyEmailRequest(BaseModel):
+    code: str = Field(
+        min_length=6,
+        max_length=6,
+        pattern=r"^\d{6}$",
+    )
+
+class ChangeEmailRequest(BaseModel):
+    email: EmailStr

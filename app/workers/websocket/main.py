@@ -4,7 +4,7 @@ from fastapi import FastAPI
 
 import app.workers.websocket.handlers
 from app.infrastructure.rabbitmq import RabbitConnection, RabbitConsumer
-from app.workers.websocket.cache.redis import RedisConnection
+from app.infrastructure.reddis.connection import RedisConnection
 from app.workers.websocket.dispatcher import dispatcher
 from app.workers.websocket.router import router
 from app.workers.websocket.service import CacheBootstrapService
