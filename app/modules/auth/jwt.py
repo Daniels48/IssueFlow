@@ -5,8 +5,10 @@ from datetime import timedelta, datetime
 from uuid import UUID
 
 from jose import JWTError, ExpiredSignatureError, jwt
+from pydantic import ValidationError
 
 from app.core.config import settings
+from app.core.exceptions import AppException, ErrorCode
 from app.modules.auth.schemas import AccessTokenPayload
 
 
@@ -17,11 +19,12 @@ class JWTService:
     expire_minutes = settings.security.access_token_expire_min
 
     @classmethod
-    def create_access_token(cls, public_id: UUID, now: datetime) -> str:
+    def create_access_token(cls, public_id: UUID, session_id: UUID, now: datetime) -> str:
 
         payload = {
             "sub": str(public_id),
             "iat": now,
+            "sid": str(session_id),
             "exp": now + timedelta(minutes=cls.expire_minutes),
         }
 
@@ -34,10 +37,13 @@ class JWTService:
             return AccessTokenPayload.model_validate(payload)
 
         except ExpiredSignatureError:
-            raise ValueError("Token expired")
+            raise AppException(code=ErrorCode.TOKEN_EXPIRED, message="Token expired")
 
-        except JWTError:
-            raise ValueError("Invalid token")
+        except JWTError as exc:
+            raise AppException(code=ErrorCode.INVALID_TOKEN, message=f"Invalid access token: {exc}") from exc
+
+        except ValidationError as exc:
+            raise AppException(code=ErrorCode.INVALID_TOKEN,message=f"Invalid access token payload: {exc}") from exc
 
     @staticmethod
     def hash_refresh_token(token: str) -> str:

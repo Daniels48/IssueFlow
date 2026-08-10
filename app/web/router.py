@@ -118,3 +118,40 @@ async def verify_email(request: Request, user: CurrentUser):
             "js_files": list_js_files,
         },
     )
+
+
+@router.get("/change-password")
+async def change_password(request: Request, user: CurrentUser):
+    list_js_files = ["change_password"]
+    list_css_files = ["change_password", "base"]
+    return templates.TemplateResponse(request=request, name="change_password.html",
+        context={
+            "title": "Change-Password • IssueFlow",
+            "css_files": list_css_files,
+            "js_files": list_js_files,
+        },
+    )
+
+@router.get("/reset-password-1")
+async def reset_password(request: Request, user: CurrentUser):
+    list_js_files = ["reset_password_1"]
+    list_css_files = ["verify_email", "base", "reset_password_1"]
+    return templates.TemplateResponse(request=request, name="reset_password_1.html",
+        context={
+            "title": "Reset-Password • IssueFlow",
+            "css_files": list_css_files,
+            "js_files": list_js_files,
+        },
+    )
+
+@router.get("/reset-password-2")
+async def reset_password(request: Request, user: CurrentUser):
+    list_js_files = ["verify_email"]
+    list_css_files = ["verify_email", "base", "reset_password_1"]
+    return templates.TemplateResponse(request=request, name="reset_password_2.html",
+        context={
+            "title": "Reset-Password • IssueFlow",
+            "css_files": list_css_files,
+            # "js_files": list_js_files,
+        },
+    )

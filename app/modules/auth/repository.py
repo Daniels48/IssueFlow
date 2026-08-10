@@ -1,6 +1,8 @@
 from datetime import datetime
+from typing import Any, Sequence
+from uuid import UUID
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, Row
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.db.models.model_session import Session
@@ -14,6 +16,34 @@ class SessionRepository:
         await db.commit()
         await db.refresh(session)
         return session
+
+    @staticmethod
+    async def get_list_by_user_id(db: AsyncSession,user_id: int,) -> list[Session]:
+        now = get_now_dt()
+
+        stmt = (
+            select(Session)
+            .where(
+                Session.user_id == user_id,
+                Session.deleted_at.is_(None),
+                Session.expires_at > now,
+            )
+        )
+
+        result = await db.execute(stmt)
+
+        return list(result.scalars().all())
+
+
+    @staticmethod
+    async def get_by_session_id(db: AsyncSession, session_id: UUID) -> Session | None:
+        stmt = (
+            select(Session)
+            .where(Session.public_id == session_id)
+        )
+
+        result = await db.execute(stmt)
+        return result.scalar_one_or_none()
 
     @staticmethod
     async def get_by_refresh_hash(db: AsyncSession, refresh_token_hash: str) -> Session | None:
@@ -51,7 +81,7 @@ class SessionRepository:
         now = get_now_dt()
 
         for session in sessions:
-            session.revoked_at = now
+            session.deleted_at = now
 
         await db.commit()
 

@@ -5,13 +5,12 @@ from fastapi import Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.db.models import User
-from app.infrastructure.reddis.verify_email import VerifyEmailCache
 from app.modules.auth.dependencies import DBSession
-from app.modules.auth.email import EmailVerificationService
 from app.modules.project_members.repository import ProjectMemberRepository
 from app.modules.projects.repository import ProjectRepository
 from app.modules.users.repository import UserRepository
-from app.modules.users.schema import UserShortResponse, ChangeEmailRequest
+from app.modules.users.schema import UserShortResponse
+from app.modules.users.email_service import VerifyEmailService, PasswordResetService, VerifyEmailCache
 
 
 class UserService:
@@ -51,7 +50,7 @@ class UserService:
         if user.email_verified_at:
             return
 
-        await EmailVerificationService.send(user)
+        await VerifyEmailService.send(user)
 
     async def change_email(self,user: User, email: str) -> None:
         if user.email == email:
@@ -65,7 +64,17 @@ class UserService:
 
         await self.db.commit()
 
-        await EmailVerificationService.send(user)
+        await VerifyEmailService.send(user)
+
+    async def change_password(self, user: User, password: str) -> None:
+        pass
+
+    async def reset_password(self, user: User, password: str) -> None:
+        pass
+
+    async def reset_password2(self, user: User, password: str) -> None:
+        pass
+
 
 
 async def get_user_service(db: DBSession) -> UserService:

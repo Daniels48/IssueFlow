@@ -39,3 +39,6 @@ class VerifyEmailRequest(BaseModel):
 
 class ChangeEmailRequest(BaseModel):
     email: EmailStr
+
+class ChangePasswordRequest(BaseModel):
+    password: str = Field(min_length=8,max_length=128)

@@ -18,3 +18,9 @@ class AccessTokenPayload(BaseModel):
     sub: UUID
     exp: datetime
     iat: datetime
+    sid: UUID
+
+class SessionModel(BaseModel):
+    public_id: UUID
+    ip_address: str | None
+    user_agent: str | None

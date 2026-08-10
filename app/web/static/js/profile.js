@@ -19,8 +19,17 @@ async function loadProfile() {
         return;
     }
     const user = await res.json();
-    console.log(user.username)
-    console.log(user_data)
+
+
+    const res2 = await api.get(window.data_url.sessions);
+    if (!res2) return;
+    if (!res2.ok) {
+        // location.href = window.data_url.login;
+        return;
+    }
+    const session = await res.json();
+    console.log(session)
+
     user_data.textContent = user.username;
     email.textContent = user.email;
     avatar.textContent = user.username.charAt(0).toUpperCase();
@@ -41,11 +50,9 @@ async function loadProfile() {
 
     if (user.email_verified) {
         verified.textContent = "Yes";
-        status.textContent = "Verified";
         verifyContainer.classList.add("hidden");
     } else {
         verified.textContent = "No";
-        status.textContent = "Email not verified";
         verifyContainer.classList.remove("hidden");
 
     }
@@ -54,6 +61,22 @@ async function loadProfile() {
     .addEventListener("click", () => {
         location.href = "/verify-email";
     });
+    const toggleSessionsBtn = document.getElementById(
+        "toggle-sessions-btn"
+    );
+
+    const sessionsList = document.getElementById(
+        "sessions-list"
+    );
+
+    toggleSessionsBtn.addEventListener("click", () => {
+        const expanded = sessionsList.classList.toggle("show-all");
+
+        toggleSessionsBtn.textContent = expanded
+            ? "Show less"
+            : "Show more";
+    });
+
 }
 
 loadProfile();

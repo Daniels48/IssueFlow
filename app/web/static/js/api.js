@@ -10,10 +10,13 @@ const data_url = {
     verify_email: "/api/users/verify-email",
     resend_email_code: "/api/users/resend-email-code",
     change_email: "/api/users/email-change",
+    change_password: "/api/users/password-change",
+    reset_password: "/api/users/password-reset",
 
     projects: "/api/projects",
     me: "/api/users/me",
     ws: `://${location.host}/ws`,
+    sessions: "/api/auth/all_session",
 
     project: (projectId) => `${data_url.projects}/${projectId}`,
 

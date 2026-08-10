@@ -1,21 +1,20 @@
 import secrets
 from uuid import UUID
 
-from app.core.config import settings
-
-from .connection import RedisConnection
+from app.infrastructure.reddis.connection import RedisConnection
 
 
 def _generate_verification_code() -> str:
     return f"{secrets.randbelow(1_000_000):06d}"
 
 
-class VerifyEmailCache:
-    PREFIX = f"{settings.redis.prefix}:verify_email"
-    COOLDOWN_PREFIX = f"{settings.redis.prefix}:verify_email_cooldown"
-    TTL = 600  # 10 минут
+class BaseCodeCache:
+    PREFIX: str
+    COOLDOWN_PREFIX: str
+
+    TTL = 600
     COOLDOWN = 60
-    
+
     @classmethod
     def _key(cls, user_id: UUID) -> str:
         return f"{cls.PREFIX}:{user_id}"
@@ -27,28 +26,16 @@ class VerifyEmailCache:
     @classmethod
     async def set_cooldown(cls, user_id: UUID) -> None:
         redis = await RedisConnection.get_client()
-        await redis.set(cls._cooldown_key(user_id), 1, ex=60)
+        await redis.set(cls._cooldown_key(user_id), 1, ex=cls.COOLDOWN)
 
     @classmethod
     async def has_cooldown(cls, user_id: UUID) -> bool:
         redis = await RedisConnection.get_client()
         return bool(await redis.exists(cls._cooldown_key(user_id)))
 
-    # if await VerifyEmailCache.has_cooldown(user.public_id):
-    #     raise TooManyRequestsException()
-    #
-    # code = generate_verification_code()
-    #
-    # await VerifyEmailCache.set(user.public_id, code)
-    #
-    # await VerifyEmailCache.set_cooldown(user.public_id)
-    #
-    # send_email_task.delay(...)
-
     @classmethod
-    async def set(cls,user_id: UUID,code: str,) -> None:
+    async def set(cls, user_id: UUID, code: str) -> None:
         redis = await RedisConnection.get_client()
-
         await redis.set(cls._key(user_id), code, ex=cls.TTL)
 
     @classmethod
@@ -57,7 +44,7 @@ class VerifyEmailCache:
         return await redis.get(cls._key(user_id))
 
     @classmethod
-    async def delete(cls,user_id: UUID,) -> None:
+    async def delete(cls, user_id: UUID) -> None:
         redis = await RedisConnection.get_client()
         await redis.delete(cls._key(user_id))
 

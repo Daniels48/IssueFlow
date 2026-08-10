@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from app.infrastructure.reddis.project import ProjectCache
+from app.infrastructure.reddis.project_cache import ProjectCache
 from app.workers.websocket.manager import manager
 
 

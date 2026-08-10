@@ -8,7 +8,6 @@ from app.events import CommentCreatedEvent, CommentDeletedEvent, CommentUpdatedE
 from app.infrastructure.db.models import Comment, User
 from app.infrastructure.rabbitmq import RabbitPublisher
 from app.modules.auth.dependencies import DBSession
-from app.modules.auth.email import EmailVerificationService
 from app.modules.comments.repository import CommentRepository
 from app.modules.comments.schema import (
     CommentCreate,
