@@ -1,5 +1,6 @@
 from fastapi import WebSocket, status
 
+from app.core.exceptions import AppException
 from app.modules.auth.jwt import JWTService
 from app.modules.auth.schemas import AccessTokenPayload
 
@@ -13,6 +14,8 @@ async def authenticate(websocket: WebSocket) -> AccessTokenPayload | None:
 
     try:
         return JWTService.decode_access_token(token)
-    except Exception:
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+    except AppException:
+        await websocket.close(code=4001)
         return None
+    except Exception as exc:
+        await websocket.close(code=4002)

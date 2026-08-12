@@ -126,13 +126,13 @@ function renderComments(comments) {
     commentsContainer.insertAdjacentHTML("beforeend", renderTree(comments));
 
     function renderTree(comments, level = 0, parent = null) {
-    let html = ``;
-    for (const comment of comments) {
-        html += commentHtml(comment, level, parent);
-        if (comment.children.length) {html += renderTree(comment.children, level + 1, comment)}
+        let html = ``;
+        for (const comment of comments) {
+            html += commentHtml(comment, level, parent);
+            if (comment.children.length) {html += renderTree(comment.children, level + 1, comment)}
+        }
+        return html;
     }
-    return html;
-}
 }
 
 function commentHtml(comment, level, parent) {
@@ -357,7 +357,6 @@ async function delete_comment(data) {
                 element.remove();
                 const count = commentsContainer.children.length - 1;
                 set_count_comments(count);
-
             }
         }
 }

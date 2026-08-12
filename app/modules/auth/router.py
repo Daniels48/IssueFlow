@@ -1,17 +1,17 @@
+from uuid import UUID
+
 from fastapi import APIRouter, Response, status
 
 from app.modules.auth.cookie import (
-    ACCESS_COOKIE,
-    REFRESH_COOKIE,
-    clear_auth_cookies,
-    set_access_cookie,
-    set_refresh_cookie,
+    ACCESS_COOKIE,REFRESH_COOKIE,clear_auth_cookies,
+    set_access_cookie, set_refresh_cookie,
 )
-from app.modules.auth.dependencies import CurrentUser, DBSession, ValidRefreshToken
+from app.modules.auth.dependencies import CurrentUser, DBSession, ValidRefreshToken, CurrentPayload
 from app.modules.auth.schemas import SessionModel
 from app.modules.auth.service import AuthService
 from app.modules.users.repository import UserRepository
 from app.modules.users.schema import LoginRequest, UserCreate, UserResponse
+
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -41,13 +41,25 @@ async def refresh(token_refresh: ValidRefreshToken, response: Response, db: DBSe
 
 
 @router.post("/logout",status_code=status.HTTP_204_NO_CONTENT)
-async def logout(token_refresh: ValidRefreshToken, db: DBSession, response: Response, user: CurrentUser):
+async def logout(payload: CurrentPayload, db: DBSession, response: Response, user: CurrentUser):
     service = AuthService(repository=UserRepository(), db=db)
-    await service.logout_current(refresh_token=token_refresh, user=user)
+    await service.logout_current(session_id=payload.sid, user=user)
     clear_auth_cookies(response)
 
 
-@router.get("/all_session",response_model=list[SessionModel])
-async def get_all_session(db: DBSession, user: CurrentUser):
+@router.get("/sessions",response_model=list[SessionModel])
+async def get_all_session(payload: CurrentPayload, db: DBSession, user: CurrentUser):
     service = AuthService(repository=UserRepository(), db=db)
-    return await service.get_all_session(user=user)
+    return await service.get_all_session(user=user, session_id=payload.sid)
+
+
+@router.delete("/sessions/others",status_code=status.HTTP_204_NO_CONTENT)
+async def revoke_other_sessions(payload: CurrentPayload, db: DBSession, user: CurrentUser):
+    service = AuthService(repository=UserRepository(), db=db)
+    await service.logout_all(user=user, session_id=payload.sid)
+
+
+@router.delete("/sessions/{session_id}",status_code=status.HTTP_204_NO_CONTENT)
+async def revoke_session(session_id: UUID, db: DBSession, user: CurrentUser):
+    service = AuthService(repository=UserRepository(), db=db)
+    await service.logout_device_id(session_id=session_id, user=user)

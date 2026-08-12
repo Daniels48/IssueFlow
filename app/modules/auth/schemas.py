@@ -1,17 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field
-
-
-class UserLogin(BaseModel):
-    username: str
-    password: str
-
-
-class Token(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
+from pydantic import BaseModel, ConfigDict
 
 
 class AccessTokenPayload(BaseModel):
@@ -21,6 +11,10 @@ class AccessTokenPayload(BaseModel):
     sid: UUID
 
 class SessionModel(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     public_id: UUID
+    updated_at: datetime
     ip_address: str | None
     user_agent: str | None
+    is_current: bool = False

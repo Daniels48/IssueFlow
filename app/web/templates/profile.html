@@ -1,278 +1,66 @@
-        {% extends "base.html" %}
-
-        {% block content %}
-
+        {% extends "base.html" %}{% block content %}
         <main class="container profile-page">
-
-            <!-- PROFILE -->
-
             <section class="profile-card">
-
-                <div class="avatar" id="avatar">D</div>
-
-                <h1 id="user_text">dappes</h1>
+                <div class="avatar" id="avatar"></div>
+                <h1 id="user_text"></h1>
                 <button id="verify-email-btn" class="verify-email-btn">Verify email</button>
-
                 <div class="info">
-
                     <div class="item">
                         <span>Public ID</span>
-                        <strong id="public_id">
-                            019f5cfc-1dc4-79e9-ad86-974e900639bf
-                        </strong>
+                        <strong id="public_id"></strong>
                     </div>
-
                     <div class="item">
                         <span>Created</span>
-                        <strong id="created_at">
-                            13.07.2026, 23:37:34
-                        </strong>
+                        <strong id="created_at"></strong>
                     </div>
-
                     <div class="item">
                         <span>Role</span>
-                        <strong id="is_superuser">
-                            Admin
-                        </strong>
+                        <strong id="is_superuser">Admin</strong>
                     </div>
-
                     <div class="item">
                         <span>Status</span>
-                        <strong id="status">
-                            Active
-                        </strong>
+                        <strong id="status">Active</strong>
                     </div>
-
                     <div class="item">
                         <span>Email</span>
-                        <strong id="email">
-                            dappes@gmail.com
-                        </strong>
+                        <strong id="email">dappes@gmail.com</strong>
                     </div>
-
                     <div class="item">
                         <span>Email verified</span>
-                        <strong id="verified">
-                            dappes@gmail.com
-                        </strong>
+                        <strong id="verified"></strong>
                     </div>
-
                 </div>
-
             </section>
-
-
-            <!-- SECURITY -->
-
             <section class="security-card">
-
                 <h2>Security</h2>
-
-
-                <!-- ACCOUNT -->
-
                 <div class="security-section">
-
                     <h3>Account</h3>
-
                     <div class="security-list">
-
                         <div class="security-item">
-
                             <div class="security-info">
                                 <strong>Email</strong>
                                 <span>dappes@gmail.com</span>
                             </div>
-
-                            <button
-                                id="change-email-btn"
-                                class="secondary-btn"
-                            >
-                                Change email
-                            </button>
-
+                            <button id="change-email-btn" class="secondary-btn">Change email</button>
                         </div>
-
-
                         <div class="security-item">
-
                              <div class="security-info">
                                 <strong>Password</strong>
-                                <span id="password-changed-at">
-                                    Last changed: 2 days ago
-                                </span>
+                                <span id="password-changed-at">Last changed: 2 days ago</span>
                             </div>
-
-                            <button
-                                id="change-password-btn"
-                                class="secondary-btn"
-                            >
-                                Change password
-                            </button>
-
+                            <button id="change-password-btn" class="secondary-btn">Change password</button>
                         </div>
-
                     </div>
-
                 </div>
-
-
-                <!-- SESSIONS -->
-
                 <div class="security-section sessions-section">
-
                     <div class="sessions-header">
-
                         <div>
-                            <h3>Active sessions</h3>
-
-                            <p>
-                                Devices currently signed in to your account
-                            </p>
+                            <h3 id="count-session">Active sessions (3)</h3>
+                            <p>Devices currently signed in to your account</p>
                         </div>
-
-                        <button
-                            id="revoke-all-btn"
-                            class="danger-btn"
-                        >
-                            Revoke all other sessions
-                        </button>
-
+                        <button id="revoke-all-btn" class="danger-btn">Revoke all other sessions</button>
                     </div>
-
-
-                    <div id="sessions-list" class="sessions-list">
-
-                        <!-- CURRENT SESSION -->
-
-                        <div class="session-item">
-
-                            <div class="session-info">
-
-                                <div class="session-device">
-                                    🖥 Chrome · Windows
-
-                                    <span class="current-session">
-                                        Current
-                                    </span>
-                                </div>
-
-                                <span class="session-meta">
-                                    192.168.1.15 · Active now
-                                </span>
-
-                            </div>
-
-                        </div>
-
-
-                        <!-- SESSION 2 -->
-
-                        <div class="session-item">
-
-                            <div class="session-info">
-
-                                <div class="session-device">
-                                    🦊 Firefox · Ubuntu
-                                </div>
-
-                                <span class="session-meta">
-                                    192.168.1.27 · 2 hours ago
-                                </span>
-
-                            </div>
-
-                            <button class="session-revoke-btn">
-                                Revoke
-                            </button>
-
-                        </div>
-
-
-                        <!-- SESSION 3 -->
-
-                        <div class="session-item extra-session">
-
-                            <div class="session-info">
-
-                                <div class="session-device">
-                                    🌐 Chrome · Android
-                                </div>
-
-                                <span class="session-meta">
-                                    192.168.1.42 · Yesterday
-                                </span>
-
-                            </div>
-
-                            <button class="session-revoke-btn">
-                                Revoke
-                            </button>
-
-                        </div>
-
-
-                        <!-- SESSION 4 -->
-
-                        <div class="session-item extra-session">
-
-                            <div class="session-info">
-
-                                <div class="session-device">
-                                    🦊 Firefox · Windows
-                                </div>
-
-                                <span class="session-meta">
-                                    192.168.1.63 · 3 days ago
-                                </span>
-
-                            </div>
-
-                            <button class="session-revoke-btn">
-                                Revoke
-                            </button>
-
-                        </div>
-
-
-                        <!-- SESSION 5 -->
-
-                        <div class="session-item extra-session">
-
-                            <div class="session-info">
-
-                                <div class="session-device">
-                                    📱 Safari · iPhone
-                                </div>
-
-                                <span class="session-meta">
-                                    192.168.1.81 · 5 days ago
-                                </span>
-
-                            </div>
-
-                            <button class="session-revoke-btn">
-                                Revoke
-                            </button>
-
-                        </div>
-
-                    </div>
-
-
-                    <!-- SHOW MORE -->
-
-                    <button
-                        id="toggle-sessions-btn"
-                        class="toggle-sessions-btn"
-                    >
-                        Show more
-                    </button>
-
+                    <div id="sessions-list" class="sessions-list"></div>
                 </div>
-
             </section>
-
-        </main>
-
-        {% endblock %}
+        </main>{% endblock %}

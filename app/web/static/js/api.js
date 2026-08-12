@@ -2,25 +2,34 @@
 
 let refreshPromise = null;
 
+const url_api = "/api";
+const url_users = `${url_api}/users`;
+const url_auth = `${url_api}/auth`;
+const url_sessions = `${url_auth}/sessions`;
+
 const data_url = {
-    refresh: "/api/auth/refresh",
-    logout: "/api/auth/logout",
-    login: "/login",
-    register: "/register",
-    verify_email: "/api/users/verify-email",
-    resend_email_code: "/api/users/resend-email-code",
-    change_email: "/api/users/email-change",
-    change_password: "/api/users/password-change",
-    reset_password: "/api/users/password-reset",
+    ws: `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws`,
 
-    projects: "/api/projects",
-    me: "/api/users/me",
-    ws: `://${location.host}/ws`,
-    sessions: "/api/auth/all_session",
+    login: `/login`,
+    register: `/register`,
 
+    refresh: `${url_auth}/refresh`,
+    logout: `${url_auth}/logout`,
+
+    sessions: url_sessions,
+    logout_other:`${url_sessions}/others`,
+    revoke_session: (SessionId) => `${url_sessions}/${SessionId}`,
+
+    me: `${url_users}/me`,
+    searchUsers: (query, projectId) => `${url_users}/search${getQuery(query)}&project_id=${projectId}`,
+    verify_email: `${url_users}/verify-email`,
+    resend_email_code: `${url_users}/resend-email-code`,
+    change_email: `${url_users}/email-change`,
+    change_password: `${url_users}/password-change`,
+    reset_password: `${url_users}/password-reset`,
+
+    projects: `${url_api}/projects`,
     project: (projectId) => `${data_url.projects}/${projectId}`,
-
-    searchUsers: (query, projectId) => `/api/users/search${getQuery(query)}&project_id=${projectId}`,
 
     members: (projectId) => `${data_url.project(projectId)}/members`,
     member: (projectId, userId) => `${data_url.members(projectId)}/${userId}`,
@@ -79,15 +88,14 @@ const api = {
 async function refreshToken() {
     if (refreshPromise) {return refreshPromise;}
     refreshPromise = (async () => {
-        const res = await fetch(data_url.refresh, {
-            method: "POST",
-            credentials: "include",
-        });
+        const res = await fetch(data_url.refresh, {method: "POST", credentials: "include"});
         return res.ok;
     })();
     try {return await refreshPromise;}
     finally {refreshPromise = null;}
 }
+
+const WS_AUTH_REQUIRED = 4001;
 
 class WSClient {
     constructor() {
@@ -106,10 +114,7 @@ class WSClient {
             return;
         }
 
-        const protocol = location.protocol === "https:" ? "wss" : "ws";
-        const url_ws = `${protocol}${data_url.ws}`;
-
-        this.socket = new WebSocket(url_ws);
+        this.socket = new WebSocket(data_url.ws);
 
         this.socket.onopen = () => {
             console.log("WS connected");
@@ -142,11 +147,16 @@ class WSClient {
             }
         };
 
-        this.socket.onclose = async () => {
+        this.socket.onclose = async (event) => {
             console.log("WS disconnected");
             this.connected = false;
 
-            if (await refreshToken()) {
+            if (event.code === WS_AUTH_REQUIRED) {
+               const refreshed = await refreshToken();
+                if (!refreshed) {
+                    window.location.href = data_url.login;
+                    return;
+                }
                 this.connect();
                 return;
             }
@@ -246,19 +256,38 @@ async function logout() {
     window.location.reload();
 }
 
-async function loadUser() {
+
+window.user = null;
+
+window.userPromise = (async () => {
     const res = await api.get(window.data_url.me);
-    if (!res) {return;}
-    if (!res.ok) {
-        location.href = window.data_url.login;
-        return;
+    if (!res || !res.ok) {
+        return null;
     }
     const user = await res.json();
-    if (user_header) {user_header.textContent = user.username;}
-}
+    window.user = user;
+    return user;
+})();
+
+
+window.userPromise.then(user => {
+    if (!user) {
+        return;
+    }
+
+    if (user_header) {
+        user_header.textContent = user.username;
+    }
+});
 const authPages = [data_url.login, data_url.register];
 
 if (!authPages.includes(location.pathname)) {
-    loadUser();
-    window.ws.connect();
+    window.userPromise.then(user => {
+        if (!user) {
+            window.location.href = data_url.login;
+            return;
+        }
+
+        window.ws.connect();
+    });
 }

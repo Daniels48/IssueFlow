@@ -1,15 +1,14 @@
-from datetime import timedelta
+from datetime import timedelta, datetime
 from typing import Any
+from uuid import UUID
 
 from pydantic import TypeAdapter
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.exceptions.base import AppException
-from app.core.exceptions.codes import ErrorCode
+from app.core.exceptions import AppException, ErrorCode
 from app.events import UserLoggedInEvent, UserLoggedOutEvent, UserRegisteredEvent, UserLoggedOutAllEvent
-from app.infrastructure.db.models import User
-from app.infrastructure.db.models.model_session import Session
+from app.infrastructure.db.models import User, Session
 from app.infrastructure.rabbitmq import RabbitPublisher
 from app.infrastructure.reddis.session_cache import SessionCache
 from app.modules.auth.cookie import ACCESS_COOKIE, REFRESH_COOKIE
@@ -24,6 +23,30 @@ from app.workers import send_email_task
 
 
 SESSION_LIST_ADAPTER = TypeAdapter(list[SessionModel])
+
+
+def _check_valid_session(session: Session | None, now: datetime) -> Session | None:
+    if not session :
+        raise AppException(ErrorCode.SESSION_NOT_FOUND, "Session not found")
+
+    if session.deleted_at is not None:
+        raise AppException(ErrorCode.SESSION_REVOKED, "Session revoked")
+
+    if session.expires_at < now:
+        raise AppException(ErrorCode.SESSION_EXPIRED, "Session expired")
+
+    return session
+
+
+def _check_valid_user(user: User | None) -> User | None:
+    if not user:
+        raise AppException(ErrorCode.USER_NOT_FOUND, "User not found")
+
+    if not user.is_active:
+        raise AppException(ErrorCode.USER_NOT_ACTIVE, "User not active")
+
+    return user
+
 
 class AuthService:
     def __init__(self, repository: UserRepository, db: AsyncSession):
@@ -95,51 +118,72 @@ class AuthService:
 
         now = get_now_dt()
 
-        if not session :
-            raise AppException(ErrorCode.SESSION_NOT_FOUND, "Session not found")
-
-        if session.deleted_at is not None:
-            raise AppException(ErrorCode.SESSION_REVOKED, "Session revoked")
-
-        if session.expires_at < now:
-            raise AppException(ErrorCode.SESSION_EXPIRED, "Session expired")
+        session = _check_valid_session(session, now)
 
         user = await self.repository.get_by_id(self.db, session.user_id)
-
-        if not user:
-            raise AppException(ErrorCode.USER_NOT_FOUND, "User not found")
-        if not user.is_active:
-            raise AppException(ErrorCode.USER_NOT_ACTIVE, "User not active")
+        user = _check_valid_user(user)
 
         session.updated_at = now
         await self.db.commit()
 
         return JWTService.create_access_token(public_id=user.public_id, session_id=session.public_id, now=now)
 
-    async def logout_current(self, refresh_token: str, user: User) -> None:
-        refresh_hash = JWTService.hash_refresh_token(refresh_token)
-        session = await SessionRepository.get_by_refresh_hash(self.db, refresh_hash)
-        await SessionRepository.delete(db=self.db, session=session)
+    async def logout_current(self, session_id: UUID, user: User) -> None:
+        session = await SessionRepository.get_by_session_id(self.db, session_id)
+        now = get_now_dt()
+        session = _check_valid_session(session, now)
+
+        session.deleted_at = now
+        await self.db.commit()
+
         await SessionCache.delete(session.public_id)
 
         await RabbitPublisher.publish(UserLoggedOutEvent.from_models(author=user, session=session))
 
-    async def logout_device_id(self, refresh_token: str, user: User) -> None:
-        pass
-        # refresh_hash = JWTService.hash_refresh_token(refresh_token)
-        # session = await SessionRepository.get_by_refresh_hash(self.db, refresh_hash)
-        # await SessionRepository.delete(db=self.db, session=session)
-        #
-        # await RabbitPublisher.publish(UserLoggedOutEvent.from_models(author=user, session=session))
 
-    async def logout_all(self, refresh_token: str, user: User) -> None:
-        pass
-        # refresh_hash = JWTService.hash_refresh_token(refresh_token)
-        # session = await SessionRepository.get_by_refresh_hash(self.db, refresh_hash)
-        # await SessionRepository.delete(db=self.db, session=session)
-        #
-        # await RabbitPublisher.publish(UserLoggedOutAllEvent.from_models(author=user, session=session))
+    async def logout_device_id(self,session_id: UUID, user: User) -> None:
+        session = await SessionRepository.get_by_session_id(db=self.db,session_id=session_id)
+        now = get_now_dt()
+        session = _check_valid_session(session, now)
 
-    async def get_all_session(self, user: User) -> list[SessionModel]:
-        session_list = await SessionRepository.get_list_by_user_id(db=self.db, user_id=user.id)
-        return SESSION_LIST_ADAPTER.validate_python(session_list)
+        if session.user_id != user.id:
+            # forbidden
+            raise AppException(code=ErrorCode.SESSION_NOT_FOUND,message="Session not found")
+
+        session.deleted_at = now
+        await self.db.commit()
+
+        await SessionCache.delete(session.public_id)
+
+        await RabbitPublisher.publish(UserLoggedOutEvent.from_models(author=user, session=session))
+
+    async def logout_all(self, user: User, session_id: UUID) -> None:
+        now = get_now_dt()
+        sessions = await SessionRepository.get_list_active_by_user_id(db=self.db, user_id=user.id, now=now)
+
+
+        for session in sessions:
+            if session.public_id == session_id:
+                continue
+
+            session.deleted_at = now
+        await self.db.commit()
+
+        for session in sessions:
+            if session.public_id == session_id:
+                continue
+
+            await SessionCache.delete(session.public_id)
+
+            await RabbitPublisher.publish(UserLoggedOutAllEvent.from_models(author=user,session=session))
+
+    async def get_all_session(self, user: User, session_id: UUID) -> list[SessionModel]:
+        now = get_now_dt()
+        session_list = await SessionRepository.get_list_active_by_user_id(db=self.db, user_id=user.id, now=now)
+        list_return = SESSION_LIST_ADAPTER.validate_python(session_list)
+
+        for item in list_return:
+            if item.public_id == session_id:
+                item.is_current = True
+
+        return list_return
