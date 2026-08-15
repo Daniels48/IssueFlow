@@ -2,7 +2,17 @@
 
 const form = document.getElementById("register-form");
 const error = document.getElementById("error");
-const URL_REGISTER = "/api/auth/register";
+
+async function initLoginPage() {
+    const user = await window.userPromise;
+
+    if (user) {
+        window.location.href = "/";
+        return;
+    }
+}
+
+initLoginPage();
 
 form.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -19,7 +29,7 @@ form.addEventListener("submit", async (e) => {
         return;
     }
 
-    const res = await api.post(URL_REGISTER, {username: username, email: email, password: password});
+    const res = await api.post(window.data_url.register_api, {username: username, email: email, password: password});
 
     if (!res) {return;}
 

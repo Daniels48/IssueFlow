@@ -9,7 +9,7 @@ from pydantic import ValidationError
 
 from app.core.config import settings
 from app.core.exceptions import AppException, ErrorCode
-from app.modules.auth.schemas import AccessTokenPayload
+from app.modules.auth.schema import AccessTokenPayload
 
 
 class JWTService:

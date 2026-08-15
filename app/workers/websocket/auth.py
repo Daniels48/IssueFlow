@@ -2,7 +2,7 @@ from fastapi import WebSocket, status
 
 from app.core.exceptions import AppException
 from app.modules.auth.jwt import JWTService
-from app.modules.auth.schemas import AccessTokenPayload
+from app.modules.auth.schema import AccessTokenPayload
 
 
 async def authenticate(websocket: WebSocket) -> AccessTokenPayload | None:

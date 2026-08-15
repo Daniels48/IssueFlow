@@ -1,6 +1,6 @@
 from app.infrastructure.db.database import AsyncSessionLocal
 from app.modules.projects.repository import ProjectRepository
-from app.infrastructure.reddis.project_cache import ProjectCache
+from app.workers.websocket.project_cache import ProjectCache
 
 
 class CacheBootstrapService:

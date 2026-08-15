@@ -1,11 +1,10 @@
+import hashlib
+import hmac
 import secrets
 from uuid import UUID
 
+from app.core.config import settings
 from app.infrastructure.reddis.connection import RedisConnection
-
-
-def _generate_verification_code() -> str:
-    return f"{secrets.randbelow(1_000_000):06d}"
 
 
 class BaseCodeCache:
@@ -23,34 +22,42 @@ class BaseCodeCache:
     def _cooldown_key(cls, user_id: UUID) -> str:
         return f"{cls.COOLDOWN_PREFIX}:{user_id}"
 
-    @classmethod
-    async def set_cooldown(cls, user_id: UUID) -> None:
-        redis = await RedisConnection.get_client()
-        await redis.set(cls._cooldown_key(user_id), 1, ex=cls.COOLDOWN)
-
-    @classmethod
-    async def has_cooldown(cls, user_id: UUID) -> bool:
-        redis = await RedisConnection.get_client()
-        return bool(await redis.exists(cls._cooldown_key(user_id)))
+    @staticmethod
+    def _hash_code(code: str) -> str:
+        code_hash = settings.security.code_hash_secret
+        return hmac.new(code_hash.encode(), code.encode(), hashlib.sha256).hexdigest()
 
     @classmethod
     async def set(cls, user_id: UUID, code: str) -> None:
         redis = await RedisConnection.get_client()
-        await redis.set(cls._key(user_id), code, ex=cls.TTL)
+
+        await redis.set(cls._key(user_id), cls._hash_code(code), ex=cls.TTL)
 
     @classmethod
-    async def get(cls, user_id: UUID) -> str | None:
+    async def verify(cls, user_id: UUID, code: str) -> bool:
         redis = await RedisConnection.get_client()
-        return await redis.get(cls._key(user_id))
+
+        saved_hash = await redis.get(cls._key(user_id))
+
+        if saved_hash is None:
+            return False
+
+        code_hash = cls._hash_code(code)
+
+        return hmac.compare_digest(saved_hash, code_hash)
 
     @classmethod
     async def delete(cls, user_id: UUID) -> None:
         redis = await RedisConnection.get_client()
         await redis.delete(cls._key(user_id))
 
+    @staticmethod
+    def _generate_verification_code() -> str:
+        return f"{secrets.randbelow(1_000_000):06d}"
+
     @classmethod
     async def create(cls, user_id: UUID) -> str:
-        code = _generate_verification_code()
+        code = cls._generate_verification_code()
 
         await cls.set(user_id, code)
         await cls.set_cooldown(user_id)

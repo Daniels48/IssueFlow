@@ -11,6 +11,8 @@ const data_url = {
     ws: `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws`,
 
     login: `/login`,
+    login_api: "/api/auth/login",
+    register_api: "/api/auth/register",
     register: `/register`,
 
     refresh: `${url_auth}/refresh`,

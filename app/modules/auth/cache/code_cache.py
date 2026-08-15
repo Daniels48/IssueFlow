@@ -1,6 +1,5 @@
 from app.core.config import settings
-from app.infrastructure.reddis.base_cache import BaseCodeCache
-from app.workers.celery.service import BaseEmailService
+from app.modules.auth.cache.base_code_cache import BaseCodeCache
 
 
 class VerifyEmailCache(BaseCodeCache):
@@ -13,10 +12,3 @@ class PasswordResetCache(BaseCodeCache):
     COOLDOWN_PREFIX = f"{settings.redis.prefix}:password_reset_cooldown"
 
 
-class VerifyEmailService(BaseEmailService):
-    TEMPLATE = "verify_email.html"
-    CACHE = VerifyEmailCache
-
-class PasswordResetService(BaseEmailService):
-    TEMPLATE = "reset_password.html"
-    CACHE = PasswordResetCache

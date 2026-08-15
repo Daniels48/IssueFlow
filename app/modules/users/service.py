@@ -1,16 +1,14 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import Depends, HTTPException
+from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.infrastructure.db.models import User
 from app.modules.auth.dependencies import DBSession
 from app.modules.project_members.repository import ProjectMemberRepository
 from app.modules.projects.repository import ProjectRepository
 from app.modules.users.repository import UserRepository
 from app.modules.users.schema import UserShortResponse
-from app.modules.users.email_service import VerifyEmailService, PasswordResetService, VerifyEmailCache
 
 
 class UserService:
@@ -27,53 +25,6 @@ class UserService:
             pass
         return await self.repository.get_list_users_in_project(self.db, query, project.id, current_user_id)
 
-    async def verify_email(self,user: User, code: str) -> None:
-        if user.email_verified_at:
-            return
-
-        saved_code = await VerifyEmailCache.get(user.public_id)
-
-        if saved_code is None:
-            raise HTTPException(status_code=401)
-
-        if saved_code != code:
-            raise HTTPException(status_code=403)
-
-        # user.email_verified_at = datetime.now(UTC)
-
-        await VerifyEmailCache.delete(user.public_id)
-
-        await self.db.commit()
-
-    @staticmethod
-    async def resend_verification_email(user: User):
-        if user.email_verified_at:
-            return
-
-        await VerifyEmailService.send(user)
-
-    async def change_email(self,user: User, email: str) -> None:
-        if user.email == email:
-            return
-
-        if await self.repository.get_by_email(self.db, email):
-            raise ValueError("Email already exists")
-
-        user.email = email
-        user.email_verified_at = None
-
-        await self.db.commit()
-
-        await VerifyEmailService.send(user)
-
-    async def change_password(self, user: User, password: str) -> None:
-        pass
-
-    async def reset_password(self, user: User, password: str) -> None:
-        pass
-
-    async def reset_password2(self, user: User, password: str) -> None:
-        pass
 
 
 

@@ -13,18 +13,15 @@ form.addEventListener("submit", async (e) => {
         alert("Passwords do not match.");
         return;
     }
-
-    const res = await api.post(
-        window.data_url.change_password,
-        {
-            current_password: current,
-            password: password,
-        }
-    );
+    const data = {old_password: current, new_password: password}
+    const res = await api.post(window.data_url.change_password, data);
     if (!res || !res.ok) {
         alert("Unable to change password.");
+        form.reset();
         return;
     }
     alert("Password changed successfully.");
     form.reset();
+
+    location.href = "/profile";
 });

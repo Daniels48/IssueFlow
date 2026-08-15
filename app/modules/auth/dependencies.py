@@ -1,4 +1,5 @@
 from typing import Annotated
+from dataclasses import dataclass
 
 from fastapi import Depends, Cookie
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -6,19 +7,25 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import AppException, ErrorCode
 from app.infrastructure.db.database import get_db
 from app.infrastructure.db.models import User
-from app.infrastructure.reddis.session_cache import SessionCache
-from app.modules.auth.cookie import REFRESH_COOKIE, ACCESS_COOKIE
+from app.modules.auth.cache.session_cache import SessionCache
+from app.modules.auth.cookie import AuthCookie
 from app.modules.auth.jwt import JWTService
 from app.modules.auth.repository import SessionRepository
-from app.modules.auth.schemas import AccessTokenPayload
+from app.modules.auth.schema import AccessTokenPayload
+from app.modules.auth.service import AuthService
 from app.modules.users.repository import UserRepository
 from app.utils.func_utils import get_now_dt
 
 DBSession = Annotated[AsyncSession, Depends(get_db)]
 
-RefreshToken = Annotated[str | None, Cookie(alias=REFRESH_COOKIE)]
-AccessToken = Annotated[str | None, Cookie(alias=ACCESS_COOKIE)]
+RefreshToken = Annotated[str | None, Cookie(alias=AuthCookie.REFRESH)]
+AccessToken = Annotated[str | None, Cookie(alias=AuthCookie.ACCESS)]
 
+
+def get_auth_service(db: DBSession) -> AuthService:
+    return AuthService(db=db)
+
+AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
 
 def get_refresh_token(refresh_token: RefreshToken = None) -> str:
     if refresh_token is None:
@@ -65,8 +72,24 @@ async def get_current_user(payload: PayloadVerifySession, db: DBSession) -> User
     user = await UserRepository.get_by_public_id(db, payload.sub)
 
     if not user:
-        raise AppException(code=ErrorCode.USER_NOT_FOUND, message="USER not found")
+        raise AppException(code=ErrorCode.USER_NOT_FOUND, message="User not found")
+
+    if not user.is_active:
+        raise AppException(code=ErrorCode.USER_NOT_ACTIVE, message="User not active")
 
     return user
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
+@dataclass(frozen=True)
+class CurrentAuth:
+    user: User
+    payload: AccessTokenPayload
+
+async def get_current_auth(payload: PayloadVerifySession, db: DBSession) -> CurrentAuth:
+    user = await get_current_user(payload, db)
+    return CurrentAuth(user=user, payload=payload)
+
+
+CurrentAuthDep = Annotated[CurrentAuth,Depends(get_current_auth)]

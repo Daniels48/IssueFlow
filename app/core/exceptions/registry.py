@@ -8,134 +8,56 @@ class ErrorDefinition:
     public_message: str
 
 
+COMMON_ERRORS = {
+    ErrorCode.NOT_FOUND: ErrorDefinition(404, "Not found"),
+    ErrorCode.VALIDATION_ERROR: ErrorDefinition(422, "Validation error"),
+    ErrorCode.BAD_REQUEST: ErrorDefinition(400, "Bad request"),
+    ErrorCode.UNAUTHORIZED: ErrorDefinition(401, "Unauthorized"),
+    ErrorCode.FORBIDDEN: ErrorDefinition(403, "Forbidden"),
+    ErrorCode.CONFLICT: ErrorDefinition(409, "Conflict"),
+    ErrorCode.PERMISSION_DENIED: ErrorDefinition(403, "Forbidden"),
+    ErrorCode.TOO_MANY_REQUESTS: ErrorDefinition(429, "Too many requests"),
+    ErrorCode.INTERNAL_ERROR: ErrorDefinition(500, "Internal server error"),
+}
+
+AUTH_ERRORS = {
+    ErrorCode.INVALID_TOKEN: ErrorDefinition(403, "Forbidden"),
+    ErrorCode.TOKEN_EXPIRED: ErrorDefinition(403, "Forbidden"),
+    ErrorCode.INVALID_TOKEN_TYPE: ErrorDefinition(403, "Forbidden"),
+    ErrorCode.REFRESH_TOKEN_NOT_FOUND: ErrorDefinition(403, "Forbidden"),
+    ErrorCode.USERNAME_NOT_FOUND: ErrorDefinition(403,"Invalid credentials"),
+    ErrorCode.PASSWORD_INVALID: ErrorDefinition(403,"Invalid credentials"),
+}
+
+SESSION_ERRORS = {
+    ErrorCode.SESSION_EXPIRED: ErrorDefinition(403,"Forbidden"),
+    ErrorCode.SESSION_NOT_FOUND: ErrorDefinition( 403,"Forbidden"),
+    ErrorCode.SESSION_REVOKED: ErrorDefinition(403,"Forbidden"),
+}
+
+USER_ERRORS = {
+    ErrorCode.USER_NOT_FOUND: ErrorDefinition(404,"Not found"),
+    ErrorCode.USER_NOT_ACTIVE: ErrorDefinition(403,"Forbidden"),
+    ErrorCode.EMAIL_ALREADY_EXISTS: ErrorDefinition(409,"Email already exists"),
+    ErrorCode.USERNAME_TAKEN: ErrorDefinition(409,"Conflict"),
+}
+
+VERIFICATION_ERRORS = {
+    ErrorCode.EMAIL_VERIFIED_ALREADY: ErrorDefinition(409,"Email already verified"),
+    ErrorCode.INVALID_EMAIL_RESET_CODE: ErrorDefinition(400,"Invalid email reset code"),
+    ErrorCode.INVALID_EMAIL_VERIFY_CODE: ErrorDefinition(400, "Invalid email verification code"),
+    ErrorCode.NEW_EMAIL_SAME: ErrorDefinition(400,"New email must be different"),
+
+    ErrorCode.INVALID_PASSWORD_RESET_CODE: ErrorDefinition(400,"Invalid password reset code"),
+    ErrorCode.INVALID_PASSWORD_RESET_TOKEN: ErrorDefinition(400,"Invalid password reset token"),
+    ErrorCode.NEW_PASSWORD_SAME: ErrorDefinition(400,"New password must be different"),
+}
+
+
 ERROR_REGISTRY: dict[ErrorCode, ErrorDefinition] = {
-    ErrorCode.NOT_FOUND: ErrorDefinition(
-        status_code=404,
-        public_message="Not found",
-    ),
-
-    ErrorCode.VALIDATION_ERROR: ErrorDefinition(
-        status_code=422,
-        public_message="Validation error",
-    ),
-
-    ErrorCode.BAD_REQUEST: ErrorDefinition(
-        status_code=400,
-        public_message="Bad request",
-    ),
-
-    ErrorCode.UNAUTHORIZED: ErrorDefinition(
-        status_code=401,
-        public_message="Unauthorized",
-    ),
-
-    ErrorCode.FORBIDDEN: ErrorDefinition(
-        status_code=403,
-        public_message="Forbidden",
-    ),
-
-    ErrorCode.INVALID_TOKEN: ErrorDefinition(
-        status_code=403,
-        public_message="Forbidden",
-    ),
-
-    ErrorCode.TOKEN_EXPIRED: ErrorDefinition(
-        status_code=403,
-        public_message="Forbidden",
-    ),
-
-    ErrorCode.INVALID_TOKEN_TYPE: ErrorDefinition(
-        status_code=403,
-        public_message="Forbidden",
-    ),
-
-    ErrorCode.REFRESH_TOKEN_NOT_FOUND: ErrorDefinition(
-        status_code=403,
-        public_message="Forbidden",
-    ),
-
-    ErrorCode.SESSION_EXPIRED: ErrorDefinition(
-        status_code=403,
-        public_message="Forbidden",
-    ),
-
-    ErrorCode.SESSION_NOT_FOUND: ErrorDefinition(
-        status_code=403,
-        public_message="Forbidden",
-    ),
-
-    ErrorCode.SESSION_REVOKED: ErrorDefinition(
-        status_code=403,
-        public_message="Forbidden",
-    ),
-
-    ErrorCode.USER_NOT_FOUND: ErrorDefinition(
-        status_code=404,
-        public_message="Not found",
-    ),
-
-    ErrorCode.USER_NOT_ACTIVE: ErrorDefinition(
-        status_code=403,
-        public_message="Forbidden",
-    ),
-
-    ErrorCode.EMAIL_ALREADY_EXISTS: ErrorDefinition(
-        status_code=409,
-        public_message="Conflict",
-    ),
-
-    ErrorCode.USERNAME_TAKEN: ErrorDefinition(
-        status_code=409,
-        public_message="Conflict",
-    ),
-
-    ErrorCode.USERNAME_NOT_FOUND: ErrorDefinition(
-        status_code=403,
-        public_message="Invalid credentials",
-    ),
-
-    ErrorCode.PASSWORD_INVALID: ErrorDefinition(
-        status_code=403,
-        public_message="Invalid credentials",
-    ),
-
-    ErrorCode.INVALID_EMAIL_CODE: ErrorDefinition(
-        status_code=400,
-        public_message="Bad request",
-    ),
-
-    ErrorCode.EMAIL_CODE_EXPIRED: ErrorDefinition(
-        status_code=400,
-        public_message="Bad request",
-    ),
-
-    ErrorCode.INVALID_RESET_CODE: ErrorDefinition(
-        status_code=400,
-        public_message="Bad request",
-    ),
-
-    ErrorCode.RESET_CODE_EXPIRED: ErrorDefinition(
-        status_code=400,
-        public_message="Bad request",
-    ),
-
-    ErrorCode.PERMISSION_DENIED: ErrorDefinition(
-        status_code=403,
-        public_message="Forbidden",
-    ),
-
-    ErrorCode.CONFLICT: ErrorDefinition(
-        status_code=409,
-        public_message="Conflict",
-    ),
-
-    ErrorCode.TOO_MANY_REQUESTS: ErrorDefinition(
-        status_code=429,
-        public_message="Too many requests",
-    ),
-
-    ErrorCode.INTERNAL_ERROR: ErrorDefinition(
-        status_code=500,
-        public_message="Internal server error",
-    ),
+    **COMMON_ERRORS,
+    **AUTH_ERRORS,
+    **SESSION_ERRORS,
+    **USER_ERRORS,
+    **VERIFICATION_ERRORS,
 }
