@@ -23,7 +23,6 @@ async def index(request: Request):
             "js_files": list_js_files,
         })
 
-
 @router.get("/projects")
 async def projects(request: Request):
     list_js_files = ["projects"]
@@ -34,7 +33,6 @@ async def projects(request: Request):
             "css_files": list_css_files,
             "js_files": list_js_files,
         })
-
 
 @router.get("/projects/{project_id}")
 async def project(request: Request, project_id: UUID):
@@ -48,7 +46,6 @@ async def project(request: Request, project_id: UUID):
         },
     )
 
-
 @router.get("/projects/{project_id}/issues/{issue_id}")
 async def issue(request: Request, project_id: UUID, issue_id: UUID):
     list_js_files = ["issue"]
@@ -60,7 +57,6 @@ async def issue(request: Request, project_id: UUID, issue_id: UUID):
             "js_files": list_js_files,
         },
     )
-
 
 @router.get("/register")
 async def register(request: Request):
@@ -74,7 +70,6 @@ async def register(request: Request):
         },
     )
 
-
 @router.get("/login")
 async def login(request: Request):
     list_js_files = ["login"]
@@ -87,7 +82,6 @@ async def login(request: Request):
         },
     )
 
-
 @router.get("/profile")
 async def profile(request: Request):
     list_js_files = ["profile"]
@@ -99,7 +93,6 @@ async def profile(request: Request):
             "js_files": list_js_files,
         },
     )
-
 
 @router.get("/verify-email")
 async def verify_email(request: Request, user: CurrentUser):
@@ -119,7 +112,6 @@ async def verify_email(request: Request, user: CurrentUser):
         },
     )
 
-
 @router.get("/change-password")
 async def change_password(request: Request, user: CurrentUser):
     list_js_files = ["change_password"]
@@ -132,11 +124,11 @@ async def change_password(request: Request, user: CurrentUser):
         },
     )
 
-@router.get("/reset-password-1")
-async def reset_password(request: Request, user: CurrentUser):
-    list_js_files = ["reset_password_1"]
-    list_css_files = ["verify_email", "base", "reset_password_1"]
-    return templates.TemplateResponse(request=request, name="reset_password_1.html",
+@router.get("/forgot-password-send")
+async def reset_password(request: Request):
+    list_js_files = ["forgot_password_send"]
+    list_css_files = ["verify_email", "base", "forgot_password_send"]
+    return templates.TemplateResponse(request=request, name="forgot_password_send.html",
         context={
             "title": "Reset-Password • IssueFlow",
             "css_files": list_css_files,
@@ -144,14 +136,26 @@ async def reset_password(request: Request, user: CurrentUser):
         },
     )
 
-@router.get("/reset-password-2")
-async def reset_password(request: Request, user: CurrentUser):
-    list_js_files = ["verify_email"]
-    list_css_files = ["verify_email", "base", "reset_password_1"]
-    return templates.TemplateResponse(request=request, name="reset_password_2.html",
+@router.get("/forgot-password-verify")
+async def reset_password(request: Request):
+    list_js_files = ["forgot_password_verify"]
+    list_css_files = ["base", "forgot_password_verify"]
+    return templates.TemplateResponse(request=request, name="forgot_password_verify.html",
         context={
             "title": "Reset-Password • IssueFlow",
             "css_files": list_css_files,
-            # "js_files": list_js_files,
+            "js_files": list_js_files,
+        },
+    )
+
+@router.get("/forgot-password-reset")
+async def forgot_password_reset(request: Request):
+    list_js_files = ["forgot_password_reset"]
+    list_css_files = ["base", "forgot_password_reset"]
+    return templates.TemplateResponse(request=request, name="forgot_password_reset.html",
+        context={
+            "title": "Reset-Password • IssueFlow",
+            "css_files": list_css_files,
+            "js_files": list_js_files,
         },
     )

@@ -25,14 +25,8 @@ inputs.forEach((input, index) => {
     input.addEventListener("paste", (e) => {
         e.preventDefault();
         clearError();
-        const code = e.clipboardData
-            .getData("text")
-            .replace(/\D/g, "")
-            .slice(0, 6);
-
-        code.split("").forEach((digit, i) => {
-            if (inputs[i]) {inputs[i].value = digit;}
-        });
+        const code = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+        code.split("").forEach((digit, i) => {if (inputs[i]) {inputs[i].value = digit}});
         if (code.length === 6) {form.requestSubmit();}
     });
 });
@@ -54,6 +48,7 @@ async function verifyEmail(e) {
     if (!res) {return;}
 
     if (res.ok) {
+        alert("Email changed successful")
         location.href = "/projects";
         return;
     }

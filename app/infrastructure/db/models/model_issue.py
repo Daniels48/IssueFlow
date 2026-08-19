@@ -17,7 +17,7 @@ class Issue(BaseModel):
 
     project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
 
-    reporter_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=False)
+    reporter_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     assignee_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
@@ -31,19 +31,11 @@ class Issue(BaseModel):
 
     due_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    project: Mapped["Project"] = relationship(
-        back_populates="issues",
-    )
+    project: Mapped["Project"] = relationship(back_populates="issues")
 
-    reporter: Mapped["User"] = relationship(
-        foreign_keys=[reporter_id],
-        back_populates="reported_issues",
-    )
+    reporter: Mapped["User"] = relationship(foreign_keys=[reporter_id],back_populates="reported_issues")
 
-    assignee: Mapped["User"] = relationship(
-        foreign_keys=[assignee_id],
-        back_populates="assigned_issues",
-    )
+    assignee: Mapped["User"] = relationship(foreign_keys=[assignee_id], back_populates="assigned_issues")
 
     comments: Mapped[list["Comment"]] = relationship(
         back_populates="issue",

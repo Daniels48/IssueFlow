@@ -1,13 +1,13 @@
 from typing import Annotated
 from dataclasses import dataclass
 
-from fastapi import Depends, Cookie
+from fastapi import Depends, Cookie, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import AppException, ErrorCode
 from app.infrastructure.db.database import get_db
 from app.infrastructure.db.models import User
-from app.modules.auth.cache.session_cache import SessionCache
+from app.modules.auth.cache import SessionCache
 from app.modules.auth.cookie import AuthCookie
 from app.modules.auth.jwt import JWTService
 from app.modules.auth.repository import SessionRepository
@@ -68,8 +68,9 @@ async def verify_session(payload: CurrentPayload, db: DBSession):
 
 PayloadVerifySession = Annotated[AccessTokenPayload, Depends(verify_session)]
 
-async def get_current_user(payload: PayloadVerifySession, db: DBSession) -> User:
+async def get_current_user(payload: PayloadVerifySession, db: DBSession, request: Request) -> User:
     user = await UserRepository.get_by_public_id(db, payload.sub)
+    request.state.user_id = str(user.public_id)
 
     if not user:
         raise AppException(code=ErrorCode.USER_NOT_FOUND, message="User not found")
@@ -87,8 +88,8 @@ class CurrentAuth:
     user: User
     payload: AccessTokenPayload
 
-async def get_current_auth(payload: PayloadVerifySession, db: DBSession) -> CurrentAuth:
-    user = await get_current_user(payload, db)
+async def get_current_auth(payload: PayloadVerifySession, db: DBSession, request: Request) -> CurrentAuth:
+    user = await get_current_user(payload, db, request)
     return CurrentAuth(user=user, payload=payload)
 
 

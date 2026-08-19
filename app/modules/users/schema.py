@@ -21,3 +21,4 @@ class UserResponse(BaseModel):
     is_active: bool
     email_verified_at: datetime | None
     created_at: datetime
+    password_changed_at: datetime | None

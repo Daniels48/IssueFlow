@@ -5,6 +5,7 @@ from fastapi import Depends
 from pydantic import TypeAdapter
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.exceptions import AppException, ErrorCode
 from app.events import ProjectMemberAddedEvent, ProjectMemberRoleChangedEvent, ProjectMemberRemovedEvent
 from app.infrastructure.db.models import User, ProjectMember
 from app.infrastructure.rabbitmq import RabbitPublisher
@@ -38,10 +39,9 @@ class ProjectMemberService:
         project = await self.project_repository.get_by_public_id_no_full(self.db, project_id)
 
         if not project:
-            raise ValueError("Project not found")
+            raise AppException(ErrorCode.PROJECT_NOT_FOUND, "Project not found")
 
-        if project.owner_id != current_user.id:
-            raise ValueError("Permission denied")
+
 
         user = await self.user_repository.get_by_public_id(self.db, data.user_public_id)
 
@@ -86,12 +86,7 @@ class ProjectMemberService:
         if project.owner_id != current_user.id:
             raise ValueError("Permission denied")
 
-        user = await self.user_repository.get_by_public_id(self.db,user_id)
-
-        if not user:
-            raise ValueError("User not found")
-
-        member = await self.repository.get_by_project_and_user(self.db,project.id,user.id)
+        member = await self.repository.get_by_project_and_user_public_id(self.db, project.id, user_id)
         
         if not member:
             raise ValueError("Member not found")
@@ -115,12 +110,7 @@ class ProjectMemberService:
         if project.owner_id != current_user.id:
             raise ValueError("Permission denied")
 
-        user = await self.user_repository.get_by_public_id(self.db,user_id)
-
-        if not user:
-            raise ValueError("User not found")
-
-        member = await self.repository.get_by_project_and_user(self.db,project.id,user.id)
+        member = await ProjectMemberRepository.get_by_project_and_user_public_id(self.db, project.id, user_id)
 
         if not member:
             raise ValueError("Member not found")

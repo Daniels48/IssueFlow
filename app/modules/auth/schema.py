@@ -21,6 +21,7 @@ class AccessTokenPayload(BaseModel):
     iat: datetime
     sid: UUID
 
+
 class SessionModel(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -29,6 +30,19 @@ class SessionModel(BaseModel):
     ip_address: str | None
     user_agent: str | None
     is_current: bool = False
+    browser: str | None
+    browser_version: str | None
+    os: str | None
+    device_type: str | None
+    timezone: str | None
+    language: str | None
+    screen_width: int | None
+    screen_height: int | None
+    dpr: float | None
+    country: str | None
+    city: str | None
+    state: str | None
+    accuracy: float | None
 
 
 class ChangePasswordRequest(BaseModel):
@@ -39,6 +53,7 @@ class ChangePasswordRequest(BaseModel):
 class VerifyEmailRequest(BaseModel):
     code: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
 
+
 class ChangeEmailRequest(BaseModel):
     email: EmailStr
 
@@ -46,16 +61,16 @@ class ChangeEmailRequest(BaseModel):
 class PasswordForgotRequest(BaseModel):
     email: EmailStr
 
-class PasswordResetVerifyRequest(BaseModel):
+
+class PasswordForgotVerifyRequest(BaseModel):
     code: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
     email: EmailStr
 
-class ResetPasswordVerifyResponse(BaseModel):
+
+class PasswordForgotVerifyResponse(BaseModel):
     reset_token: str
 
 
-
-
-
-
-
+class PasswordForgotResetRequest(BaseModel):
+    reset_token: str
+    new_password: str

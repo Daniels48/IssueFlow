@@ -11,36 +11,16 @@ if TYPE_CHECKING:
 class Project(BaseModel):
     __tablename__ = "projects"
 
-    name: Mapped[str] = mapped_column(
-        String(100),
-        nullable=False,
-    )
+    name: Mapped[str] = mapped_column( String(100),nullable=False)
 
-    description: Mapped[str | None] = mapped_column(
-        String(500),
-        nullable=True,
-    )
+    description: Mapped[str | None] = mapped_column( String(500), nullable=True)
 
-    owner_id: Mapped[int] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE"),
-        nullable=False,
-    )
+    owner_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
 
-    owner: Mapped["User"] = relationship(
-        back_populates="owned_projects",
-    )
+    owner: Mapped["User"] = relationship(back_populates="owned_projects")
 
-    issues: Mapped[list["Issue"]] = relationship(
-        back_populates="project",
-        cascade="all, delete-orphan",
-    )
+    issues: Mapped[list["Issue"]] = relationship(back_populates="project",cascade="all, delete-orphan")
 
-    members: Mapped[list["ProjectMember"]] = relationship(
-        back_populates="project",
-        cascade="all, delete-orphan",
-    )
+    members: Mapped[list["ProjectMember"]] = relationship(back_populates="project",cascade="all, delete-orphan")
 
-    users: Mapped[list["User"]] = relationship(
-        secondary="project_members",
-        viewonly=True,
-    )
+    users: Mapped[list["User"]] = relationship(secondary="project_members", viewonly=True)

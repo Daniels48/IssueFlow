@@ -6,11 +6,13 @@ from starlette.staticfiles import StaticFiles
 
 from app.core.exceptions import (AppException, validation_exception_handler,
     app_exception_handler, unhandled_exception_handler)
-from app.infrastructure.rabbitmq.connection import RabbitConnection
-from app.infrastructure.rabbitmq.publisher import RabbitPublisher
-from app.router import api_router
+from app.core.middleware import logging_middleware
+from app.core.obsarvability.config import setup_logging
+from app.infrastructure.rabbitmq import RabbitConnection, RabbitPublisher
+from app.modules.router import api_router
 from app.web.router import router as web_router
 
+setup_logging()
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
@@ -21,15 +23,27 @@ async def lifespan(_: FastAPI):
     await RabbitPublisher.close()
     await RabbitConnection.close()
 
-app = FastAPI(lifespan=lifespan, title="issueflow")
 
+app = FastAPI(lifespan=lifespan, title="issueflow") #app
+
+
+# --------------------------- STATIC -----------------------------
 app.mount("/static",StaticFiles(directory="app/web/static"), name="static")
 
+
+# ------------------------- MIDDLEWARE ---------------------------
+app.middleware("http")(logging_middleware)
+
+
+# ---------------------- EXCEPTION HANDLERS ----------------------
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(AppException, app_exception_handler)
 app.add_exception_handler(Exception, unhandled_exception_handler)
 
 
+# ---------------------- ROUTES ----------------------
+app.include_router(api_router)
+app.include_router(web_router)
 
 
 # @asynccontextmanager
@@ -44,7 +58,3 @@ app.add_exception_handler(Exception, unhandled_exception_handler)
 #
 #     await RabbitConsumer.close()
 #     await RabbitConnection.close()
-
-
-app.include_router(api_router)
-app.include_router(web_router)

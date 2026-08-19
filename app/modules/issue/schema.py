@@ -3,7 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
-from app.modules.comments.schema import CommentResponse
+from app.modules.comments.schema import CommentTreeResponse
 from app.modules.issue.priority import IssuePriority
 from app.modules.issue.status import IssueStatus
 from app.modules.users.schema import UserShortResponse
@@ -75,4 +75,4 @@ class IssueResponseEdit(BaseModel):
 
 
 class IssueResponseDetail(IssueResponse):
-    comments: list[CommentResponse]
+    comments: list[CommentTreeResponse]

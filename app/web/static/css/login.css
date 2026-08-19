@@ -294,3 +294,19 @@ nav a:hover {
     text-decoration: underline;
 
 }
+
+.forgot-password {
+    display: block;
+    margin-top: 12px;
+    text-align: center;
+
+    color: #8b9bb5;
+    font-size: 14px;
+    text-decoration: none;
+
+    transition: color 0.2s ease;
+}
+
+.forgot-password:hover {
+    color: #3b82f6;
+}

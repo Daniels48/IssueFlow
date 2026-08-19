@@ -53,6 +53,27 @@ VERIFICATION_ERRORS = {
     ErrorCode.NEW_PASSWORD_SAME: ErrorDefinition(400,"New password must be different"),
 }
 
+COMMENT_ERRORS = {
+    ErrorCode.COMMENT_NOT_FOUND: ErrorDefinition(404, "Comment not found"),
+    ErrorCode.PARENT_COMMENT_NOT_FOUND: ErrorDefinition(404, "Parent comment not found"),
+    ErrorCode.PARENT_COMMENT_INVALID: ErrorDefinition(404, "Parent comment invalid"),
+
+}
+
+ISSUE_ERRORS = {
+    ErrorCode.ISSUE_NOT_FOUND: ErrorDefinition(404, "Issue not found"),
+    ErrorCode.ISSUE_ASSIGNED_NOT_FOUND: ErrorDefinition(404, "Issue assigned not found"),
+
+}
+
+PROJECT_ERRORS = {
+    ErrorCode.PROJECT_NOT_FOUND: ErrorDefinition(404, "Project not found"),
+}
+
+MEMBER_ERRORS = {
+    ErrorCode.USER_IS_NOT_A_PROJECT_MEMBER: ErrorDefinition(403,"Forbidden"),
+}
+
 
 ERROR_REGISTRY: dict[ErrorCode, ErrorDefinition] = {
     **COMMON_ERRORS,
@@ -60,4 +81,7 @@ ERROR_REGISTRY: dict[ErrorCode, ErrorDefinition] = {
     **SESSION_ERRORS,
     **USER_ERRORS,
     **VERIFICATION_ERRORS,
+    **COMMENT_ERRORS,
+    **ISSUE_ERRORS,
+
 }

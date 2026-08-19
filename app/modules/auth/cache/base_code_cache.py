@@ -60,6 +60,5 @@ class BaseCodeCache:
         code = cls._generate_verification_code()
 
         await cls.set(user_id, code)
-        await cls.set_cooldown(user_id)
 
         return code

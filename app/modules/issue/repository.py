@@ -3,7 +3,7 @@ from uuid import UUID
 
 from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload, with_loader_criteria
+from sqlalchemy.orm import selectinload, with_loader_criteria, joinedload
 
 from app.infrastructure.db.models import Issue, Comment, Project, ProjectMember
 
@@ -13,15 +13,14 @@ class IssueRepository:
     async def create(db: AsyncSession,issue: Issue) -> Issue:
         db.add(issue)
         await db.flush()
-        await db.refresh(issue)
         return issue
 
     @staticmethod
-    async def get_by_public_id( db: AsyncSession, public_id: UUID) -> Issue:
+    async def get_by_public_id(db: AsyncSession,public_id: UUID) -> Issue:
         result = await db.execute(
             select(Issue)
             .options(
-                selectinload(Issue.project)
+                joinedload(Issue.project)
             )
             .where(
                 Issue.public_id == public_id,
@@ -36,9 +35,13 @@ class IssueRepository:
         stmt = (
             select(Issue)
             .options(
+                joinedload(Issue.project),
+
                 selectinload(Issue.reporter),
                 selectinload(Issue.assignee),
+
                 selectinload(Issue.comments).selectinload(Comment.author),
+
                 with_loader_criteria(
                     Comment,
                     Comment.deleted_at.is_(None),
@@ -76,7 +79,7 @@ class IssueRepository:
 
 
     @staticmethod
-    async def get_all_by_project(db: AsyncSession, project_id: int, user_id: int, query: str | None) -> list[Issue]:
+    async def get_all_by_project(db: AsyncSession, project_id: int, search: str | None) -> list[Issue]:
         stmt = (
             select(Issue)
             .options(
@@ -86,15 +89,18 @@ class IssueRepository:
             .where(
                 Issue.project_id == project_id,
                 Issue.deleted_at.is_(None),
-                or_(
-                    Issue.assignee_id == user_id,
-                    Issue.reporter_id == user_id,
-                ),
             )
         )
 
-        if query:
-            stmt = stmt.where(Issue.title.ilike(f"%{query}%"))
+        if search:
+            search = (
+                search
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_")
+            )
+
+            stmt = stmt.where(Issue.title.ilike(f"%{search}%", escape="\\",))
 
         result = await db.execute(stmt)
 

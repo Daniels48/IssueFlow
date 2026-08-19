@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Response, status
+from fastapi import APIRouter, Response, Request, status
 
 from app.modules.auth.cookie import AuthCookie
 from app.modules.auth.dependencies import CurrentUser, ValidRefreshToken, AuthServiceDep, CurrentAuthDep
@@ -11,16 +11,16 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def register(data: schema.UserCreate, service: AuthServiceDep, response: Response):
-    result = await service.register(data)
+async def register(data: schema.UserCreate, service: AuthServiceDep, response: Response, request: Request):
+    result = await service.register(request=request, data=data)
     AuthCookie.set_access(response, result.tokens.access_token)
     AuthCookie.set_refresh(response, result.tokens.refresh_token)
     return result.user
 
 
 @router.post("/login", status_code=status.HTTP_204_NO_CONTENT)
-async def login(data: schema.LoginRequest, service: AuthServiceDep, response: Response):
-    tokens = await service.login(username=data.username,password=data.password)
+async def login(data: schema.LoginRequest, service: AuthServiceDep, response: Response, request: Request):
+    tokens = await service.login(username=data.username,password=data.password, request=request)
     AuthCookie.set_access(response, tokens.access_token)
     AuthCookie.set_refresh(response, tokens.refresh_token)
 
@@ -57,19 +57,19 @@ async def change_password(data: schema.ChangePasswordRequest, auth: CurrentAuthD
     await service.change_password(user=auth.user, data=data, session_id=auth.payload.sid)
 
 
-@router.post("/verify-email",status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/email/verify",status_code=status.HTTP_204_NO_CONTENT)
 async def verify_email(data: schema.VerifyEmailRequest, user: CurrentUser, service: AuthServiceDep):
     await service.verify_email(user=user, code=data.code)
 
 
-@router.post("/resend-email-code",status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/email/resend-code",status_code=status.HTTP_204_NO_CONTENT)
 async def resend_email_code(user: CurrentUser, service: AuthServiceDep):
     await service.resend_verification_email(user=user)
 
 
-@router.patch("/email-change")
+@router.patch("/email/change", status_code=status.HTTP_204_NO_CONTENT)
 async def email_change(new_email: schema.ChangeEmailRequest, current_user: CurrentUser, service: AuthServiceDep):
-    await service.change_email(email=new_email.email, user=current_user)
+    await service.change_email_(email=new_email.email, user=current_user)
 
 
 @router.post("/forgot-password/request", status_code=status.HTTP_204_NO_CONTENT)
@@ -77,16 +77,11 @@ async def request_password_reset(data: schema.PasswordForgotRequest, service: Au
     await service.request_password_reset(data.email)
 
 
-@router.post("/forgot-password/verify", response_model=schema.ResetPasswordVerifyResponse)
-async def verify_reset_code(data: schema.PasswordResetVerifyRequest, service: AuthServiceDep):
+@router.post("/forgot-password/verify", response_model=schema.PasswordForgotVerifyResponse)
+async def verify_reset_code(data: schema.PasswordForgotVerifyRequest, service: AuthServiceDep):
     return await service.verify_reset_code(email=data.email, code=data.code)
 
 
-# @router.post("/password-reset",status_code=status.HTTP_204_NO_CONTENT)
-# async def reset_password(data: ChangePasswordRequest, user: CurrentUser, service: UserService):
-#     await service.reset_password(user=user, password=data.password)
-#
-#
-# @router.post("/password-reset-code",status_code=status.HTTP_204_NO_CONTENT)
-# async def send_password_reset_code(data: ChangePasswordRequest, user: CurrentUser, service: UserService):
-#     await service.reset_password(user=user, password=data.password)
+@router.post("/forgot-password/reset",status_code=status.HTTP_204_NO_CONTENT)
+async def reset_password(data: schema.PasswordForgotResetRequest, service: AuthServiceDep):
+    await service.reset_password(reset_token=data.reset_token, new_password=data.new_password)

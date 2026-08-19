@@ -1,3 +1,4 @@
+from fastapi import Request
 from datetime import timedelta, datetime
 from uuid import UUID
 
@@ -6,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.exceptions import AppException, ErrorCode
+from app.core.obsarvability.utils import parse_user_agent, get_client_info
 from app.events import UserLoggedInEvent, UserLoggedOutEvent, UserRegisteredEvent, UserLoggedOutAllEvent, \
     UserPasswordChangedEvent
 from app.infrastructure.db.models import User, Session
@@ -17,7 +19,7 @@ from app.modules.auth.password import PasswordService
 from app.modules.auth.repository import SessionRepository
 from app.modules.auth.cache import PasswordResetTokenCache, VerifyEmailCache, PasswordResetCache, SessionCache
 from app.modules.users.repository import UserRepository
-from app.modules.auth.schema import UserCreate, ChangePasswordRequest, SessionModel, ResetPasswordVerifyResponse
+from app.modules.auth.schema import UserCreate, ChangePasswordRequest, SessionModel, PasswordForgotVerifyResponse
 from app.utils.func_utils import get_now_dt
 
 
@@ -47,12 +49,35 @@ def _check_valid_user(user: User | None) -> User | None:
     return user
 
 
+
+
+def get_session_client_data(request: Request) -> dict:
+    user_agent = request.headers.get("user-agent")
+
+    ua = parse_user_agent(user_agent)
+    ip = request.client.host
+
+    client_info = request.headers.get("X-Client-Info")
+    ci = get_client_info(client_info)
+
+    return {**ua, **ci, "ip_address":ip}
+
+
+
+def update_session_client_data(session: Session, request: Request) -> None:
+
+    client_data = get_session_client_data(request)
+
+    for field, value in client_data.items():
+        setattr(session, field, value)
+
+
 class AuthService:
     def __init__(self, db: AsyncSession):
         self.repository = UserRepository()
         self.db = db
 
-    async def _create_session_and_tokens(self, user: User, now: datetime) -> AuthSessionResult:
+    async def _create_session_and_tokens(self, user: User, now: datetime, request: Request) -> AuthSessionResult:
         refresh_token = JWTService.generate_refresh_token()
 
         session = Session(
@@ -61,6 +86,8 @@ class AuthService:
             expires_at=now + timedelta(days=settings.security.refresh_token_expire_days),
             created_at=now
         )
+
+        update_session_client_data(session, request)
 
         session = await SessionRepository.create(self.db, session)
 
@@ -73,7 +100,7 @@ class AuthService:
 
         return AuthSessionResult(tokens=tokens, session=session)
 
-    async def register(self, data: UserCreate) -> AuthResult:
+    async def register(self, request: Request, data: UserCreate) -> AuthResult:
         if await self.repository.get_by_email(self.db, data.email):
             raise AppException(ErrorCode.EMAIL_ALREADY_EXISTS,"EMAIL already exists")
 
@@ -91,17 +118,17 @@ class AuthService:
 
         user = await self.repository.create(db=self.db, user=user)
 
-        result = await self._create_session_and_tokens(user, now)
+        result = await self._create_session_and_tokens(user, now, request)
 
         await self.db.commit()
 
         await VerifyEmailService.send(user)
-        
+
         await RabbitPublisher.publish(UserRegisteredEvent.from_models(author=user, session=result.session))
 
         return AuthResult(user=user, tokens=result.tokens)
 
-    async def login(self, username: str, password: str) -> AuthTokens:
+    async def login(self, request: Request, username: str, password: str) -> AuthTokens:
         user = await self.repository.get_by_username(self.db, username)
 
         if not user:
@@ -112,7 +139,7 @@ class AuthService:
 
         now = get_now_dt()
 
-        result = await self._create_session_and_tokens(user, now)
+        result = await self._create_session_and_tokens(user, now, request)
 
         await self.db.commit()
 
@@ -122,10 +149,10 @@ class AuthService:
 
     async def refresh(self, refresh_token: str) -> str:
         refresh_hash = JWTService.hash_refresh_token(refresh_token)
-        session = await SessionRepository.get_by_refresh_hash(self.db, refresh_hash)
 
         now = get_now_dt()
 
+        session = await SessionRepository.get_by_refresh_hash(self.db, refresh_hash)
         session = _check_valid_session(session, now)
 
         user = await self.repository.get_by_id(self.db, session.user_id)
@@ -148,7 +175,7 @@ class AuthService:
 
         await RabbitPublisher.publish(UserLoggedOutEvent.from_models(author=user, session=session))
 
-    async def revoke_session(self,session_id: UUID, user: User) -> None:
+    async def revoke_session(self, session_id: UUID, user: User) -> None:
         session = await SessionRepository.get_by_session_id(db=self.db,session_id=session_id)
         now = get_now_dt()
         session = _check_valid_session(session, now)
@@ -177,7 +204,7 @@ class AuthService:
 
         return sessions
 
-    async def _revoke_all_sessions(self, user_id: int) -> None:
+    async def _revoke_all_sessions(self, user_id: int) -> list[Session]:
         now = get_now_dt()
 
         sessions = await SessionRepository.get_list_active_by_user_id(db=self.db, user_id=user_id, now=now)
@@ -187,6 +214,8 @@ class AuthService:
 
         for session in sessions:
             await SessionCache.delete(session.public_id)
+
+        return sessions
 
     async def revoke_other_sessions(self, user: User, session_id: UUID) -> None:
         sessions = await self._revoke_other_sessions(user, session_id)
@@ -212,7 +241,10 @@ class AuthService:
         if PasswordService.verify_password(data.new_password, user.password_hash):
             raise AppException(ErrorCode.NEW_PASSWORD_SAME, "New password must be different")
 
+        now = get_now_dt()
         user.password_hash = PasswordService.hash_password(data.new_password)
+        user.updated_at = now
+        user.password_changed_at = now
         sessions = await self._revoke_other_sessions(user, session_id)
         await self.db.commit()
 
@@ -238,7 +270,7 @@ class AuthService:
 
         await VerifyEmailService.send(user)
 
-    async def change_email___________________________(self, user: User, email: str) -> None:
+    async def change_email_(self, user: User, email: str) -> None:
         if user.email == email:
             raise AppException(ErrorCode.NEW_EMAIL_SAME, "New email must be different")
 
@@ -260,7 +292,7 @@ class AuthService:
 
         await PasswordResetService.send(user)
 
-    async def verify_reset_code(self, email: str, code: str) -> ResetPasswordVerifyResponse:
+    async def verify_reset_code(self, email: str, code: str) -> PasswordForgotVerifyResponse:
         user = await self.repository.get_by_email(self.db, email)
 
         if not user or not await PasswordResetCache.verify(user.public_id, code):
@@ -272,7 +304,7 @@ class AuthService:
 
         await PasswordResetCache.delete(user.public_id)
 
-        return ResetPasswordVerifyResponse(reset_token=reset_token)
+        return PasswordForgotVerifyResponse(reset_token=reset_token)
 
     async def reset_password(self, reset_token: str, new_password: str) -> None:
         user_id = await PasswordResetTokenCache.get_user_id(reset_token)
@@ -286,9 +318,12 @@ class AuthService:
         if PasswordService.verify_password(new_password, user.password_hash):
             raise AppException(ErrorCode.NEW_PASSWORD_SAME,"New password must be different",)
 
+        now = get_now_dt()
         user.password_hash = PasswordService.hash_password(new_password)
+        user.updated_at = now
+        user.password_changed_at = now
 
-        await self._revoke_all_sessions(user_id=user.id)
+        sessions = await self._revoke_all_sessions(user_id=user.id)
 
         await self.db.commit()
 

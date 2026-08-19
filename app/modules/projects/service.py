@@ -27,7 +27,7 @@ class ProjectService:
     async def create(self, data: ProjectCreate, current_user: User) -> Project:
         project = Project(name=data.name,description=data.description,owner_id=current_user.id)
         project = await self.repository.create(db=self.db, project=project)
-        member = ProjectMember(project_id=project.id,user_id=current_user.id,role=ProjectRole.OWNER)
+        member = ProjectMember(project_id=project.id,user_id=current_user.id,role=ProjectRole.MEMBER)
         await ProjectMemberRepository.create(db=self.db, member=member)
         await self.db.commit()
         return project
@@ -83,7 +83,7 @@ class ProjectService:
             owner=project.owner.username,
             created_at=project.created_at,
             updated_at=project.updated_at,
-            roles=[role.value for role in ProjectRole if role != ProjectRole.OWNER],
+            roles=[role.value for role in ProjectRole],
             members=[
                 ProjectMemberResponse(
                     public_id=member.user.public_id,

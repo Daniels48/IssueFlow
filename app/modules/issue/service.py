@@ -5,54 +5,55 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import TypeAdapter
 
+from app.core.exceptions import AppException, ErrorCode
 from app.events import IssueUpdatedEvent
 from app.infrastructure.db.models import User, Issue
 from app.infrastructure.rabbitmq import RabbitPublisher
+
 from app.modules.auth.dependencies import DBSession
+
 from app.modules.comments.service import CommentService
-from app.modules.issue.repository import IssueRepository
 from app.modules.issue.schema import IssueCreate, IssueUpdate, IssueResponse, IssueResponseDetail, IssueResponseEdit
+
+from app.modules.issue.repository import IssueRepository
 from app.modules.project_members.repository import ProjectMemberRepository
 from app.modules.projects.repository import ProjectRepository
 from app.modules.users.repository import UserRepository
+from app.permissions.enums import Permission
+from app.permissions.rbac import ProjectRBAC
+
 from app.utils.func_utils import to
 
 ISSUE_LIST_ADAPTER = TypeAdapter(list[IssueResponse])
 
 
 class IssueService:
-    def __init__(
-        self,
-        repository: IssueRepository,
-        project_repository: ProjectRepository,
-        project_member_repository: ProjectMemberRepository,
-        user_repository: UserRepository,
-        db: AsyncSession,
-    ):
-        self.repository = repository
-        self.project_repository = project_repository
-        self.project_member_repository = project_member_repository
-        self.user_repository = user_repository
+    def __init__(self,db: AsyncSession):
+        self.repository = IssueRepository()
+        self.project_repository = ProjectRepository()
+        self.project_member_repository = ProjectMemberRepository()
+        self.user_repository = UserRepository()
         self.db = db
 
-    async def create(self,project_id: UUID,data: IssueCreate, user: User) -> IssueResponse:
+    async def create(self,project_id: UUID, data: IssueCreate, user: User) -> IssueResponse:
         project = await self.project_repository.get_by_public_id_no_full(self.db, project_id)
 
         if not project:
-            raise ValueError("Project not found")
+            raise AppException(ErrorCode.PROJECT_NOT_FOUND, "Project not found")
+
+        member_current_user = await self.project_member_repository.get_by_project_and_user(self.db,project.id,user.id)
+
+        ProjectRBAC.require(permission=Permission.ISSUE_CREATE, user=user, project=project, member=member_current_user)
 
         assignee = None
 
         if data.assignee_public_id:
-            assignee = await self.user_repository.get_by_public_id(self.db, data.assignee_public_id)
+            member_assignee = await self.project_member_repository.get_by_project_and_user_public_id(self.db, project.id, data.assignee_public_id)
 
-            if not assignee:
-                raise ValueError("User not found")
+            if not member_assignee:
+                raise AppException(ErrorCode.USER_IS_NOT_A_PROJECT_MEMBER,"User is not a project member")
 
-            member = await self.project_member_repository.get_by_project_and_user(self.db, project.id, assignee.id)
-
-            if not member:
-                raise ValueError("User is not a project member")
+            assignee = member_assignee.user
 
         issue = Issue(
             project_id=project.id,
@@ -62,37 +63,52 @@ class IssueService:
             description=data.description,
             priority=data.priority,
             due_date=data.due_date,
+            reporter=user,
+            assignee=assignee
         )
 
         issue = await self.repository.create(self.db, issue)
 
         await self.db.commit()
 
-        return IssueResponse.model_validate(issue)
+        return to(IssueResponse, issue)
 
-    async def get(self, public_id: UUID) -> IssueResponseDetail | None:
+    async def get(self, public_id: UUID, user: User) -> IssueResponseDetail | None:
         issue = await self.repository.get_by_public_id_full(self.db, public_id)
         if issue is None:
-            return None
+            raise AppException(ErrorCode.ISSUE_NOT_FOUND, "Issue not found")
+
+        member = await self.project_member_repository.get_by_project_and_user(self.db, issue.project.id, user.id)
+
+        ProjectRBAC.require(permission=Permission.ISSUE_VIEW, user=user, project=issue.project, member=member)
 
         base = IssueResponse.model_validate(issue)
         comments_tree = CommentService.build_comment_tree(issue.comments)
 
         return IssueResponseDetail(**base.model_dump(), comments=comments_tree)
 
-    async def get_edit(self, public_id: UUID) -> IssueResponseEdit | None:
+    async def get_edit(self, public_id: UUID, user: User) -> IssueResponseEdit | None:
         issue = await self.repository.get_by_public_id_edit(self.db, public_id)
         if issue is None:
-            return None
+            raise AppException(ErrorCode.ISSUE_NOT_FOUND, "Issue not found")
+
+        member = await self.project_member_repository.get_by_project_and_user(self.db, issue.project.id, user.id)
+
+        ProjectRBAC.require(permission=Permission.ISSUE_VIEW, user=user, project=issue.project, member=member)
+
         return IssueResponseEdit.model_validate(issue)
 
-    async def list(self,project_id: UUID, user: User, query: str | None = None) -> list[IssueResponse]:
+    async def list(self, project_id: UUID, user: User, search: str | None = None) -> list[IssueResponse]:
         project = await self.project_repository.get_by_public_id_no_full(self.db, project_id)
 
         if not project:
-            raise ValueError("Project not found")
+            raise AppException(ErrorCode.PROJECT_NOT_FOUND, "Project not found")
 
-        list_issues = await self.repository.get_all_by_project(self.db, project.id, user.id, query)
+        member = await self.project_member_repository.get_by_project_and_user(self.db,project.id,user.id)
+
+        ProjectRBAC.require(permission=Permission.ISSUE_VIEW, user=user, project=project, member=member)
+
+        list_issues = await self.repository.get_all_by_project(self.db, project.id, search)
 
         return ISSUE_LIST_ADAPTER.validate_python(list_issues)
 
@@ -100,20 +116,22 @@ class IssueService:
         issue = await self.repository.get_by_public_id(self.db, public_id)
 
         if not issue:
-            raise ValueError("Issue not found")
+            raise AppException(ErrorCode.ISSUE_NOT_FOUND, "Issue not found")
+
+        member_current = await self.project_member_repository.get_by_project_and_user(self.db, issue.project.id, user.id)
+
+        ProjectRBAC.require(permission=Permission.ISSUE_UPDATE, user=user, project=issue.project, member=member_current, resource=issue)
 
         if data.assignee_public_id is not None:
-            assignee = await self.user_repository.get_by_public_id(self.db,data.assignee_public_id)
-
-            if not assignee:
-                raise ValueError("User not found")
-
-            member = await self.project_member_repository.get_by_project_and_user(self.db, issue.project_id,assignee.id)
+            member = await self.project_member_repository.get_by_project_and_user_public_id(
+                self.db, issue.project_id,
+                data.assignee_public_id
+            )
 
             if not member:
-                raise ValueError("User is not a project member")
+                raise AppException(ErrorCode.ISSUE_ASSIGNED_NOT_FOUND, "User is not a project member")
 
-            issue.assignee_id = assignee.id
+            issue.assignee_id = member.user.id
 
         update_data = data.model_dump(exclude_unset=True,exclude={"assignee_public_id"})
 
@@ -131,11 +149,14 @@ class IssueService:
 
         return to(IssueResponse, issue)
 
-    async def delete(self,public_id: UUID) -> None:
+    async def delete(self,public_id: UUID, user: User) -> None:
         issue = await self.repository.get_by_public_id(self.db, public_id)
-
         if not issue:
-            raise ValueError("Issue not found")
+            raise AppException(ErrorCode.ISSUE_NOT_FOUND, "Issue not found")
+
+        member = await self.project_member_repository.get_by_project_and_user(self.db, issue.project.id, user.id)
+
+        ProjectRBAC.require(permission=Permission.ISSUE_DELETE, user=user, project=issue.project, member=member, resource=issue)
 
         await self.repository.delete(self.db, issue)
 
@@ -143,13 +164,7 @@ class IssueService:
 
 
 async def get_issue_service(db: DBSession) -> IssueService:
-    return IssueService(
-        repository=IssueRepository(),
-        project_repository=ProjectRepository(),
-        project_member_repository=ProjectMemberRepository(),
-        user_repository=UserRepository(),
-        db=db
-    )
+    return IssueService(db=db)
 
 
 issue_service = Annotated[IssueService,Depends(get_issue_service)]

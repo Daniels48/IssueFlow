@@ -17,6 +17,9 @@ pydantic
 pydantic-settings
 email-validator
 python-multipart
+python-json-logger
+user_agents
+reverse_geocode
 
 pwdlib[argon2]
 python-jose[cryptography]

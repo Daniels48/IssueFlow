@@ -24,19 +24,9 @@ class Comment(BaseModel):
 
     content: Mapped[str] = mapped_column(Text,nullable=False)
 
-    issue: Mapped["Issue"] = relationship(
-        back_populates="comments",
-    )
-    author: Mapped["User"] = relationship(
-        back_populates="comments",
-    )
+    issue: Mapped["Issue"] = relationship(back_populates="comments",)
+    author: Mapped["User"] = relationship(back_populates="comments",)
 
-    parent: Mapped["Comment | None"] = relationship(
-        remote_side="Comment.id",
-        back_populates="children",
-    )
+    parent: Mapped["Comment | None"] = relationship( remote_side="Comment.id",back_populates="children")
 
-    children: Mapped[list["Comment"]] = relationship(
-        back_populates="parent",
-        cascade="all, delete-orphan",
-    )
+    children: Mapped[list["Comment"]] = relationship(back_populates="parent",cascade="all, delete-orphan")

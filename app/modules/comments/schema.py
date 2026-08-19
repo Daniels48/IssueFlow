@@ -8,7 +8,6 @@ from app.modules.users.schema import UserShortResponse
 
 class CommentCreate(BaseModel):
     content: str = Field( min_length=1,max_length=5000)
-
     parent_comment_public_id: UUID | None = None
 
 
@@ -16,7 +15,7 @@ class CommentUpdate(BaseModel):
     content: str = Field(min_length=1,max_length=5000)
 
 
-class CommentResponseBase(BaseModel):
+class CommentResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     public_id: UUID
@@ -26,8 +25,8 @@ class CommentResponseBase(BaseModel):
     updated_at: datetime
 
 
-class CommentResponse(CommentResponseBase):
-    children: list["CommentResponse"] = Field(default_factory=list)
+class CommentTreeResponse(CommentResponse):
+    children: list["CommentTreeResponse"] = Field(default_factory=list)
 
 
-CommentResponse.model_rebuild()
+CommentTreeResponse.model_rebuild()

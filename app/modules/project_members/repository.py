@@ -1,8 +1,10 @@
+from uuid import UUID
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.infrastructure.db.models import ProjectMember
+from app.infrastructure.db.models import ProjectMember, User
 
 
 class ProjectMemberRepository:
@@ -14,15 +16,32 @@ class ProjectMemberRepository:
         return member
 
     @staticmethod
-    async def get_by_project_and_user(db: AsyncSession, project_id: int, user_id: int) -> ProjectMember:
+    async def get_by_project_and_user(db: AsyncSession,project_id: int, user_id: int) -> ProjectMember | None:
         result = await db.execute(
-            select(ProjectMember).where(
+            select(ProjectMember)
+            .where(
                 ProjectMember.project_id == project_id,
                 ProjectMember.user_id == user_id,
             )
         )
 
-        return result.scalar_one()
+        return result.scalar_one_or_none()
+
+
+    @staticmethod
+    async def get_by_project_and_user_public_id(db: AsyncSession, project_id: int, user_public_id: UUID
+    ) -> ProjectMember | None:
+        result = await db.execute(
+            select(ProjectMember)
+            .options(selectinload(ProjectMember.user))
+            .join(ProjectMember.user)
+            .where(
+                ProjectMember.project_id == project_id,
+                User.public_id == user_public_id,
+            )
+        )
+
+        return result.scalar_one_or_none()
 
     @staticmethod
     async def get_all_by_project(db: AsyncSession, project_id: int) -> list[ProjectMember]:
