@@ -1,6 +1,7 @@
 from app.core.exceptions import AppException, ErrorCode
 from app.infrastructure.db.models import User, Project, ProjectMember, Comment, Issue
 from app.modules.project_members.project_role import ProjectRole
+from app.permissions.context import PermissionContext
 from app.permissions.enums import Permission, Role
 
 
@@ -24,10 +25,13 @@ class ProjectRBAC:
     def get_permissions_for_project_member() -> set[Permission]:
         return {
             Permission.PROJECT_VIEW,
+
             Permission.ISSUE_VIEW,
             Permission.ISSUE_CREATE,
+
             Permission.COMMENT_VIEW,
             Permission.COMMENT_CREATE,
+
             Permission.MEMBER_VIEW,
         }
 
@@ -49,20 +53,15 @@ class ProjectRBAC:
 
     @staticmethod
     def get_permissions_for_role(role: Role) -> set[Permission]:
-        getters = {
-            Role.GLOBAL_ADMIN: ProjectRBAC.get_permissions_for_global_admin,
-            Role.PROJECT_OWNER: ProjectRBAC.get_permissions_for_project_owner,
-            Role.PROJECT_ADMIN: ProjectRBAC.get_permissions_for_project_admin,
-            Role.PROJECT_MEMBER: ProjectRBAC.get_permissions_for_project_member,
-            Role.ISSUE_OWNER: ProjectRBAC.get_permissions_for_issue_owner,
-            Role.COMMENT_OWNER: ProjectRBAC.get_permissions_for_comment_owner,
-        }
+        return PERMISSION_GETTERS[role]()
 
-        return getters[role]()
 
     @staticmethod
-    def get_roles(user: User, project: Project, member: ProjectMember | None, resource: Issue | Comment | None = None
-                   ) -> set[Role]:
+    def get_roles(context: PermissionContext) -> set[Role]:
+        user = context.user
+        project = context.project
+        member = context.member
+        resource = context.resource
 
         if user.is_superuser:
             return {Role.GLOBAL_ADMIN}
@@ -92,20 +91,23 @@ class ProjectRBAC:
         return roles
 
     @staticmethod
-    def require(
-            user: User,
-            project: Project,
-            member: ProjectMember | None,
-            permission: Permission,
-            resource: Issue | Comment | None = None,
-    ) -> None:
+    def require(permission: Permission, context: PermissionContext) -> None:
 
-        roles = ProjectRBAC.get_roles(user=user, project=project,member=member, resource=resource)
+        roles = ProjectRBAC.get_roles(context)
 
-        for role in roles:
-            permissions = ProjectRBAC.get_permissions_for_role(role)
+        permissions = (permission in ProjectRBAC.get_permissions_for_role(role) for role in roles)
 
-            if permission in permissions:
-                return
+        if any(permissions):
+            return
 
         raise AppException(ErrorCode.PERMISSION_DENIED,"Permission denied")
+
+
+PERMISSION_GETTERS = {
+    Role.GLOBAL_ADMIN: ProjectRBAC.get_permissions_for_global_admin,
+    Role.PROJECT_OWNER: ProjectRBAC.get_permissions_for_project_owner,
+    Role.PROJECT_ADMIN: ProjectRBAC.get_permissions_for_project_admin,
+    Role.PROJECT_MEMBER: ProjectRBAC.get_permissions_for_project_member,
+    Role.ISSUE_OWNER: ProjectRBAC.get_permissions_for_issue_owner,
+    Role.COMMENT_OWNER: ProjectRBAC.get_permissions_for_comment_owner,
+}

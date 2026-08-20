@@ -16,8 +16,8 @@ from app.modules.project_members.schema import ProjectMemberCreate, ProjectMembe
     ProjectMemberResponse_
 from app.modules.projects.repository import ProjectRepository
 from app.modules.users.repository import UserRepository
-
-
+from app.permissions.enums import Permission
+from app.permissions.rbac import ProjectRBAC
 
 MEMBER_LIST_ADAPTER = TypeAdapter(list[ProjectMemberResponse])
 
@@ -35,95 +35,94 @@ class ProjectMemberService:
         self.user_repository = user_repository
         self.db = db
 
-    async def add_member(self, project_id: UUID, data: ProjectMemberCreate, current_user: User) -> ProjectMemberResponse_:
-        project = await self.project_repository.get_by_public_id_no_full(self.db, project_id)
+    async def add_member(self, project_id: UUID, data: ProjectMemberCreate, user: User) -> ProjectMemberResponse_:
+        result = await self.project_repository.get_by_public_id_with_current_member(self.db, project_id, user.id)
 
-        if not project:
-            raise AppException(ErrorCode.PROJECT_NOT_FOUND, "Project not found")
+        if result is None:
+            raise AppException(ErrorCode.PROJECT_NOT_FOUND,"Project not found")
 
+        project, member_current = result
 
+        ProjectRBAC.require(permission=Permission.MEMBER_ADD, user=user, project=project, member=member_current)
 
-        user = await self.user_repository.get_by_public_id(self.db, data.user_public_id)
+        added_user = await self.user_repository.get_by_public_id(self.db, data.user_public_id)
 
-        if not user:
-            raise ValueError("User not found")
+        if not added_user:
+            raise AppException(ErrorCode.USER_NOT_FOUND, "User not found")
 
-        member = await self.repository.user_in_project(self.db, project.id, user.id)
+        user_in_project = await self.repository.user_in_project(self.db, project.id, added_user.id)
 
-        if member:
-            raise ValueError("User already in project")
+        if user_in_project:
+            raise AppException(ErrorCode.MEMBER_ALREADY_IN_PROJECT, "Member already in project")
 
-        member = ProjectMember(project_id=project.id, user_id=user.id, role=ProjectRole.MEMBER)
+        member = ProjectMember(project_id=project.id, user_id=added_user.id, role=ProjectRole.MEMBER)
         member = await self.repository.create(self.db,member)
         await self.db.commit()
 
-        await RabbitPublisher.publish(
-            ProjectMemberAddedEvent.from_models(project, current_user, member)
-        )
+        await RabbitPublisher.publish(ProjectMemberAddedEvent.from_models(project, user, member))
         
-        return ProjectMemberResponse_(public_id=user.public_id, username=user.username, role=member.role)
+        return ProjectMemberResponse_(public_id=added_user.public_id, username=added_user.username, role=member.role)
 
 
-    async def get_members(self, project_id: UUID, current_user: User) -> list[ProjectMemberResponse]:
-        project = await self.project_repository.get_by_public_id(self.db, project_id, current_user.id)
+    async def get_members(self, project_id: UUID, user: User) -> list[ProjectMemberResponse]:
+        result = await self.project_repository.get_by_public_id_with_current_member(self.db, project_id, user.id)
 
-        if not project:
-            raise ValueError("Project not found")
+        if result is None:
+            raise AppException(ErrorCode.PROJECT_NOT_FOUND, "Project not found")
 
-        if project.owner_id != current_user.id:
-            raise ValueError("Permission denied")
+        project, member_current = result
+
+        ProjectRBAC.require(permission=Permission.MEMBER_VIEW, user=user, project=project, member=member_current)
 
         members = await self.repository.get_all_by_project(self.db, project.id)
 
         return MEMBER_LIST_ADAPTER.validate_python(members)
 
-    async def update_role(self,project_id: UUID, user_id: UUID,data: ProjectMemberUpdate,current_user: User) -> ProjectMemberResponse_:
-        project = await self.project_repository.get_by_public_id_no_full(self.db, project_id)
+    async def update_role(self,project_id: UUID, user_id: UUID,data: ProjectMemberUpdate,user: User) -> ProjectMemberResponse_:
+        result = await self.project_repository.get_by_public_id_with_current_member(self.db, project_id, user.id)
 
-        if not project:
-            raise ValueError("Project not found")
+        if result is None:
+            raise AppException(ErrorCode.PROJECT_NOT_FOUND, "Project not found")
 
-        if project.owner_id != current_user.id:
-            raise ValueError("Permission denied")
+        project, member_current = result
+
+        ProjectRBAC.require(permission=Permission.MEMBER_ROLE_UPDATE, user=user, project=project, member=member_current)
 
         member = await self.repository.get_by_project_and_user_public_id(self.db, project.id, user_id)
-        
+
         if not member:
-            raise ValueError("Member not found")
+            raise AppException(ErrorCode.USER_IS_NOT_A_PROJECT_MEMBER, "Member not found")
 
         member.role = data.role
         member = await self.repository.update(self.db,member)
         await self.db.commit()
 
         await RabbitPublisher.publish(
-            ProjectMemberRoleChangedEvent.from_models(project, current_user, member)
+            ProjectMemberRoleChangedEvent.from_models(project, user, member)
         )
         
-        return ProjectMemberResponse_(public_id=user.public_id, username=user.username, role=member.role)
+        return ProjectMemberResponse_(public_id=member.user.public_id, username=member.user.username, role=member.role)
 
-    async def delete_member(self,project_id: UUID,user_id: UUID,current_user: User) -> None:
-        project = await self.project_repository.get_by_public_id(self.db, project_id, user_id=current_user.id)
+    async def delete_member(self,project_id: UUID,user_id: UUID,user: User) -> None:
+        result = await self.project_repository.get_by_public_id_with_current_member(self.db, project_id, user.id)
 
-        if not project:
-            raise ValueError("Project not found")
+        if result is None:
+            raise AppException(ErrorCode.PROJECT_NOT_FOUND, "Project not found")
 
-        if project.owner_id != current_user.id:
-            raise ValueError("Permission denied")
+        project, member_current = result
+
+        ProjectRBAC.require(permission=Permission.MEMBER_REMOVE, user=user, project=project, member=member_current)
 
         member = await ProjectMemberRepository.get_by_project_and_user_public_id(self.db, project.id, user_id)
 
         if not member:
-            raise ValueError("Member not found")
+            raise AppException(ErrorCode.USER_IS_NOT_A_PROJECT_MEMBER, "Member not found")
 
         await self.repository.delete(self.db,member)
         await self.db.commit()
 
-        await RabbitPublisher.publish(
-            ProjectMemberRemovedEvent.from_models(project, current_user, member)
-        )
+        await RabbitPublisher.publish(ProjectMemberRemovedEvent.from_models(project, user, member))
 
-    async def member_in_project(self):
-        pass
 
 async def get_member_service(db: DBSession) -> ProjectMemberService:
     return ProjectMemberService(

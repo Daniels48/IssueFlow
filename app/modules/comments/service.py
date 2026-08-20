@@ -12,7 +12,7 @@ from app.modules.auth.dependencies import DBSession
 from app.modules.comments.repository import CommentRepository
 from app.modules.comments.schema import CommentCreate, CommentResponse,CommentUpdate, CommentTreeResponse
 from app.modules.issue.repository import IssueRepository
-from app.modules.project_members.repository import ProjectMemberRepository
+from app.permissions.context import PermissionContext
 from app.permissions.enums import Permission
 from app.permissions.rbac import ProjectRBAC
 from app.utils.func_utils import to, get_now_dt
@@ -48,14 +48,15 @@ class CommentService:
         return roots
 
     async def create(self, issue_id: UUID, data: CommentCreate, user: User) -> CommentResponse:
-        issue = await self.issue_repository.get_by_public_id(self.db, issue_id)
+        result = await self.issue_repository.get_by_public_id_with_current_member(self.db, issue_id, user.id)
 
-        if issue is None:
-            raise AppException(ErrorCode.ISSUE_NOT_FOUND, "Issue not found")
+        if result is None:
+            raise AppException( ErrorCode.ISSUE_NOT_FOUND,"Issue not found")
 
-        member = await ProjectMemberRepository.get_by_project_and_user(self.db,issue.project.id,user.id)
+        issue, member = result
 
-        ProjectRBAC.require(permission=Permission.COMMENT_CREATE, user=user, project=issue.project, member=member)
+        context = PermissionContext(user=user, project=issue.project, member=member)
+        ProjectRBAC.require(permission=Permission.COMMENT_CREATE, context=context)
 
         parent_comment_id = None
 
@@ -86,59 +87,42 @@ class CommentService:
 
         return to(CommentResponse, comment)
 
-    async def update(self, comment_id: UUID, issue_id: UUID, data: CommentUpdate, current_user: User) -> CommentResponse:
-        issue = await self.issue_repository.get_by_public_id(self.db, issue_id)
-        if issue is None:
-            raise AppException(ErrorCode.ISSUE_NOT_FOUND, "Issue not found")
+    async def update(self, comment_id: UUID, data: CommentUpdate, user: User) -> CommentResponse:
+        result = await self.repository.get_by_public_id_with_current_member(self.db, comment_id, user.id)
 
+        if result is None:
+            raise AppException(ErrorCode.COMMENT_NOT_FOUND,"Comment not found")
 
-        comment = await self.repository.get_by_public_id(self.db, comment_id)
-        if not comment:
-            raise AppException(ErrorCode.COMMENT_NOT_FOUND, "Comment not found")
+        comment, member = result
 
-        member = await ProjectMemberRepository.get_by_project_and_user(self.db, issue.project.id, current_user.id)
-
-        ProjectRBAC.require(
-            permission=Permission.COMMENT_UPDATE,
-            user=current_user,
-            project=issue.project,
-            member=member,
-            resource=comment
-        )
+        context = PermissionContext(user=user, project=comment.issue.project, member=member, resource=comment)
+        ProjectRBAC.require(permission=Permission.COMMENT_UPDATE, context=context)
 
         comment.content = data.content
 
         await self.db.commit()
 
-        event = CommentUpdatedEvent.from_models(issue, current_user, comment)
+        event = CommentUpdatedEvent.from_models(comment.issue, user, comment)
         await RabbitPublisher.publish(event)
 
         return to(CommentResponse, comment)
 
-    async def delete(self, comment_id: UUID, issue_id: UUID, current_user: User) -> None:
-        issue = await self.issue_repository.get_by_public_id(self.db, issue_id)
-        if issue is None:
-            raise AppException(ErrorCode.ISSUE_NOT_FOUND, "Issue not found")
+    async def delete(self, comment_id: UUID, user: User) -> None:
+        result = await self.repository.get_by_public_id_with_current_member(self.db, comment_id, user.id)
 
-        comment = await self.repository.get_by_public_id(self.db, comment_id)
-        if not comment:
+        if result is None:
             raise AppException(ErrorCode.COMMENT_NOT_FOUND, "Comment not found")
 
-        member = await ProjectMemberRepository.get_by_project_and_user(self.db, issue.project.id, current_user.id)
+        comment, member = result
 
-        ProjectRBAC.require(
-            permission=Permission.COMMENT_DELETE,
-            user=current_user,
-            project=issue.project,
-            member=member,
-            resource=comment
-        )
+        context = PermissionContext(user=user, project=comment.issue.project, member=member, resource=comment)
+        ProjectRBAC.require(permission=Permission.COMMENT_DELETE, context=context)
 
         comment.deleted_at = get_now_dt()
 
         await self.db.commit()
 
-        event = CommentDeletedEvent.from_models(issue, current_user, comment)
+        event = CommentDeletedEvent.from_models(comment.issue, user, comment)
         await RabbitPublisher.publish(event)
 
 

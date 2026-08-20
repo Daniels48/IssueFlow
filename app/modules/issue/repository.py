@@ -3,7 +3,7 @@ from uuid import UUID
 
 from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload, with_loader_criteria, joinedload
+from sqlalchemy.orm import selectinload, with_loader_criteria, joinedload, contains_eager
 
 from app.infrastructure.db.models import Issue, Comment, Project, ProjectMember
 
@@ -29,6 +29,36 @@ class IssueRepository:
         )
 
         return result.scalar_one()
+
+    @staticmethod
+    async def get_by_public_id_with_current_member(db: AsyncSession, public_id: UUID, user_id: int,
+    ) -> tuple[Issue, ProjectMember | None] | None:
+        stmt = (
+            select(Issue, ProjectMember)
+            .join(Issue.project)
+            .outerjoin(
+                ProjectMember,
+                (ProjectMember.project_id == Project.id)
+                & (ProjectMember.user_id == user_id),
+            )
+            .options(
+                contains_eager(Issue.project),
+            )
+            .where(
+                Issue.public_id == public_id,
+                Issue.deleted_at.is_(None),
+            )
+        )
+
+        result = await db.execute(stmt)
+
+        row = result.one_or_none()
+        if row is None:
+            return None
+
+        issue, member_current = row
+
+        return issue, member_current
 
     @staticmethod
     async def get_by_public_id_full(db: AsyncSession, public_id: UUID) -> Issue | None:

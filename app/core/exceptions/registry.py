@@ -72,6 +72,7 @@ PROJECT_ERRORS = {
 
 MEMBER_ERRORS = {
     ErrorCode.USER_IS_NOT_A_PROJECT_MEMBER: ErrorDefinition(403,"Forbidden"),
+    ErrorCode.MEMBER_ALREADY_IN_PROJECT: ErrorDefinition(403,"Forbidden"),
 }
 
 
@@ -83,5 +84,6 @@ ERROR_REGISTRY: dict[ErrorCode, ErrorDefinition] = {
     **VERIFICATION_ERRORS,
     **COMMENT_ERRORS,
     **ISSUE_ERRORS,
+    **MEMBER_ERRORS,
 
 }

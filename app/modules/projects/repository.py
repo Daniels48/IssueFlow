@@ -194,6 +194,26 @@ class ProjectRepository:
         return result.scalar_one_or_none()
 
     @staticmethod
+    async def get_by_public_id_with_current_member(db: AsyncSession, public_id: UUID, user_id: int,
+    ) -> tuple[Project, ProjectMember | None] | None:
+        stmt = (
+            select(Project, ProjectMember)
+            .outerjoin(
+                ProjectMember,
+                (ProjectMember.project_id == Project.id)
+                & (ProjectMember.user_id == user_id),
+            )
+            .where(
+                Project.public_id == public_id,
+                Project.deleted_at.is_(None),
+            )
+        )
+
+        result = await db.execute(stmt)
+
+        return result.one_or_none()
+
+    @staticmethod
     async def get_all_with_users(db: AsyncSession) -> list[Project]:
         result = await db.execute(
             select(Project).options(
