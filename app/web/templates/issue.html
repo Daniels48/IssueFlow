@@ -5,29 +5,25 @@
             <section class="content">
                 <header class="issue-header">
                     <div>
-                        <h1 id="title">Fix refresh token rotation</h1>
+                        <h1 id="title"></h1>
                         <div class="badges">
-                            <span id="head_status" class="badge badge-danger">OPEN</span>
-                            <span id="head_priority" class="badge badge-warning">HIGH</span>
+                            <span id="head_status" class="badge badge-danger"></span>
+                            <span id="head_priority" class="badge badge-warning"></span>
                         </div>
                     </div>
                     <div class="actions">
                         <button id="edit-issue" class="btn btn-secondary">Edit</button>
-                        <button id="close-issue" class="btn btn-danger">Close</button>
+                        <button id="issue-action"  class="btn btn-danger">Close</button>
                     </div>
                 </header>
                 <section class="card description">
                     <h2>Description</h2>
-                    <p id="description">
-                        Refresh token should be rotated after every successful
-                        refresh request. The previous refresh token must become
-                        invalid immediately after a new one is issued.
-                    </p>
+                    <p id="description"></p>
                 </section>
                     <section id="comments" class="comments">
                         <div class="comments-header">
                             <h2>Comments</h2>
-                            <span id="len-comments">3 comments</span>
+                            <span id="len-comments"></span>
                         </div>
                     </section>
                 <section class="new-comment">
@@ -51,34 +47,39 @@
             <aside class="sidebar">
                 <section class="sidebar-card card">
                     <h3>Issue Details</h3>
+
                     <div class="info">
-                        <div class="info-item">
+                        <div class="info-item editable" data-field="status">
                             <span>Status</span>
-                            <strong id="status">OPEN</strong>
+                            <strong id="status"></strong>
+                            <span class="arrow"></span>
                         </div>
-                        <div class="info-item">
+                        <div class="info-item editable" data-field="priority">
                             <span>Priority</span>
-                            <strong id="priority">HIGH</strong>
+                            <strong id="priority"></strong>
+                            <span class="arrow"></span>
                         </div>
-                        <div class="info-item">
-                            <span>Reporter</span>
-                            <strong id="reporter">Alexander</strong>
-                        </div>
-                        <div class="info-item">
-                            <span>Assignee</span>
-                            <strong id="assignee" >Bob</strong>
-                        </div>
-                        <div class="info-item">
+                        <div class="info-item editable" data-field="due_date">
                             <span>Due Date</span>
-                            <strong class="due" id="due_time">Jul 25, 2026</strong>
+                            <strong class="due" id="due_time"></strong>
+                            <span class="arrow"></span>
+                        </div>
+                        <div class="info-item editable" data-field="assignee">
+                            <span>Assignee</span>
+                            <strong id="assignee"></strong>
+                            <span class="arrow"></span>
+                        </div>
+                         <div class="info-item">
+                            <span>Reporter</span>
+                            <strong id="reporter"></strong>
                         </div>
                         <div class="info-item">
                             <span>Created</span>
-                            <strong id="created_time">Jul 15, 2026</strong>
+                            <strong id="created_time"></strong>
                         </div>
                         <div class="info-item">
                             <span>Updated</span>
-                            <strong id="updated_time">5 minutes ago</strong>
+                            <strong id="updated_time"></strong>
                         </div>
                     </div>
                 </section>
@@ -96,31 +97,45 @@
                             <input id="issue-title" type="text">
                             <label>Description</label>
                             <textarea id="issue-description"></textarea>
-                            <label>Assignee</label>
-                            <select id="issue-assignee"></select>
-                            <label>Priority</label>
-                            <select id="issue-priority">
-                                <option>low</option>
-                                <option selected>medium</option>
-                                <option>high</option>
-                                <option>critical</option>
-                            </select>
-                            <label>Status</label>
-                            <select id="issue-status">
-                                <option selected>open</option>
-                                <option>in_progress</option>
-                                <option>review</option>
-                                <option>done</option>
-                                <option>closed</option>
-                            </select>
-                            <label>Due date</label>
-                            <input type="date" id="issue-date">
+<!--                            <label>Assignee</label>-->
+<!--                            <select id="issue-assignee"></select>-->
+<!--                            <label>Priority</label>-->
+<!--                            <select id="issue-priority">-->
+<!--                                <option>low</option>-->
+<!--                                <option selected>medium</option>-->
+<!--                                <option>high</option>-->
+<!--                                <option>critical</option>-->
+<!--                            </select>-->
+<!--                            <label>Status</label>-->
+<!--                            <select id="issue-status">-->
+<!--                                <option selected>open</option>-->
+<!--                                <option>in_progress</option>-->
+<!--                                <option>review</option>-->
+<!--                                <option>done</option>-->
+<!--                                <option>closed</option>-->
+<!--                            </select>-->
+<!--                            <label>Due date</label>-->
+<!--                            <input type="date" id="issue-date">-->
                     </div>
                     <div class="modal-footer">
-                        <button id="cancel_issue_form" class="btn-secondary">Cancel</button>
+                        <button id="cancel_issue_form" class="btn-secondary">Clear</button>
                         <button id="update_btn" type="submit" class="btn-primary">Update Issue</button>
                     </div>
                 </form>
+            </div>
+        </div>
+        <div id="field-modal" class="modal hidden">
+            <div class="modal-content">
+                <button id="field-modal-close" type="button">&times;</button>
+
+                <h2 id="field-modal-title"></h2>
+
+                <div id="field-modal-body"></div>
+
+                <div class="modal-actions">
+                    <button id="field-modal-cancel">Cancel</button>
+                    <button id="field-modal-save">Save</button>
+                </div>
             </div>
         </div>
         </main>{% endblock %}

@@ -16,8 +16,8 @@ from app.modules.project_members.schema import ProjectMemberCreate, ProjectMembe
     ProjectMemberResponse_
 from app.modules.projects.repository import ProjectRepository
 from app.modules.users.repository import UserRepository
-from app.permissions.enums import Permission
-from app.permissions.rbac import ProjectRBAC
+from app.permissions import PermissionContext, Permission, ProjectRBAC
+
 
 MEMBER_LIST_ADAPTER = TypeAdapter(list[ProjectMemberResponse])
 
@@ -43,7 +43,8 @@ class ProjectMemberService:
 
         project, member_current = result
 
-        ProjectRBAC.require(permission=Permission.MEMBER_ADD, user=user, project=project, member=member_current)
+        context = PermissionContext(user=user, project=project, member=member_current)
+        ProjectRBAC.require(permission=Permission.MEMBER_ADD, context=context)
 
         added_user = await self.user_repository.get_by_public_id(self.db, data.user_public_id)
 
@@ -72,7 +73,8 @@ class ProjectMemberService:
 
         project, member_current = result
 
-        ProjectRBAC.require(permission=Permission.MEMBER_VIEW, user=user, project=project, member=member_current)
+        context = PermissionContext(user=user, project=project, member=member_current)
+        ProjectRBAC.require(permission=Permission.MEMBER_VIEW, context=context)
 
         members = await self.repository.get_all_by_project(self.db, project.id)
 
@@ -86,7 +88,8 @@ class ProjectMemberService:
 
         project, member_current = result
 
-        ProjectRBAC.require(permission=Permission.MEMBER_ROLE_UPDATE, user=user, project=project, member=member_current)
+        context = PermissionContext(user=user, project=project, member=member_current)
+        ProjectRBAC.require(permission=Permission.MEMBER_ROLE_UPDATE, context=context)
 
         member = await self.repository.get_by_project_and_user_public_id(self.db, project.id, user_id)
 
@@ -111,7 +114,8 @@ class ProjectMemberService:
 
         project, member_current = result
 
-        ProjectRBAC.require(permission=Permission.MEMBER_REMOVE, user=user, project=project, member=member_current)
+        context = PermissionContext(user=user, project=project, member=member_current)
+        ProjectRBAC.require(permission=Permission.MEMBER_REMOVE, context=context)
 
         member = await ProjectMemberRepository.get_by_project_and_user_public_id(self.db, project.id, user_id)
 

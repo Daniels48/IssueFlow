@@ -35,13 +35,20 @@ class Issue(BaseModel):
 
     reporter: Mapped["User"] = relationship(foreign_keys=[reporter_id],back_populates="reported_issues")
 
-    assignee: Mapped["User"] = relationship(foreign_keys=[assignee_id], back_populates="assigned_issues")
+    assignee: Mapped["User | None"] = relationship(foreign_keys=[assignee_id], back_populates="assigned_issues")
 
     comments: Mapped[list["Comment"]] = relationship(
         back_populates="issue",
         cascade="all, delete-orphan",
         order_by="Comment.created_at",
     )
+
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    closed_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"),nullable=True)
+
+    closed_by: Mapped["User | None"] = relationship(foreign_keys=[closed_by_id])
+
 
     @property
     def members(self):

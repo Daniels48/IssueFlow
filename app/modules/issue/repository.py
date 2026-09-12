@@ -65,7 +65,9 @@ class IssueRepository:
         stmt = (
             select(Issue)
             .options(
-                joinedload(Issue.project),
+                joinedload(Issue.project)
+                .selectinload(Project.members)
+                .selectinload(ProjectMember.user),
 
                 selectinload(Issue.reporter),
                 selectinload(Issue.assignee),

@@ -63,7 +63,10 @@ COMMENT_ERRORS = {
 ISSUE_ERRORS = {
     ErrorCode.ISSUE_NOT_FOUND: ErrorDefinition(404, "Issue not found"),
     ErrorCode.ISSUE_ASSIGNED_NOT_FOUND: ErrorDefinition(404, "Issue assigned not found"),
-
+    ErrorCode.INVALID_STATUS_TRANSITION: ErrorDefinition(400,"Invalid status transition"),
+    ErrorCode.ISSUE_CLOSED: ErrorDefinition(403,"Forbidden"),
+    ErrorCode.ISSUE_ALREADY_CLOSED: ErrorDefinition(403,"Forbidden"),
+    ErrorCode.ISSUE_NOT_CLOSED: ErrorDefinition(403,"Forbidden"),
 }
 
 PROJECT_ERRORS = {

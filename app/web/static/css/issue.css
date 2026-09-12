@@ -533,3 +533,259 @@ main {
 ::-webkit-scrollbar-thumb:hover {
     background: #475569;
 }
+
+
+.info-item.editable {
+    position: relative;
+    cursor: pointer;
+}
+
+.info-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.info-item strong {
+    margin-left: auto;
+    padding-right: 20px; /* место под стрелку */
+}
+
+.arrow {
+    position: absolute;
+    right: 2px;
+    top: calc(50% - 8px);
+    width: 7px;
+    height: 7px;
+    border-top: 1px solid currentColor;
+    border-right: 1px solid currentColor;
+    transform: rotate(45deg);
+}
+
+.info-item.editable {
+    position: relative;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.info-item.editable:hover {
+    background-color: rgba(255, 255, 255, 0.04);
+}
+
+.info-item.editable:hover .arrow {
+    opacity: 1;
+}
+
+.info-item.editable:hover {
+    opacity: 0.8;
+}
+
+.info-item {
+    position: relative;
+}
+
+.field-dropdown {
+    position: absolute;
+    top: calc(100% + 5px);
+    right: 0;
+
+    min-width: 140px;
+
+    padding: 5px;
+
+    background: var(--card-background);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+
+    z-index: 10;
+}
+
+.field-option {
+    display: block;
+
+    width: 100%;
+
+    padding: 8px 10px;
+
+    border: none;
+    border-radius: 5px;
+
+    background: transparent;
+
+    text-align: left;
+    cursor: pointer;
+}
+
+
+.field-option.active {
+    font-weight: 600;
+}
+
+
+.modal-content {
+    position: relative;
+
+    width: 100%;
+    max-width: 420px;
+
+    padding: 24px;
+
+    background: var(--card-background);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+
+    box-shadow: var(--shadow-dropdown);
+}
+
+.modal-content h2 {
+    margin: 0 0 20px;
+
+    color: var(--text-primary);
+    font-size: 20px;
+}
+
+.modal-close {
+    position: absolute;
+    top: 14px;
+    right: 16px;
+
+    border: none;
+    background: transparent;
+
+    color: var(--text-secondary);
+    font-size: 24px;
+    line-height: 1;
+
+    cursor: pointer;
+
+    transition: color var(--transition-fast);
+}
+
+.modal-close:hover {
+    color: var(--text-primary);
+}
+
+.field-label {
+    display: block;
+    margin-bottom: 8px;
+
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.field-input,
+.field-select {
+    width: 100%;
+    box-sizing: border-box;
+
+    padding: 10px 12px;
+
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+
+    background: var(--bg-input);
+    color: var(--text-primary);
+
+    font: inherit;
+    outline: none;
+
+    transition: border-color var(--transition-fast);
+}
+
+.field-input:focus,
+.field-select:focus {
+    border-color: var(--accent);
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+
+    margin-top: 24px;
+}
+
+.modal-actions button {
+    padding: 9px 16px;
+
+    border: none;
+    border-radius: var(--radius-md);
+
+    font: inherit;
+    cursor: pointer;
+
+    transition:
+        background-color var(--transition-fast),
+        opacity var(--transition-fast);
+}
+
+#field-modal-cancel {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+#field-modal-cancel:hover {
+    background: var(--border-hover);
+}
+
+#field-modal-save {
+    background: var(--accent);
+    color: white;
+}
+
+#field-modal-save:hover {
+    background: var(--accent-hover);
+}
+
+#field-modal-save:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.modal-content {
+    position: relative;
+    width: 100%;
+    max-width: 420px;
+    padding: 24px;
+
+    background: var(--card-background);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+
+    box-shadow: var(--shadow-dropdown);
+}
+
+#field-modal-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+
+    width: 32px;
+    height: 32px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 0;
+
+    border: none;
+    background: transparent;
+
+    color: var(--text-secondary);
+    font-size: 22px;
+    line-height: 1;
+
+    cursor: pointer;
+
+    transition: color var(--transition-fast),
+                background-color var(--transition-fast);
+}
+
+#field-modal-close:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+    border-radius: var(--radius-sm);
+}

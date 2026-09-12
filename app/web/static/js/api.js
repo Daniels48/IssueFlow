@@ -51,6 +51,13 @@ const data_url = {
     issues: (projectId, query = "") => `${data_url.project(projectId)}/issues${query ? getQuery(query) : ""}`,
     issue: (projectId, issueId) => `${data_url.issues(projectId)}/${issueId}`,
     issueEdit: (projectId, issueId) => `${data_url.issue(projectId, issueId)}/edit`,
+    issueEditStatus: (projectId, issueId) => `${data_url.issues(projectId)}/${issueId}/status`,
+    issueEditPriority: (projectId, issueId) => `${data_url.issues(projectId)}/${issueId}/priority`,
+    issueEditDueDate: (projectId, issueId) => `${data_url.issues(projectId)}/${issueId}/due-date`,
+    issueEditAssignee: (projectId, issueId) => `${data_url.issues(projectId)}/${issueId}/assignee`,
+    issueClose: (projectId, issueId) => `${data_url.issues(projectId)}/${issueId}/close`,
+    issueReopen: (projectId, issueId) => `${data_url.issues(projectId)}/${issueId}/reopen`,
+
 
     comment: (projectId, issueId) => `${data_url.issue(projectId, issueId)}/comments`,
     comments: (projectId, issueId, comId) => `${data_url.comment(projectId, issueId)}/${comId}`,

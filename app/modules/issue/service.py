@@ -13,154 +13,324 @@ from app.infrastructure.rabbitmq import RabbitPublisher
 from app.modules.auth.dependencies import DBSession
 
 from app.modules.comments.service import CommentService
-from app.modules.issue.schema import IssueCreate, IssueUpdate, IssueResponse, IssueResponseDetail, IssueResponseEdit
+from app.modules.issue.priority import IssuePriority
+from app.modules.issue.schema import IssueCreate, IssueUpdate, IssueResponse, IssueResponseDetail, IssueResponseEdit, \
+    IssueDueDateUpdate, IssueAssigneeUpdate, IssuePriorityUpdate, IssueStatusUpdate
 
 from app.modules.issue.repository import IssueRepository
+from app.modules.issue.status import IssueStatus
+from app.modules.issue.transitions import ALLOWED_STATUS_TRANSITIONS
 from app.modules.project_members.repository import ProjectMemberRepository
+from app.modules.project_members.schema import ProjectMemberResponse
 from app.modules.projects.repository import ProjectRepository
 from app.modules.users.repository import UserRepository
-from app.permissions.enums import Permission
-from app.permissions.rbac import ProjectRBAC
-
-from app.utils.func_utils import to
+from app.modules.users.schema import UserShortResponse
+from app.permissions import PermissionContext, Permission, ProjectRBAC
+from app.utils.func_utils import to, get_now_dt
 
 ISSUE_LIST_ADAPTER = TypeAdapter(list[IssueResponse])
 
 
 class IssueService:
     def __init__(self,db: AsyncSession):
-        self.repository = IssueRepository()
-        self.project_repository = ProjectRepository()
-        self.project_member_repository = ProjectMemberRepository()
-        self.user_repository = UserRepository()
+        self.rep = IssueRepository()
+        self.project_rep = ProjectRepository()
+        self.member_rep = ProjectMemberRepository()
+        self.user_rep = UserRepository()
         self.db = db
 
     async def create(self,project_id: UUID, data: IssueCreate, user: User) -> IssueResponse:
-        project = await self.project_repository.get_by_public_id_no_full(self.db, project_id)
+        result = await self.project_rep.get_by_public_id_with_current_member(self.db, project_id, user.id)
 
-        if not project:
+        if result is None:
             raise AppException(ErrorCode.PROJECT_NOT_FOUND, "Project not found")
 
-        member_current_user = await self.project_member_repository.get_by_project_and_user(self.db,project.id,user.id)
+        project, current_member = result
 
-        ProjectRBAC.require(permission=Permission.ISSUE_CREATE, user=user, project=project, member=member_current_user)
+        context = PermissionContext(user=user, project=project, member=current_member)
+        ProjectRBAC.require(permission=Permission.ISSUE_CREATE, context=context)
 
-        assignee = None
+        create_data = data.model_dump(exclude_unset=True)
 
-        if data.assignee_public_id:
-            member_assignee = await self.project_member_repository.get_by_project_and_user_public_id(self.db, project.id, data.assignee_public_id)
+        if not ProjectRBAC.is_admin(context):
+            admin_fields = {"assignee_public_id", "priority", "due_date"}
+
+            if admin_fields & create_data.keys():
+                raise AppException(ErrorCode.PERMISSION_DENIED,"You do not have permission to set these fields")
+
+        assignee_public_id = create_data.pop("assignee_public_id", None)
+
+        if assignee_public_id is not None:
+            member_assignee = await self.member_rep.get_by_project_and_user_public_id(self.db, project.id, assignee_public_id)
 
             if not member_assignee:
                 raise AppException(ErrorCode.USER_IS_NOT_A_PROJECT_MEMBER,"User is not a project member")
 
-            assignee = member_assignee.user
+            create_data["assignee_id"] = member_assignee.user_id
+            create_data["assignee"] = member_assignee.user
 
-        issue = Issue(
-            project_id=project.id,
-            reporter_id=user.id,
-            assignee_id=assignee.id if assignee else None,
-            title=data.title,
-            description=data.description,
-            priority=data.priority,
-            due_date=data.due_date,
-            reporter=user,
-            assignee=assignee
-        )
+        issue = Issue(project_id=project.id, reporter_id=user.id, reporter=user, **create_data)
 
-        issue = await self.repository.create(self.db, issue)
+        issue = await self.rep.create(self.db, issue)
 
         await self.db.commit()
 
         return to(IssueResponse, issue)
 
     async def get(self, public_id: UUID, user: User) -> IssueResponseDetail | None:
-        issue = await self.repository.get_by_public_id_full(self.db, public_id)
+        issue = await self.rep.get_by_public_id_full(self.db, public_id)
         if issue is None:
             raise AppException(ErrorCode.ISSUE_NOT_FOUND, "Issue not found")
 
-        member = await self.project_member_repository.get_by_project_and_user(self.db, issue.project.id, user.id)
+        member = await self.member_rep.get_by_project_and_user(self.db, issue.project.id, user.id)
 
-        ProjectRBAC.require(permission=Permission.ISSUE_VIEW, user=user, project=issue.project, member=member)
+        context = PermissionContext(user=user, project=issue.project, member=member, resource=issue)
+        ProjectRBAC.require(permission=Permission.ISSUE_VIEW, context=context)
 
         base = IssueResponse.model_validate(issue)
         comments_tree = CommentService.build_comment_tree(issue.comments)
+        members = [UserShortResponse.model_validate(member.user) for member in issue.project.members]
+        statuses = ALLOWED_STATUS_TRANSITIONS.get(issue.status, set())
+        priorities = list(IssuePriority)
 
-        return IssueResponseDetail(**base.model_dump(), comments=comments_tree)
+        return IssueResponseDetail(**base.model_dump(), comments=comments_tree, members=members, priorities=priorities, statuses=statuses)
 
     async def get_edit(self, public_id: UUID, user: User) -> IssueResponseEdit | None:
-        issue = await self.repository.get_by_public_id_edit(self.db, public_id)
+        issue = await self.rep.get_by_public_id_edit(self.db, public_id)
         if issue is None:
             raise AppException(ErrorCode.ISSUE_NOT_FOUND, "Issue not found")
 
-        member = await self.project_member_repository.get_by_project_and_user(self.db, issue.project.id, user.id)
+        member = await self.member_rep.get_by_project_and_user(self.db, issue.project.id, user.id)
 
-        ProjectRBAC.require(permission=Permission.ISSUE_VIEW, user=user, project=issue.project, member=member)
+        context = PermissionContext(user=user, project=issue.project, member=member, resource=issue)
+        ProjectRBAC.require(permission=Permission.ISSUE_VIEW, context=context)
 
         return IssueResponseEdit.model_validate(issue)
 
     async def list(self, project_id: UUID, user: User, search: str | None = None) -> list[IssueResponse]:
-        project = await self.project_repository.get_by_public_id_no_full(self.db, project_id)
+        project = await self.project_rep.get_by_public_id_no_full(self.db, project_id)
 
         if not project:
             raise AppException(ErrorCode.PROJECT_NOT_FOUND, "Project not found")
 
-        member = await self.project_member_repository.get_by_project_and_user(self.db,project.id,user.id)
+        member = await self.member_rep.get_by_project_and_user(self.db,project.id,user.id)
 
-        ProjectRBAC.require(permission=Permission.ISSUE_VIEW, user=user, project=project, member=member)
+        context = PermissionContext(user=user, project=project, member=member)
+        ProjectRBAC.require(permission=Permission.ISSUE_VIEW, context=context)
 
-        list_issues = await self.repository.get_all_by_project(self.db, project.id, search)
+        list_issues = await self.rep.get_all_by_project(self.db, project.id, search)
 
         return ISSUE_LIST_ADAPTER.validate_python(list_issues)
 
-    async def update(self,public_id: UUID,data: IssueUpdate, user: User) -> IssueResponse:
-        issue = await self.repository.get_by_public_id(self.db, public_id)
+    async def update(self, public_id: UUID, data: IssueUpdate, user: User) -> IssueResponse:
+        result = await self.rep.get_by_public_id_with_current_member(self.db, public_id, user.id)
 
-        if not issue:
+        if result is None:
             raise AppException(ErrorCode.ISSUE_NOT_FOUND, "Issue not found")
 
-        member_current = await self.project_member_repository.get_by_project_and_user(self.db, issue.project.id, user.id)
+        issue, member = result
 
-        ProjectRBAC.require(permission=Permission.ISSUE_UPDATE, user=user, project=issue.project, member=member_current, resource=issue)
+        IssueService.ensure_not_closed(issue)
 
-        if data.assignee_public_id is not None:
-            member = await self.project_member_repository.get_by_project_and_user_public_id(
-                self.db, issue.project_id,
-                data.assignee_public_id
-            )
+        context = PermissionContext(user=user, project=issue.project, member=member, resource=issue)
+        ProjectRBAC.require(permission=Permission.ISSUE_UPDATE, context=context)
 
-            if not member:
-                raise AppException(ErrorCode.ISSUE_ASSIGNED_NOT_FOUND, "User is not a project member")
-
-            issue.assignee_id = member.user.id
-
-        update_data = data.model_dump(exclude_unset=True,exclude={"assignee_public_id"})
+        update_data = data.model_dump(exclude_unset=True)
 
         for field, value in update_data.items():
             setattr(issue, field, value)
 
-        await self.repository.update(self.db, issue)
+        await self.rep.update(self.db, issue)
 
         await self.db.commit()
+
+
+        issue = await self.rep.get_by_public_id_full(self.db, public_id)
 
         event = IssueUpdatedEvent.from_models(issue, user)
         await RabbitPublisher.publish(event)
 
-        issue = await self.repository.get_by_public_id_full(self.db, public_id)
-
         return to(IssueResponse, issue)
 
     async def delete(self,public_id: UUID, user: User) -> None:
-        issue = await self.repository.get_by_public_id(self.db, public_id)
-        if not issue:
+        result = await self.rep.get_by_public_id_with_current_member(self.db, public_id, user.id)
+
+        if result is None:
             raise AppException(ErrorCode.ISSUE_NOT_FOUND, "Issue not found")
 
-        member = await self.project_member_repository.get_by_project_and_user(self.db, issue.project.id, user.id)
+        issue, member = result
 
-        ProjectRBAC.require(permission=Permission.ISSUE_DELETE, user=user, project=issue.project, member=member, resource=issue)
+        IssueService.ensure_not_closed(issue)
 
-        await self.repository.delete(self.db, issue)
+        context = PermissionContext(user=user, project=issue.project, member=member, resource=issue)
+        ProjectRBAC.require(permission=Permission.ISSUE_DELETE, context=context)
+
+        await self.rep.delete(self.db, issue)
 
         await self.db.commit()
+
+    async def update_due_date(self, issue_id: UUID, data: IssueDueDateUpdate, user: User) -> IssueResponse:
+        result = await self.rep.get_by_public_id_with_current_member(self.db, issue_id,user.id)
+
+        if result is None:
+            raise AppException(ErrorCode.ISSUE_NOT_FOUND,"Issue not found")
+
+        issue, member = result
+
+        IssueService.ensure_not_closed(issue)
+
+        context = PermissionContext(user=user,project=issue.project,member=member,resource=issue)
+        ProjectRBAC.require(permission=Permission.ISSUE_UPDATE,context=context)
+
+        issue.due_date = data.due_date
+
+        await self.db.commit()
+
+        issue = await self.rep.get_by_public_id_full(self.db, issue.public_id)
+
+        return to(IssueResponse, issue)
+
+    async def update_assignee(self, issue_id: UUID,data: IssueAssigneeUpdate,user: User) -> IssueResponse:
+        result = await self.rep.get_by_public_id_with_current_member(self.db, issue_id,user.id)
+
+        if result is None:
+            raise AppException(ErrorCode.ISSUE_NOT_FOUND,"Issue not found")
+
+        issue, member_current = result
+
+        IssueService.ensure_not_closed(issue)
+
+        context = PermissionContext(user=user, project=issue.project, member=member_current, resource=issue)
+        ProjectRBAC.require(permission=Permission.ISSUE_UPDATE, context=context)
+
+        if data.assignee_public_id is None:
+            issue.assignee_id = None
+            issue.assignee = None
+
+        else:
+            member_assignee = await self.member_rep.get_by_project_and_user_public_id(
+                self.db, issue.project_id, data.assignee_public_id
+            )
+
+            if member_assignee is None:
+                raise AppException(ErrorCode.USER_IS_NOT_A_PROJECT_MEMBER,"User is not a project member")
+
+            issue.assignee_id = member_assignee.user_id
+            issue.assignee = member_assignee.user
+
+        await self.db.commit()
+
+        issue = await self.rep.get_by_public_id_full(self.db, issue.public_id)
+
+        return to(IssueResponse, issue)
+
+    async def update_priority(self,issue_id: UUID,data: IssuePriorityUpdate,user: User) -> IssueResponse:
+        result = await self.rep.get_by_public_id_with_current_member(self.db,issue_id,user.id)
+
+        if result is None:
+            raise AppException(ErrorCode.ISSUE_NOT_FOUND,"Issue not found")
+
+        issue, member_current = result
+
+        IssueService.ensure_not_closed(issue)
+
+        context = PermissionContext(user=user,project=issue.project,member=member_current,resource=issue)
+        ProjectRBAC.require(permission=Permission.ISSUE_UPDATE, context=context)
+
+        issue.priority = data.priority
+
+        await self.db.commit()
+
+        issue = await self.rep.get_by_public_id_full(self.db, issue.public_id)
+
+        return to(IssueResponse, issue)
+
+    async def update_status(self, issue_id: UUID, data: IssueStatusUpdate, user: User) -> IssueResponse:
+        result = await self.rep.get_by_public_id_with_current_member(self.db,issue_id,user.id)
+
+        if result is None:
+            raise AppException(ErrorCode.ISSUE_NOT_FOUND,"Issue not found")
+
+        issue, member_current = result
+
+        IssueService.ensure_not_closed(issue)
+
+        context = PermissionContext(user=user, project=issue.project, member=member_current,resource=issue)
+        ProjectRBAC.require(permission=Permission.ISSUE_UPDATE,context=context)
+
+        if issue.status == data.status:
+            return to(IssueResponse, issue)
+
+        allowed_statuses = ALLOWED_STATUS_TRANSITIONS.get(issue.status, set())
+
+        if data.status not in allowed_statuses:
+            msg = f"Cannot change status from '{issue.status}' to '{data.status}'"
+            raise AppException(ErrorCode.INVALID_STATUS_TRANSITION,msg)
+
+        issue.status = data.status
+
+        await self.db.commit()
+
+        issue = await self.rep.get_by_public_id_full(self.db, issue.public_id)
+
+        return to(IssueResponse, issue)
+
+    async def close(self, issue_id: UUID, user: User) -> IssueResponse:
+        result = await self.rep.get_by_public_id_with_current_member( self.db,issue_id,user.id)
+
+        if result is None:
+            raise AppException(ErrorCode.ISSUE_NOT_FOUND,"Issue not found")
+
+        issue, member_current = result
+
+        context = PermissionContext(user=user, project=issue.project, member=member_current, resource=issue)
+        ProjectRBAC.require(permission=Permission.ISSUE_UPDATE, context=context)
+
+        if issue.status == IssueStatus.CLOSED:
+            raise AppException(ErrorCode.ISSUE_ALREADY_CLOSED,"Issue is already closed")
+
+        issue.status = IssueStatus.CLOSED
+        issue.closed_at = get_now_dt()
+        issue.closed_by_id = user.id
+
+        await self.db.commit()
+
+        # await RabbitPublisher.publish(
+        #     IssueClosedEvent.from_models(issue, user)
+        # )
+
+        return to(IssueResponse, issue)
+
+    async def reopen(self,issue_id: UUID,user: User) -> IssueResponse:
+        result = await self.rep.get_by_public_id_with_current_member(self.db,issue_id,user.id)
+
+        if result is None:
+            raise AppException(ErrorCode.ISSUE_NOT_FOUND,"Issue not found")
+
+        issue, member_current = result
+
+        context = PermissionContext(user=user, project=issue.project,member=member_current,resource=issue)
+        ProjectRBAC.require(permission=Permission.ISSUE_UPDATE,context=context)
+
+        if issue.status != IssueStatus.CLOSED:
+            raise AppException(ErrorCode.ISSUE_NOT_CLOSED,"Issue is not closed")
+
+        issue.status = IssueStatus.OPEN
+        issue.closed_at = None
+        issue.closed_by_id = None
+
+        await self.db.commit()
+
+        # await RabbitPublisher.publish(
+        #     IssueReopenedEvent.from_models(issue, user)
+        # )
+
+        return to(IssueResponse, issue)
+
+    @staticmethod
+    def ensure_not_closed(issue: Issue) -> None:
+        if issue.status == IssueStatus.CLOSED:
+            raise AppException(ErrorCode.ISSUE_CLOSED,"Issue is closed. Reopen it first.")
 
 
 async def get_issue_service(db: DBSession) -> IssueService:

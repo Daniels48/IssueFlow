@@ -12,9 +12,7 @@ from app.modules.auth.dependencies import DBSession
 from app.modules.comments.repository import CommentRepository
 from app.modules.comments.schema import CommentCreate, CommentResponse,CommentUpdate, CommentTreeResponse
 from app.modules.issue.repository import IssueRepository
-from app.permissions.context import PermissionContext
-from app.permissions.enums import Permission
-from app.permissions.rbac import ProjectRBAC
+from app.permissions import PermissionContext, Permission, ProjectRBAC
 from app.utils.func_utils import to, get_now_dt
 
 

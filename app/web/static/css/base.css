@@ -25,6 +25,53 @@
     --radius: 16px;
     --shadow: 0 10px 30px rgba(0,0,0,.25);
 
+       /* Backgrounds */
+    --bg-primary: #0f1115;
+    --bg-secondary: #16191f;
+    --bg-card: #1b1f27;
+    --bg-hover: #222732;
+    --bg-input: #12151a;
+
+    /* Borders */
+    --border-color: #2a303b;
+    --border-hover: #3a4352;
+
+    /* Text */
+    --text-primary: #f1f3f5;
+    --text-secondary: #a5acb8;
+    --text-muted: #737b89;
+
+    /* Accent */
+    --accent: #6c8cff;
+    --accent-hover: #7d9aff;
+
+    /* Status */
+    --status-open: #6c8cff;
+    --status-progress: #d9a441;
+    --status-review: #a66cff;
+    --status-done: #4caf7d;
+    --status-closed: #737b89;
+
+    /* Priority */
+    --priority-low: #737b89;
+    --priority-medium: #d9a441;
+    --priority-high: #e8783d;
+    --priority-critical: #e05252;
+    --card-background: #1b1f27;
+
+    /* Effects */
+    --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.2);
+    --shadow-dropdown: 0 8px 20px rgba(0, 0, 0, 0.3);
+
+    /* Radius */
+    --radius-sm: 5px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+
+    /* Transition */
+    --transition-fast: 0.15s ease;
+    --transition-normal: 0.2s ease;
+
 }
 html {
     scroll-behavior: smooth;

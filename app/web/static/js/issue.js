@@ -27,7 +27,7 @@ const text_area_comment = document.getElementById("text_area");
 const commentsContainer = document.getElementById("comments");
 const modal_issue = document.getElementById("issue-modal");
 const btn_edit_issue = document.getElementById("edit-issue");
-const btn_close_issue = document.getElementById("close-issue");
+const btn_issue_action = document.getElementById("issue-action");
 const close_issue_modal = document.getElementById("modal-close");
 const form_issue = document.getElementById("issue-form");
 const cancel_issue_form = document.getElementById("cancel_issue_form");
@@ -55,21 +55,68 @@ const cancelReply = document.getElementById("cancel-reply");
 // const textArea = document.getElementById("text_area");
 
 
-btn_edit_issue.addEventListener("click", editIssue);
-btn_close_issue.addEventListener("click", close_issue)
-close_issue_modal.addEventListener("click", close_issue_func);
+const fieldModal = document.querySelector("#field-modal");
+const fieldModalTitle = document.querySelector("#field-modal-title");
+const fieldModalBody = document.querySelector("#field-modal-body");
+
+const fieldModalClose = document.querySelector("#field-modal-close");
+const fieldModalCancel = document.querySelector("#field-modal-cancel");
+const fieldModalSave = document.querySelector("#field-modal-save");
+
+
+btn_edit_issue.addEventListener("click", OpenEditIssueWindow);
+btn_issue_action.addEventListener("click", issue_action)
+close_issue_modal.addEventListener("click", close_issue_edit_window);
 cancel_issue_form.addEventListener("click", reset_issue_form);
 modal_issue.addEventListener("click", modal_issue_func);
-i_apply.addEventListener("click", applyEdit);
+i_apply.addEventListener("click", applyEditTitle_and_Description);
 commentsContainer.addEventListener("click", comments_action);
 cancelReply.addEventListener("click", cancel_reply_comment);
 btn_post_comment.addEventListener("click", post_comment);
 
 back_url.href = back_url.href + projectId;
 
+let issue_full = false;
+
 
 
 // ---------------------------------------Head----------------------------------------------
+function change_UI_status_issue(issue) {
+    head_status.textContent = formatEnum(issue.status).toUpperCase();
+    status.textContent = formatEnum(issue.status).toUpperCase();
+    if (issue.status === "closed") {
+        btn_issue_action.dataset.action = "reopen";
+        btn_issue_action.textContent = "Reopen";
+    } else {
+        btn_issue_action.dataset.action = "close";
+        btn_issue_action.textContent = "Close";
+    }
+}
+
+function change_UI_title_and_description(issue) {
+    title.textContent = issue.title;
+    description.textContent = issue.description;
+}
+
+function change_UI_due_time(issue) {
+    due_time.textContent = issue.due_date ? formatDate(issue.due_date) : "No due date";
+    due_time.dataset.value = issue.due_date ? issue.due_date.slice(0, 16) : "";
+}
+
+function change_UI_priority(issue) {
+    priority.textContent = issue.priority.toUpperCase();
+    head_priority.textContent = issue.priority.toUpperCase();
+}
+
+function change_UI_assignee(issue) {
+    assignee.textContent = issue.assignee?.username ?? "Unassigned";
+    assignee.dataset.publicId = issue.assignee?.public_id ?? "";
+}
+
+function change_UI_updated_time(issue) {
+    updated_time.textContent = formatRelativeDate(issue.updated_at);
+}
+
 async function loadIssue() {
     const res = await api.get(window.data_url.issue(projectId, IssueId));
     if (!res || !res.ok) {
@@ -78,36 +125,25 @@ async function loadIssue() {
     const Issue = await res.json();
     renderIssueDetails(Issue, true);
     renderComments(Issue.comments);
+    issue_full = Issue;
 }
 
 function renderIssueDetails(issue, offload=false) {
-    status.textContent = formatEnum(issue.status).toUpperCase();
-    priority.textContent = issue.priority.toUpperCase();
     reporter.textContent = issue.reporter.username;
-    assignee.textContent = issue.assignee?.username ?? "Unassigned";
-    due_time.textContent = formatDate(issue.due_date);
     created_time.textContent = formatDate(issue.created_at);
-    updated_time.textContent = formatRelativeDate(issue.updated_at);
-    title.textContent = issue.title;
-    head_status.textContent = formatEnum(issue.status).toUpperCase();
-    head_priority.textContent = issue.priority.toUpperCase();
-    description.textContent = issue.description;
 
-
+    change_UI_updated_time(issue)
+    change_UI_assignee(issue)
+    change_UI_priority(issue)
+    change_UI_due_time(issue)
+    change_UI_title_and_description(issue)
+    change_UI_status_issue(issue)
 
     if (offload !== false) {
         const count = countComments(issue.comments);
         set_count_comments(count);
     }
-    function formatDate(dateString) {
-    if (!dateString) return "—";
 
-    return new Intl.DateTimeFormat("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-    }).format(new Date(dateString));
-}
 
     function countComments(comments) {
         return comments.reduce((count, comment) => {
@@ -237,6 +273,8 @@ function commentHtml(comment, level, parent) {
 
 const set_count_comments = count => len_comments.textContent = `${count} comment${count === 1 ? "" : "s"}`;
 // -----------------------------------------------------------------------------------------
+
+
 
 
 // ------------------------------------Comments Action--------------------------------------
@@ -386,72 +424,35 @@ async function post_comment(event) {
 
 
 
+
+
 // ----------------------------------------Issue Action-------------------------------------
-async function editIssue(event) {
+async function OpenEditIssueWindow(event) {
     const response = await window.api.get(window.data_url.issueEdit(projectId, IssueId));
     if (!response.ok) {return;}
     const issue = await response.json();
 
     i_title.value = issue.title;
     i_description.value = issue.description;
-    i_priority.value = issue.priority;
-    i_due_date.value = issue.due_date.slice(0, 10);
-    i_assignee.innerHTML = set_assignee_html(issue);
-    i_status.innerHTML = set_status_html(issue);
-
-    function set_assignee_html(issue) {
-        let html = `<option value="" disabled ${!issue.assignee ? "selected" : ""}>Choose member</option>`;
-        for (const member of issue.members) {
-        html += member_text(member);
-    }
-        function member_text(member) {
-            const selected = member.public_id === issue.assignee?.public_id ? "selected" : "";
-
-            return `<option value="${member.public_id}" ${selected}>${member.username}</option>`;
-        }
-        return html
-    }
-
-    function set_status_html(issue) {
-        let html = ``;
-        for (const status of issue.statuses) {html += status_text(status);}
-        function status_text(status) {
-            const selected = issue.status === status ? "selected" : "";
-
-            return `<option ${selected}>${formatEnum(status)}</option>`;
-        }
-        return html
-    }
-
+    
     modal_issue.classList.remove("hidden");
 }
 
-async function applyEdit(event) {
+async function applyEditTitle_and_Description(event) {
     event.preventDefault();
-    const option = i_assignee.selectedOptions[0];
-    const publicId = option?.value ?? null;
 
-    const data_dict  = {
-            title: i_title.value,
-            description: i_description.value,
-            assignee_public_id: publicId || null,
-            status:unformatEnum(i_status.value),
-            priority:i_priority.value,
-            due_date:i_due_date.value,
-    }
-    const response = await window.api.patch(window.data_url.issue(projectId, IssueId), data_dict);
+    const data_dict  = {title: i_title.value, description: i_description.value};
+    const url = window.data_url.issue(projectId, IssueId);
+    const response = await window.api.patch(url, data_dict);
     if (!response.ok) {return;}
     const issue = await response.json();
-    renderIssueDetails(issue);
-    close_issue_func();
+    
+    change_UI_title_and_description(issue)
+    close_issue_edit_window();
     alert("Update issue success!");
 }
 
-async function close_issue(event) {
-
-}
-
-function close_issue_func(event) {
+function close_issue_edit_window(event) {
     modal_issue.classList.add("hidden");
     form_issue.reset()
 }
@@ -468,19 +469,162 @@ function modal_issue_func(event) {
        form_issue.reset();
    }
 }
+
+async function issue_action(event) {
+    event?.preventDefault();
+
+    const url = window.data_url.issueClose(projectId,IssueId);
+    const res = await api.post(url);
+    if (!res || !res.ok) {return;}
+
+    const issue = await res.json();
+
+    // closeFieldModal();
+}
+
+function set_modal_data(text, options, value) {
+    const field = `field-${text.toLowerCase()}`;
+    fieldModalTitle.textContent = `Change ${text.toLowerCase()}`;
+    fieldModalBody.innerHTML = `
+        <label class="field-label" for="${field}">${text}</label>
+
+        <select id="${field}" class="field-select">
+            ${options.map(({ value, label }) => `
+                <option value="${value}">${label}</option>
+            `).join("")}
+        </select>
+    `;
+    const select = document.querySelector(`#${field}`);
+    select.value = value || "";
+    return select
+}
+
+function create_map_list(list_values, isAssignee = false) {
+    if (isAssignee) {
+        return [
+            { value: "", label: "Unassigned" },
+            ...list_values.map(member => ({value: member.public_id, label: member.username}))
+        ];
+    }
+    return list_values.map(value => ({value, label: formatEnum(value)}));
+}
+
+function editStatus() {
+    const currentStatus = document.querySelector("#status").textContent.trim().toLowerCase();
+    console.log(currentStatus)
+    const list_statuses = create_map_list(issue_full.statuses);
+
+    const select = set_modal_data("Status", list_statuses, currentStatus)
+
+    fieldModalSave.onclick = async () => {await updateStatus(select.value)};
+
+    fieldModal.classList.remove("hidden");
+
+    async function updateStatus(status) {
+        const url = window.data_url.issueEditStatus(projectId,IssueId);
+        const data = {status: status};
+        const res = await api.patch(url, data);
+        if (!res || !res.ok) {return;}
+        const issue = await res.json();
+        change_UI_status_issue(issue)
+        closeFieldModal();
+    }
+}
+
+function editPriority() {
+    const currentPriority = document.querySelector("#priority").textContent.trim().toLowerCase();
+    const list_priorities = create_map_list(issue_full.priorities);
+
+    const select = set_modal_data("Priority", list_priorities, currentPriority)
+
+    fieldModalSave.onclick = async () => {await updatePriority(select.value)};
+
+    fieldModal.classList.remove("hidden");
+
+    async function updatePriority(priority) {
+        const url = window.data_url.issueEditPriority(projectId,IssueId);
+        const data = {priority: priority};
+        const res = await api.patch(url, data);
+
+        if (!res || !res.ok) {return;}
+
+        const issue = await res.json();
+        change_UI_priority(issue)
+        closeFieldModal();
+    }
+}
+
+async function editAssignee() {
+    const currentAssignee = document.querySelector("#assignee").dataset.publicId;
+    const list_assignee = create_map_list(issue_full.members, true);
+
+    const select = set_modal_data("Assignee", list_assignee, currentAssignee)
+
+    fieldModalSave.onclick = async () => {await updateAssignee(select.value || null);};
+
+    fieldModal.classList.remove("hidden");
+
+    async function updateAssignee(assigneePublicId) {
+        const url = window.data_url.issueEditAssignee(projectId, IssueId);
+        const res = await api.patch(url, {assignee_public_id: assigneePublicId});
+
+        if (!res || !res.ok) {return;}
+        const issue = await res.json();
+        change_UI_assignee(issue)
+        closeFieldModal();
+    }
+}
+
+function editDueDate() {
+    const currentDueDate = document.querySelector("#due_time").dataset.value || "";
+
+    fieldModalTitle.textContent = "Change due date";
+
+    fieldModalBody.innerHTML = `
+        <label class="field-label" for="field-due-date">Due date</label>
+        <input id="field-due-date" class="field-input" type="datetime-local" value="${toDatetimeLocal(currentDueDate)}">
+    `;
+
+    const input = document.querySelector("#field-due-date");
+    const get_dueDate = (input) =>  input.value ? new Date(input.value).toISOString() : null;
+
+    fieldModalSave.onclick = async () => {await updateDueDate(get_dueDate(input));};
+
+    fieldModal.classList.remove("hidden");
+
+    async function updateDueDate(dueDate) {
+        const url = window.data_url.issueEditDueDate(projectId,IssueId);
+        const data = {due_date: dueDate};
+        const res = await api.patch(url, data);
+
+        if (!res || !res.ok) {return;}
+
+        const issue = await res.json();
+        change_UI_due_time(issue)
+        closeFieldModal();
+    }
+
+    function toDatetimeLocal(value) {
+    if (!value) {return "";}
+
+    const date = new Date(value);
+
+    const offset = date.getTimezoneOffset();
+
+    const localDate = new Date(date.getTime() - offset * 60 * 1000);
+
+    return localDate.toISOString().slice(0, 16);
+}
+}
+
 // -----------------------------------------------------------------------------------------
+
 
 
 function formatEnum(value) {
     return value
         .replaceAll("_", " ")
         .replace(/\b\w/g, c => c.toUpperCase());
-}
-
-function unformatEnum(value) {
-    return value
-        .toLowerCase()
-        .replaceAll(" ", "_");
 }
 
 function formatRelativeDate(dateString) {
@@ -515,5 +659,70 @@ function formatRelativeDate(dateString) {
     }
 
 
+function initIssueFieldEditors() {
+    document.querySelectorAll(".info-item.editable").forEach(item => {
+        item.addEventListener("click", () => {
+            openFieldEditor(item.dataset.field, item);
+        });
+    });
+
+    function openFieldEditor(field, item) {
+        switch (field) {
+            case "status":
+                editStatus(item);break;
+
+            case "priority":
+                editPriority(item);break;
+
+            case "assignee":
+                editAssignee();break;
+
+            case "due_date":
+                editDueDate(item);break;
+        }
+    }
+}
+
+function formatDate(dateString) {
+    if (!dateString) return "—";
+
+    const date = new Date(dateString);
+
+    const datePart = new Intl.DateTimeFormat("en-US", {
+        month: "short",
+        day: "numeric",
+    }).format(date);
+
+    const timePart = new Intl.DateTimeFormat("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+    }).format(date);
+
+    return `${datePart}  •  ${timePart}`;
+}
+
+function closeFieldEditor() {
+    document.querySelectorAll(".field-dropdown").forEach(dropdown => {
+        dropdown.remove();
+    });
+}
+
+
+
+function closeFieldModal() {
+    fieldModal.classList.add("hidden");
+    fieldModalBody.innerHTML = "";
+}
+
+fieldModalClose.addEventListener("click", closeFieldModal);
+fieldModalCancel.addEventListener("click", closeFieldModal);
+
+fieldModal.addEventListener("click", (event) => {
+    if (event.target === fieldModal) {
+        closeFieldModal();
+    }
+});
 
 loadIssue();
+initIssueFieldEditors()

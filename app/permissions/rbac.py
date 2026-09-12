@@ -7,6 +7,12 @@ from app.permissions.enums import Permission, Role
 
 
 class ProjectRBAC:
+    ADMIN_ROLES = {
+        Role.GLOBAL_ADMIN,
+        Role.PROJECT_OWNER,
+        Role.PROJECT_ADMIN,
+    }
+
     @staticmethod
     def get_permissions_for_global_admin() -> set[Permission]:
         return set(Permission)
@@ -101,6 +107,12 @@ class ProjectRBAC:
             return
 
         raise AppException(ErrorCode.PERMISSION_DENIED,"Permission denied")
+
+    @staticmethod
+    def is_admin(context: PermissionContext) -> bool:
+        roles = ProjectRBAC.get_roles(context)
+
+        return bool(roles & ProjectRBAC.ADMIN_ROLES)
 
 
 PERMISSION_GETTERS = {
