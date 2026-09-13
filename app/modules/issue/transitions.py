@@ -17,3 +17,20 @@ ALLOWED_STATUS_TRANSITIONS = {
         IssueStatus.REVIEW,
     },
 }
+
+ALLOWED_STATUS_TRANSITIONS_FRONT = {
+    IssueStatus.OPEN: {
+        "next": IssueStatus.IN_PROGRESS,
+    },
+    IssueStatus.IN_PROGRESS: {
+        "previous": IssueStatus.OPEN,
+        "next": IssueStatus.REVIEW,
+    },
+    IssueStatus.REVIEW: {
+        "previous": IssueStatus.IN_PROGRESS,
+        "next": IssueStatus.DONE,
+    },
+    IssueStatus.DONE: {
+        "previous": IssueStatus.REVIEW,
+    },
+}

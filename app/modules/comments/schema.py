@@ -24,6 +24,10 @@ class CommentResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+class CommentResponseCreate(CommentResponse):
+    parent_comment_public_id: UUID | None = None
+    children: list[CommentResponse] = Field(default_factory=list)
+
 
 class CommentTreeResponse(CommentResponse):
     children: list["CommentTreeResponse"] = Field(default_factory=list)

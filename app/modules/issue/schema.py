@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, field_validator
 from app.modules.comments.schema import CommentTreeResponse
 from app.modules.issue.priority import IssuePriority
 from app.modules.issue.status import IssueStatus
+from app.modules.issue.transitions import ALLOWED_STATUS_TRANSITIONS_FRONT
 from app.modules.project_members.schema import ProjectMemberResponse
 from app.modules.users.schema import UserShortResponse
 
@@ -43,6 +44,24 @@ class IssueResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+class IssueStatusTransitions(BaseModel):
+    previous: IssueStatus | None = None
+    current: IssueStatus
+    next: IssueStatus | None = None
+
+    @classmethod
+    def from_status(cls, status: IssueStatus):
+        transitions = ALLOWED_STATUS_TRANSITIONS_FRONT.get(status, {})
+
+        return cls.model_validate({
+            **transitions,
+            "current": status,
+        })
+
+
+class IssueResponseStatus(IssueResponse):
+    model_config = ConfigDict(from_attributes=True)
+    statuses: IssueStatusTransitions
 
 class IssueResponseEdit(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -69,7 +88,7 @@ class IssueResponseEdit(BaseModel):
 class IssueResponseDetail(IssueResponse):
     comments: list[CommentTreeResponse]
     members: list[UserShortResponse]
-    statuses: list[IssueStatus]
+    statuses: IssueStatusTransitions
     priorities: list[IssuePriority]
 
 

@@ -65,7 +65,7 @@ function renderProjects(projects) {
 
                 <footer>
                     <span>Owner:<strong>${project.owner}</strong></span>
-                    <span>${formatDate(project.updated_at)}</span>
+                    <span>${window.relativeDate(project.updated_at, "Updated")}</span>
                 </footer>
             </article>
         `)
@@ -77,28 +77,6 @@ projectsContainer.onclick = (e) => {
     if (!card) {return;}
     location.href = `/projects/${card.dataset.id}`;
 };
-
-
-function formatDate(dateString) {
-    const date = new Date(dateString);
-    const now = new Date();
-
-    let text = "Updated";
-
-    const diffMs = now - date;
-    const diffMinutes = Math.floor(diffMs / 1000 / 60);
-    const diffHours = Math.floor(diffMinutes / 60);
-    const diffDays = Math.floor(diffHours / 24);
-
-    if (diffMinutes < 1) return `${text} just now`;
-    if (diffMinutes < 60) return `${text} ${diffMinutes}m ago`;
-    if (diffHours < 24) return `${text} ${diffHours}h ago`;
-    if (diffDays === 1) return `${text} yesterday`;
-    if (diffDays < 30) return `${text} ${diffDays} days ago`;
-
-    return `${text} ${date.toLocaleDateString()}`;
-}
-
 
 async function init() {
     await loadProjects();

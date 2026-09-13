@@ -247,6 +247,70 @@ async function logout() {
     window.location.reload();
 }
 
+function formatRelativeDate(dateString, prefix = "") {
+    if (!dateString) return "—";
+
+    const date = new Date(dateString);
+    const now = new Date();
+
+    let duration = (date - now) / 1000;
+
+    const divisions = [
+        { amount: 60, name: "second" },
+        { amount: 60, name: "minute" },
+        { amount: 24, name: "hour" },
+        { amount: 7, name: "day" },
+        { amount: 4.34524, name: "week" },
+        { amount: 12, name: "month" },
+        { amount: Infinity, name: "year" },
+    ];
+
+    for (const division of divisions) {
+        if (Math.abs(duration) < division.amount) {
+            const result = new Intl.RelativeTimeFormat("en", {
+                numeric: "auto",
+            }).format(Math.round(duration), division.name);
+
+            return prefix ? `${prefix} ${result}` : result;
+        }
+
+        duration /= division.amount;
+    }
+}
+
+function formatDate(dateString, year = 0, time = false) {
+    if (!dateString) return "—";
+
+    const date = new Date(dateString);
+
+    const dateOptions = {
+        day: "numeric",
+        month: "short",
+    };
+
+    if (year === 2) {
+        dateOptions.year = "2-digit";
+    }
+    if (year === 4) {
+        dateOptions.year = "numeric";
+    }
+
+    const datePart = new Intl.DateTimeFormat("en-US", dateOptions)
+        .format(date);
+
+    if (!time) {
+        return datePart;
+    }
+
+    const timePart = new Intl.DateTimeFormat("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+    }).format(date);
+
+    return `${datePart} • ${timePart}`;
+}
+
 const api = {
     get: (url) => apiFetch(url),
     post: (url, data) => apiFetch(url, jsonOptions("POST", data)),
@@ -260,6 +324,8 @@ window.ws = new WSClient();
 window.api = api;
 window.logout = logout;
 window.data_url = data_url;
+window.relativeDate = formatRelativeDate;
+window.formatDate = formatDate
 
 if (!isAuthPage) {
       ws.on("*", (event) => {

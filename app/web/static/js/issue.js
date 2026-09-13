@@ -77,6 +77,10 @@ btn_post_comment.addEventListener("click", post_comment);
 back_url.href = back_url.href + projectId;
 
 let issue_full = false;
+let issue_statuses = false;
+let issue_priority = false;
+let issue_assignee = false;
+let issue_comments = false
 
 
 
@@ -91,6 +95,7 @@ function change_UI_status_issue(issue) {
         btn_issue_action.dataset.action = "close";
         btn_issue_action.textContent = "Close";
     }
+    issue_statuses = issue.statuses
 }
 
 function change_UI_title_and_description(issue) {
@@ -99,8 +104,8 @@ function change_UI_title_and_description(issue) {
 }
 
 function change_UI_due_time(issue) {
-    due_time.textContent = issue.due_date ? formatDate(issue.due_date) : "No due date";
-    due_time.dataset.value = issue.due_date ? issue.due_date.slice(0, 16) : "";
+    due_time.textContent = issue.due_date ? window.formatDate(issue.due_date, 0, true) : "No due date";
+    due_time.dataset.value = issue.due_date || "";
 }
 
 function change_UI_priority(issue) {
@@ -114,7 +119,7 @@ function change_UI_assignee(issue) {
 }
 
 function change_UI_updated_time(issue) {
-    updated_time.textContent = formatRelativeDate(issue.updated_at);
+    updated_time.textContent = window.relativeDate(issue.updated_at);
 }
 
 async function loadIssue() {
@@ -126,11 +131,15 @@ async function loadIssue() {
     renderIssueDetails(Issue, true);
     renderComments(Issue.comments);
     issue_full = Issue;
+    issue_assignee = Issue.members;
+    issue_priority = Issue.priorities;
+    issue_statuses = Issue.statuses;
+    issue_comments = Issue.comments;
 }
 
 function renderIssueDetails(issue, offload=false) {
     reporter.textContent = issue.reporter.username;
-    created_time.textContent = formatDate(issue.created_at);
+    created_time.textContent = window.formatDate(issue.created_at, 4);
 
     change_UI_updated_time(issue)
     change_UI_assignee(issue)
@@ -152,10 +161,14 @@ function renderIssueDetails(issue, offload=false) {
     }
 }
 
+function addTextNoComments() {
+    const empty_text = `<div class="empty">No comments</div>`;
+    commentsContainer.insertAdjacentHTML("beforeend", empty_text);
+}
+
 function renderComments(comments) {
     if (comments.length === 0) {
-        const empty_text = `<div class="empty">No comments</div>`;
-        commentsContainer.insertAdjacentHTML("beforeend", empty_text);
+        addTextNoComments()
         return;
     }
 
@@ -174,28 +187,9 @@ function renderComments(comments) {
 function commentHtml(comment, level, parent) {
     const visualLevel = Math.min(level, 3);
 
-    function formatDateTime(dateString) {
-        if (!dateString) return "—";
-        const date = new Date(dateString);
-        const datePart = new Intl.DateTimeFormat("en-US", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-        }).format(date);
-        const timePart = new Intl.DateTimeFormat("en-US", {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: false,
-        }).format(date);
-        return `${datePart} • ${timePart}`;
-    }
+    function getChildrenAttribute(comment) {
+        if (!comment.children?.length) return "";
 
-    function childrenAttribute(comment) {
-        if (!comment.children?.length) {return "";}
-        return `data-list-ids='${JSON.stringify(getChildrenIds(comment))}'`;
-    }
-
-    function getChildrenIds(comment) {
         const ids = [];
 
         function walk(node) {
@@ -207,50 +201,46 @@ function commentHtml(comment, level, parent) {
 
         walk(comment);
 
-        return ids;
+        return `data-list-ids='${JSON.stringify(ids)}'`;
     }
-
-    function getInitial(text) {
-        if (!text) return "";
-        return text.charAt(0).toUpperCase();
-    }
-
-    function commentReply(parent) {
-    return `
-        <div class="reply-preview">
-            <span>Replying to ${parent.author.username}</span>
-            <blockquote>${parent.content}</blockquote>
-        </div>
-    `;
-}
-
-    function isEdited(comment) {
-        return (
-            comment.updated_at &&
-            Math.abs(new Date(comment.updated_at) - new Date(comment.created_at)) > 1000
-        );
-    }
-
-    const update_time = comment => isEdited(comment) ? `edited ${formatRelativeDate(comment.updated_at)}` : "";
 
     const set_parent_id = parent => parent ? `data-parent="${parent.public_id}"` : "";
+
+    function commentReply(parent) {
+        return `<div class="reply-preview">
+                    <span>Replying to ${parent.author.username}</span>
+                    <blockquote>${parent.content}</blockquote>
+                </div>`;
+    }
+
+    function getUpdateTime(comment) {
+        if (!comment.updated_at) return "";
+        const isEdited = Math.abs(new Date(comment.updated_at) - new Date(comment.created_at)) > 1000;
+        return isEdited ? window.relativeDate(comment.updated_at, "edited") : "";
+    }
+
+    function setArticleAttributes(parent, comment, visualLevel) {
+        return`
+        ${set_parent_id(parent)} ${getChildrenAttribute(comment)} 
+        data-id="${comment.public_id}" class="comment level-${visualLevel} card"`
+    }
 
     let z = `<button class="toggle-replies">▼ 4 replies</button>`
 
     return `
-        <article ${set_parent_id(parent)} ${childrenAttribute(comment)} data-id="${comment.public_id}" class="comment level-${visualLevel} card">
-            <div class="avatar">${getInitial(comment.author.username)}</div>
+    <article ${setArticleAttributes(parent, comment, visualLevel)}>
+            <div class="avatar">${comment.author.username.charAt(0).toUpperCase() || ""}</div>
             <div class="comment-content">
                 <div class="comment-header">
                     <strong class="comment-owner" data-owner="${comment.author.username}">${comment.author.username}</strong>
-                    <span class="comment-create-date">${formatDateTime(comment.created_at)}</span>
+                    <span class="comment-create-date">${window.formatDate(comment.created_at, 4, true)}</span>
                 </div>
                 
                 ${parent ? commentReply(parent) : ""}
                 
                 <div class="comment-head">
                     <p class="content-comment" data-text="${comment.content}">${comment.content}</p>
-                    <div class="comment-meta">${update_time(comment)}</div>
+                    <div class="comment-meta">${getUpdateTime(comment)}</div>
                     <div class="comment-actions">
                         <button class="btn_reply">Reply</button>
                         <button class="btn_edit">Edit</button>
@@ -267,8 +257,7 @@ function commentHtml(comment, level, parent) {
                 </div>
                 
             </div>
-        </article>
-    `;
+        </article>`;
 }
 
 const set_count_comments = count => len_comments.textContent = `${count} comment${count === 1 ? "" : "s"}`;
@@ -302,12 +291,9 @@ async function comments_action(event) {
 }
 
 function get_containers_edit(data) {
-    const head_container = data.container.querySelector(".comment-head");
-    const edit_container = data.container.querySelector(".comment-edit");
-
     return {
-        head_container: head_container,
-        edit_container: edit_container
+        head_container: data.container.querySelector(".comment-head"),
+        edit_container: data.container.querySelector(".comment-edit")
     }
 }
 
@@ -320,13 +306,6 @@ function edit_comment(data) {
     textarea.value = data.value;
     textarea.focus();
     textarea.setSelectionRange(textarea.value.length, textarea.value.length);
-
-
-    function autoResize(textarea) {
-        textarea.style.height = "0";
-        textarea.style.height = textarea.scrollHeight + "px";
-    }
-
 }
 
 function close_edit_comment(data) {
@@ -345,7 +324,7 @@ async function save_edit_comment(data) {
         alert("Comment success update!")
         const comment = await res.json();
         const edit_string = data.container.querySelector(".comment-meta");
-        edit_string.textContent = "edited " + formatRelativeDate(comment.updated_at)
+        edit_string.textContent = window.relativeDate(comment.updated_at, "edited");
         close_edit_comment(data);
         const obj_comment = data.container.querySelector("p.content-comment");
         obj_comment.dataset.text = comment.content;
@@ -378,46 +357,162 @@ function cancel_reply_comment() {
     delete text_area_comment.dataset.id;
 }
 
-async function delete_comment(data) {
-        const res = await api.del(window.data_url.comments(projectId,IssueId, data.id));
-        if (!res || !res.ok) {return;}
-        if (res.status === 204) {
-            alert("Delete Complete!")
-            const element = document.querySelector(`[data-id="${data.id}"]`);
-            if (element) {
-                if (element?.dataset.listIds) {
-                    const ids = JSON.parse(element.dataset.listIds);
-                    for (const id of ids) {
-                        const comment = document.querySelector(`[data-id="${id}"]`);
-                        if (comment) {comment.remove()}
-                    }
-                }
-                element.remove();
-                const count = commentsContainer.children.length - 1;
-                set_count_comments(count);
+function findCommentElement(id) {
+    return commentsContainer.querySelector(`[data-id="${id}"]`);
+}
+
+function delete_comment_in_ui(id) {
+    const element = findCommentElement(id)
+    if (!element) {return}
+
+    const listIds = JSON.parse(element.dataset.listIds || "[]");
+    for (const childId of listIds) {findCommentElement(childId)?.remove()}
+
+    const idsToRemove = [...new Set([...listIds, id])];
+    updateChildIdsInParents(element, idsToRemove, "-")
+    deleteComment_in_js(issue_comments, id)
+
+    element.remove();
+    const count = commentsContainer.children.length - 1;
+    set_count_comments(count);
+    if (count === 0) {addTextNoComments()}
+
+    function deleteComment_in_js(comments, id) {
+        for (let i = 0; i < comments.length; i++) {
+            if (comments[i].public_id === id) {
+                comments.splice(i, 1);
+                return true;
             }
+            if (deleteComment_in_js(comments[i].children || [], id)) {return true}
         }
+        return false;
+    }
+}
+
+function add_comment_in_ui(comment) {
+    const count = parseInt(len_comments.textContent, 10);
+
+    if (count === 0) {
+        const empty = commentsContainer.querySelector("div.empty")
+        if (empty) {empty.remove()}
+    }
+
+    let added;
+
+    if (comment.parent_comment_public_id) {added = addReplyComment(comment)}
+    else {added = addNewComment(comment);}
+
+    if (!added) return;
+
+    set_count_comments(count + 1);
+
+    function addReplyComment(comment) {
+        const parentElement = findCommentElement(comment.parent_comment_public_id)
+        if (!parentElement) return;
+
+        const parent = findComment(issue_comments, comment.parent_comment_public_id)
+        if (!parent) return false;
+        parent.children.push(comment);
+
+        const html = commentHtml(comment, getLevel(parentElement) + 1, parent);
+        insertReplyComment(parentElement, html);
+        updateChildIdsInParents(parentElement, [comment.public_id]);
+
+        function insertReplyComment(parentElement, html) {
+            const parentLevel = getLevel(parentElement);
+
+            let next = parentElement.nextElementSibling;
+
+            while (next) {
+                const nextLevel = getLevel(next);
+
+                if (nextLevel <= parentLevel) {
+                    next.insertAdjacentHTML("beforebegin", html);
+                    return;
+                }
+
+                next = next.nextElementSibling;
+            }
+
+            commentsContainer.insertAdjacentHTML("beforeend", html);
+        }
+
+        function getLevel(element) {
+            return Number(
+                [...element.classList]
+                    .find(cls => cls.startsWith("level-"))
+                    ?.replace("level-", "") || 0
+            );
+        }
+
+        return true
+    }
+
+    function addNewComment(comment) {
+        const text_comment = commentHtml(comment, 0, null);
+        commentsContainer.insertAdjacentHTML("beforeend", text_comment);
+        issue_comments.push(comment)
+        return true
+    }
+
+    function findComment(comments, publicId) {
+    for (const comment of comments) {
+        if (comment.public_id === publicId) {return comment}
+        const found = findComment(comment.children || [], publicId);
+        if (found) {return found}
+    }
+
+    return null;
+}
+}
+
+async function delete_comment(data) {
+    const res = await api.del(window.data_url.comments(projectId,IssueId, data.id));
+    if (!res || !res.ok) {return;}
+    if (res.status === 204) {
+        alert("Delete Complete!")
+        delete_comment_in_ui(data.id)
+    }
 }
 
 async function post_comment(event) {
-    if (text_area_comment.value.length > 1) {
-        const data = {
-            content: text_area_comment.value,
-            parent_comment_public_id: text_area_comment.dataset.id || null,
-        };
-        const res = await api.post(window.data_url.comment(projectId,IssueId), data);
-        if (!res || !res.ok) {return;}
-        const comment = await res.json();
-        text_area_comment.value = ""
-        cancel_reply_comment()
-        if (data.parent_comment_public_id) {
+    if (!text_area_comment.value.trim()) return;
 
-        } else {
-            const text_comment = commentHtml(comment, 0, null);
-            commentsContainer.insertAdjacentHTML("beforeend", text_comment);
+    const url = window.data_url.comment(projectId,IssueId)
+    const res = await api.post(url, {
+        content: text_area_comment.value,
+        parent_comment_public_id: text_area_comment.dataset.id || null,
+    });
+    if (!res || !res.ok) {return;}
+    const comment = await res.json();
+
+    text_area_comment.value = ""
+    cancel_reply_comment()
+    add_comment_in_ui(comment)
+}
+
+function updateChildIdsInParents(element, ids, action = "+") {
+    let current = element;
+
+    while (current) {
+        const listIds = JSON.parse(current.dataset.listIds || "[]");
+
+        if (action === "+") {
+            for (const id of ids) {if (!listIds.includes(id)) {listIds.push(id)}}
+        } else if (action === "-") {
+            for (const id of ids) {
+                const index = listIds.indexOf(id);
+                if (index !== -1) {listIds.splice(index, 1)}
+            }
         }
-        const count = parseInt(len_comments.textContent, 10);
-        set_count_comments(count + 1);
+
+        if (listIds.length) {current.dataset.listIds = JSON.stringify(listIds)}
+        else {delete current.dataset.listIds}
+
+        const parentId = current.dataset.parent;
+        if (!parentId) break;
+
+        current = findCommentElement(parentId)
     }
 }
 // -----------------------------------------------------------------------------------------
@@ -427,6 +522,30 @@ async function post_comment(event) {
 
 
 // ----------------------------------------Issue Action-------------------------------------
+function initIssueFieldEditors() {
+    document.querySelectorAll(".info-item.editable").forEach(item => {
+        item.addEventListener("click", () => {
+            openFieldEditor(item.dataset.field, item);
+        });
+    });
+
+    function openFieldEditor(field, item) {
+        switch (field) {
+            case "status":
+                editStatus(item);break;
+
+            case "priority":
+                editPriority(item);break;
+
+            case "assignee":
+                editAssignee();break;
+
+            case "due_date":
+                editDueDate(item);break;
+        }
+    }
+}
+
 async function OpenEditIssueWindow(event) {
     const response = await window.api.get(window.data_url.issueEdit(projectId, IssueId));
     if (!response.ok) {return;}
@@ -470,6 +589,12 @@ function modal_issue_func(event) {
    }
 }
 
+function formatEnum(value) {
+    return value
+        .replaceAll("_", " ")
+        .replace(/\b\w/g, c => c.toUpperCase());
+}
+
 async function issue_action(event) {
     event?.preventDefault();
 
@@ -480,6 +605,11 @@ async function issue_action(event) {
     const issue = await res.json();
 
     // closeFieldModal();
+}
+
+function closeFieldModal() {
+    fieldModal.classList.add("hidden");
+    fieldModalBody.innerHTML = "";
 }
 
 function set_modal_data(text, options, value) {
@@ -510,13 +640,61 @@ function create_map_list(list_values, isAssignee = false) {
 }
 
 function editStatus() {
-    const currentStatus = document.querySelector("#status").textContent.trim().toLowerCase();
-    console.log(currentStatus)
-    const list_statuses = create_map_list(issue_full.statuses);
+    const transitions = issue_statuses;
 
-    const select = set_modal_data("Status", list_statuses, currentStatus)
+    fieldModalTitle.textContent = "Change status";
+    const previous = transitions.previous
+                        ? `<button type="button" class="status-option" data-status="${transitions.previous}">
+                               ← ${formatEnum(transitions.previous)}
+                           </button>`
+                        : `<div class="status-empty">—</div>`
+    const next = transitions.next
+                        ? `<button type="button" class="status-option" data-status="${transitions.next}">
+                               ${formatEnum(transitions.next)} →
+                           </button>`
+                        : `<div class="status-empty">—</div>`
 
-    fieldModalSave.onclick = async () => {await updateStatus(select.value)};
+    fieldModalBody.innerHTML = `
+        <div class="status-modal">
+            <div class="status-item">
+                <span class="status-label">Previous</span>
+                ${previous}
+            </div>
+
+            <div class="status-item current">
+                <span class="status-label">Current</span>
+                <div class="status-current status-option">${formatEnum(transitions.current)}</div>
+            </div>
+
+            <div class="status-item">
+                <span class="status-label">Next</span>
+                ${next}
+            </div>
+        </div>
+    `;
+
+    let selectedStatus = null;
+
+    const options = fieldModalBody.querySelectorAll(".status-option");
+
+    options.forEach(option => {
+        option.addEventListener("click", () => {
+            selectedStatus = option.dataset.status;
+
+            // Снять выделение
+            options.forEach(item => {
+                item.classList.remove("status-current");
+            });
+
+            // Выделить выбранный
+            option.classList.add("status-current");
+        });
+    });
+
+    fieldModalSave.onclick = async () => {
+        if (!selectedStatus) {return;}
+        await updateStatus(selectedStatus);
+    };
 
     fieldModal.classList.remove("hidden");
 
@@ -533,7 +711,7 @@ function editStatus() {
 
 function editPriority() {
     const currentPriority = document.querySelector("#priority").textContent.trim().toLowerCase();
-    const list_priorities = create_map_list(issue_full.priorities);
+    const list_priorities = create_map_list(issue_priority);
 
     const select = set_modal_data("Priority", list_priorities, currentPriority)
 
@@ -556,7 +734,7 @@ function editPriority() {
 
 async function editAssignee() {
     const currentAssignee = document.querySelector("#assignee").dataset.publicId;
-    const list_assignee = create_map_list(issue_full.members, true);
+    const list_assignee = create_map_list(issue_assignee, true);
 
     const select = set_modal_data("Assignee", list_assignee, currentAssignee)
 
@@ -605,114 +783,12 @@ function editDueDate() {
     }
 
     function toDatetimeLocal(value) {
-    if (!value) {return "";}
-
-    const date = new Date(value);
-
-    const offset = date.getTimezoneOffset();
-
-    const localDate = new Date(date.getTime() - offset * 60 * 1000);
-
-    return localDate.toISOString().slice(0, 16);
-}
-}
-
-// -----------------------------------------------------------------------------------------
-
-
-
-function formatEnum(value) {
-    return value
-        .replaceAll("_", " ")
-        .replace(/\b\w/g, c => c.toUpperCase());
-}
-
-function formatRelativeDate(dateString) {
-        if (!dateString) return "—";
-
-        const date = new Date(dateString);
-        const now = new Date();
-
-        const seconds = Math.floor((date - now) / 1000);
-
-        const divisions = [
-            { amount: 60, name: "second" },
-            { amount: 60, name: "minute" },
-            { amount: 24, name: "hour" },
-            { amount: 7, name: "day" },
-            { amount: 4.34524, name: "week" },
-            { amount: 12, name: "month" },
-            { amount: Number.POSITIVE_INFINITY, name: "year" },
-        ];
-
-        let duration = seconds;
-
-        for (const division of divisions) {
-            if (Math.abs(duration) < division.amount) {
-                return new Intl.RelativeTimeFormat("en", {
-                    numeric: "auto",
-                }).format(Math.round(duration), division.name);
-            }
-
-            duration /= division.amount;
-        }
+        if (!value) {return "";}
+        const date = new Date(value);
+        const offset = date.getTimezoneOffset();
+        const localDate = new Date(date.getTime() - offset * 60 * 1000);
+        return localDate.toISOString().slice(0, 16);
     }
-
-
-function initIssueFieldEditors() {
-    document.querySelectorAll(".info-item.editable").forEach(item => {
-        item.addEventListener("click", () => {
-            openFieldEditor(item.dataset.field, item);
-        });
-    });
-
-    function openFieldEditor(field, item) {
-        switch (field) {
-            case "status":
-                editStatus(item);break;
-
-            case "priority":
-                editPriority(item);break;
-
-            case "assignee":
-                editAssignee();break;
-
-            case "due_date":
-                editDueDate(item);break;
-        }
-    }
-}
-
-function formatDate(dateString) {
-    if (!dateString) return "—";
-
-    const date = new Date(dateString);
-
-    const datePart = new Intl.DateTimeFormat("en-US", {
-        month: "short",
-        day: "numeric",
-    }).format(date);
-
-    const timePart = new Intl.DateTimeFormat("en-US", {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-    }).format(date);
-
-    return `${datePart}  •  ${timePart}`;
-}
-
-function closeFieldEditor() {
-    document.querySelectorAll(".field-dropdown").forEach(dropdown => {
-        dropdown.remove();
-    });
-}
-
-
-
-function closeFieldModal() {
-    fieldModal.classList.add("hidden");
-    fieldModalBody.innerHTML = "";
 }
 
 fieldModalClose.addEventListener("click", closeFieldModal);
@@ -723,6 +799,9 @@ fieldModal.addEventListener("click", (event) => {
         closeFieldModal();
     }
 });
+
+// -----------------------------------------------------------------------------------------
+
 
 loadIssue();
 initIssueFieldEditors()

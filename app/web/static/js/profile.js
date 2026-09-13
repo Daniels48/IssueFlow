@@ -35,37 +35,6 @@ async function revoke_all_sessions(event) {
     set_count_session(1)
 }
 
-function formatRelativeDate(dateString) {
-        if (!dateString) return "—";
-
-        const date = new Date(dateString);
-        const now = new Date();
-
-        const seconds = Math.floor((date - now) / 1000);
-
-        const divisions = [
-            { amount: 60, name: "second" },
-            { amount: 60, name: "minute" },
-            { amount: 24, name: "hour" },
-            { amount: 7, name: "day" },
-            { amount: 4.34524, name: "week" },
-            { amount: 12, name: "month" },
-            { amount: Number.POSITIVE_INFINITY, name: "year" },
-        ];
-
-        let duration = seconds;
-
-        for (const division of divisions) {
-            if (Math.abs(duration) < division.amount) {
-                return new Intl.RelativeTimeFormat("en", {
-                    numeric: "auto",
-                }).format(Math.round(duration), division.name);
-            }
-
-            duration /= division.amount;
-        }
-    }
-
 async function revoke_action_session(event) {
     const target_element = event.target;
     const btn_revoke = target_element.classList.contains("session-revoke-btn");
@@ -174,7 +143,7 @@ function SessionHtml(session) {
                 <div class="session-device">${set_geo_data(session)}</div>
                 
                 <span class="session-meta">
-                    ${set_ip_address(session)} · ${formatRelativeDate(session.updated_at)}
+                    ${set_ip_address(session)} · ${window.relativeDate(session.updated_at)}
                 </span>
             </div>
     
@@ -184,7 +153,7 @@ function SessionHtml(session) {
 }
 
 function change_date_change_password(date) {
-    password_changed_at.innerText = `Last changed: ${formatRelativeDate(date)}`
+    password_changed_at.innerText = `Last changed: ${window.relativeDate(date)}`
 }
 
 function renderSession(session_list){
@@ -213,7 +182,7 @@ async function loadProfile() {
         email.textContent = user.email;
         avatar.textContent = user.username.charAt(0).toUpperCase();
         publicId.textContent = user.public_id;
-        created.textContent = new Date(user.created_at).toLocaleString();
+        created.textContent = window.formatDate(user.created_at, 4);
         verified.textContent = user.email_verified_at ? "Yes" : "No";
         status.textContent = user.is_active ? "Active" : "Inactive";
         const verify_btn = document.getElementById("verify-email-btn");

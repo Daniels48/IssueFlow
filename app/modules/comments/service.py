@@ -10,7 +10,8 @@ from app.infrastructure.db.models import Comment, User
 from app.infrastructure.rabbitmq import RabbitPublisher
 from app.modules.auth.dependencies import DBSession
 from app.modules.comments.repository import CommentRepository
-from app.modules.comments.schema import CommentCreate, CommentResponse,CommentUpdate, CommentTreeResponse
+from app.modules.comments.schema import CommentCreate, CommentResponse, CommentUpdate, CommentTreeResponse, \
+    CommentResponseCreate
 from app.modules.issue.repository import IssueRepository
 from app.permissions import PermissionContext, Permission, ProjectRBAC
 from app.utils.func_utils import to, get_now_dt
@@ -45,7 +46,7 @@ class CommentService:
 
         return roots
 
-    async def create(self, issue_id: UUID, data: CommentCreate, user: User) -> CommentResponse:
+    async def create(self, issue_id: UUID, data: CommentCreate, user: User) -> CommentResponseCreate:
         result = await self.issue_repository.get_by_public_id_with_current_member(self.db, issue_id, user.id)
 
         if result is None:
@@ -56,6 +57,7 @@ class CommentService:
         context = PermissionContext(user=user, project=issue.project, member=member)
         ProjectRBAC.require(permission=Permission.COMMENT_CREATE, context=context)
 
+        parent_comment = None
         parent_comment_id = None
 
         if data.parent_comment_public_id is not None:
@@ -80,10 +82,12 @@ class CommentService:
         comment = await self.repository.create(self.db, comment)
         await self.db.commit()
 
-        event = CommentCreatedEvent.from_models(issue, user, comment)
-        await RabbitPublisher.publish(event)
+        await RabbitPublisher.publish(CommentCreatedEvent.from_models(issue, user, comment))
 
-        return to(CommentResponse, comment)
+        return CommentResponseCreate(
+            **to(CommentResponse, comment).model_dump(),
+            parent_comment_public_id=parent_comment.public_id if parent_comment else None,
+        )
 
     async def update(self, comment_id: UUID, data: CommentUpdate, user: User) -> CommentResponse:
         result = await self.repository.get_by_public_id_with_current_member(self.db, comment_id, user.id)
@@ -100,8 +104,7 @@ class CommentService:
 
         await self.db.commit()
 
-        event = CommentUpdatedEvent.from_models(comment.issue, user, comment)
-        await RabbitPublisher.publish(event)
+        await RabbitPublisher.publish(CommentUpdatedEvent.from_models(comment.issue, user, comment))
 
         return to(CommentResponse, comment)
 
@@ -118,9 +121,10 @@ class CommentService:
 
         comment.deleted_at = get_now_dt()
 
+        event = CommentDeletedEvent.from_models(comment.issue, user, comment)
+
         await self.db.commit()
 
-        event = CommentDeletedEvent.from_models(comment.issue, user, comment)
         await RabbitPublisher.publish(event)
 
 

@@ -64,18 +64,8 @@ function renderDetailProject(project) {
 
     member_cnt_obj.textContent = project.members.length;
     issues_cnt_obj.textContent = project.issues.length;
-    prjct_created.textContent =  formatDate(project.created_at);
+    prjct_created.textContent =  window.formatDate(project.created_at, 4);
     project_owner.textContent = project.owner;
-
-    function formatDate(dateString) {
-    if (!dateString) return "—";
-
-    return new Intl.DateTimeFormat("en", {
-        day: "numeric",
-        month: "short",
-        year: "2-digit",
-    }).format(new Date(dateString));
-}
 }
 
 function renderMembers(members, roles, is_add=false) {
@@ -126,20 +116,13 @@ function renderIssues(issues, is_add=false) {
                     </span>
                 </div>
                 <div class="badges">
-                    <span class="due">${formatDate(issue.due_date)}</span>
+                    <span class="due">${window.formatDate(issue.due_date)}</span>
                     <span class="progress">${uppercase(issue.status)}</span>
                     <span class="${issue.priority.toLowerCase()}">${uppercase(issue.priority)}</span>
                 </div>
             </a>`
     }
-
     function uppercase(text) {return text.toUpperCase();}
-
-    function formatDate(dateString) {
-        if (!dateString) return "—";
-        return new Intl.DateTimeFormat("en", {day: "numeric", month: "short",
-        }).format(new Date(dateString));
-    }
 }
 
 

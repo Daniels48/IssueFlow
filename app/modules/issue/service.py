@@ -15,11 +15,12 @@ from app.modules.auth.dependencies import DBSession
 from app.modules.comments.service import CommentService
 from app.modules.issue.priority import IssuePriority
 from app.modules.issue.schema import IssueCreate, IssueUpdate, IssueResponse, IssueResponseDetail, IssueResponseEdit, \
-    IssueDueDateUpdate, IssueAssigneeUpdate, IssuePriorityUpdate, IssueStatusUpdate
+    IssueDueDateUpdate, IssueAssigneeUpdate, IssuePriorityUpdate, IssueStatusUpdate, IssueStatusTransitions, \
+    IssueResponseStatus
 
 from app.modules.issue.repository import IssueRepository
 from app.modules.issue.status import IssueStatus
-from app.modules.issue.transitions import ALLOWED_STATUS_TRANSITIONS
+from app.modules.issue.transitions import ALLOWED_STATUS_TRANSITIONS, ALLOWED_STATUS_TRANSITIONS_FRONT
 from app.modules.project_members.repository import ProjectMemberRepository
 from app.modules.project_members.schema import ProjectMemberResponse
 from app.modules.projects.repository import ProjectRepository
@@ -87,13 +88,13 @@ class IssueService:
         context = PermissionContext(user=user, project=issue.project, member=member, resource=issue)
         ProjectRBAC.require(permission=Permission.ISSUE_VIEW, context=context)
 
-        base = IssueResponse.model_validate(issue)
-        comments_tree = CommentService.build_comment_tree(issue.comments)
-        members = [UserShortResponse.model_validate(member.user) for member in issue.project.members]
-        statuses = ALLOWED_STATUS_TRANSITIONS.get(issue.status, set())
-        priorities = list(IssuePriority)
-
-        return IssueResponseDetail(**base.model_dump(), comments=comments_tree, members=members, priorities=priorities, statuses=statuses)
+        return IssueResponseDetail(
+            **IssueResponse.model_validate(issue).model_dump(),
+            comments=CommentService.build_comment_tree(issue.comments),
+            members=[UserShortResponse.model_validate(member.user) for member in issue.project.members],
+            priorities=list(IssuePriority),
+            statuses=IssueStatusTransitions.from_status(issue.status)
+        )
 
     async def get_edit(self, public_id: UUID, user: User) -> IssueResponseEdit | None:
         issue = await self.rep.get_by_public_id_edit(self.db, public_id)
@@ -245,7 +246,7 @@ class IssueService:
 
         return to(IssueResponse, issue)
 
-    async def update_status(self, issue_id: UUID, data: IssueStatusUpdate, user: User) -> IssueResponse:
+    async def update_status(self, issue_id: UUID, data: IssueStatusUpdate, user: User) -> IssueResponseStatus:
         result = await self.rep.get_by_public_id_with_current_member(self.db,issue_id,user.id)
 
         if result is None:
@@ -259,7 +260,11 @@ class IssueService:
         ProjectRBAC.require(permission=Permission.ISSUE_UPDATE,context=context)
 
         if issue.status == data.status:
-            return to(IssueResponse, issue)
+            status_transitions = IssueStatusTransitions.from_status(issue.status)
+            return IssueResponseStatus(
+                **IssueResponse.model_validate(issue).model_dump(),
+                statuses=status_transitions
+            )
 
         allowed_statuses = ALLOWED_STATUS_TRANSITIONS.get(issue.status, set())
 
@@ -273,7 +278,12 @@ class IssueService:
 
         issue = await self.rep.get_by_public_id_full(self.db, issue.public_id)
 
-        return to(IssueResponse, issue)
+        status_transitions = IssueStatusTransitions.from_status(issue.status)
+
+        return IssueResponseStatus(
+            **IssueResponse.model_validate(issue).model_dump(),
+            statuses=status_transitions
+        )
 
     async def close(self, issue_id: UUID, user: User) -> IssueResponse:
         result = await self.rep.get_by_public_id_with_current_member( self.db,issue_id,user.id)

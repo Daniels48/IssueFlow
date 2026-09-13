@@ -4,7 +4,7 @@ from fastapi import APIRouter, status, Query
 
 from app.modules.auth.dependencies import CurrentUser
 from app.modules.issue.schema import IssueCreate, IssueResponse, IssueUpdate, IssueResponseDetail, IssueResponseEdit, \
-    IssueDueDateUpdate, IssueAssigneeUpdate, IssueStatusUpdate, IssuePriorityUpdate
+    IssueDueDateUpdate, IssueAssigneeUpdate, IssueStatusUpdate, IssuePriorityUpdate, IssueResponseStatus
 from app.modules.issue.service import issue_service
 
 
@@ -64,7 +64,7 @@ async def update_assignee(issue_id: UUID, data: IssueAssigneeUpdate, service: is
 async def update_priority(issue_id: UUID, data: IssuePriorityUpdate, service: issue_service, user: CurrentUser):
     return await service.update_priority(issue_id=issue_id, data=data, user=user)
 
-@router.patch("/{issue_id}/status",response_model=IssueResponse)
+@router.patch("/{issue_id}/status",response_model=IssueResponseStatus)
 async def update_status(issue_id: UUID, data: IssueStatusUpdate, service: issue_service, user: CurrentUser):
     return await service.update_status(issue_id=issue_id, data=data, user=user)
 
