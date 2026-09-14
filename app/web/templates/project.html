@@ -24,7 +24,47 @@
                 <h2>Issues</h2>
                 <button id="create-issue">+ New Issue</button>
             </section>
-            <input id="search_issues" class="search" type="text" placeholder="Search issues...">
+
+            <section class="issue-filters">
+                <input id="search_issues" class="search" type="text" placeholder="Search issues...">
+
+                <div class="filter-row">
+                    <select id="filter-status">
+                        <option value="">Status</option>
+                        <option value="open">Open</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="review">Review</option>
+                        <option value="done">Done</option>
+                        <option value="closed">Closed</option>
+                    </select>
+
+                    <select id="filter-priority">
+                        <option value="">Priority</option>
+                        <option value="critical">Critical</option>
+                        <option value="high">High</option>
+                        <option value="medium">Medium</option>
+                        <option value="low">Low</option>
+                    </select>
+
+                    <select id="filter-due-date">
+                        <option value="">Due date</option>
+                        <option value="overdue">Overdue</option>
+                        <option value="today">Today</option>
+                        <option value="upcoming">Upcoming</option>
+                    </select>
+
+                    <select id="sort-issues">
+                         <option value="">No sort</option>
+                        <option value="due_date_asc">Due date ↑</option>
+                        <option value="due_date_desc">Due date ↓</option>
+                        <option value="priority_asc">Priority ↑</option>
+                        <option value="priority_desc">Priority ↓</option>
+                        <option value="newest">Newest</option>
+                        <option value="oldest">Oldest</option>
+                    </select>
+                </div>
+            </section>
+
             <section class="issues" id="issues"></section>
         </main>
         <div id="members-modal" class="modal hidden">

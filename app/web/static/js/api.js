@@ -11,7 +11,17 @@ const url_api = "/api";
 const url_users = `${url_api}/users`;
 const url_auth = `${url_api}/auth`;
 const url_sessions = `${url_auth}/sessions`;
-const getQuery = (query) => `?search=${encodeURIComponent(query)}`;
+const getQuery = (params) => {
+    const query = new URLSearchParams();
+
+    for (const [key, value] of Object.entries(params)) {
+        if (value) {query.set(key, value)}
+    }
+
+    const string = query.toString();
+
+    return string ? `?${string}` : "";
+};
 
 const data_url = {
     ws: `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws`,
@@ -40,7 +50,7 @@ const data_url = {
     revoke_session: (SessionId) => `${url_sessions}/${SessionId}`,
 
     me: `${url_users}/me`,
-    searchUsers: (query, projectId) => `${url_users}/search${getQuery(query)}&project_id=${projectId}`,
+    searchUsers: (query, projectId) => `${url_users}/search${getQuery({query, project_id: projectId,})}`,
 
     projects: `${url_api}/projects`,
     project: (projectId) => `${data_url.projects}/${projectId}`,
@@ -48,7 +58,7 @@ const data_url = {
     members: (projectId) => `${data_url.project(projectId)}/members`,
     member: (projectId, userId) => `${data_url.members(projectId)}/${userId}`,
 
-    issues: (projectId, query = "") => `${data_url.project(projectId)}/issues${query ? getQuery(query) : ""}`,
+    issues: (projectId, params = {}) => `${data_url.project(projectId)}/issues${getQuery(params)}`,
     issue: (projectId, issueId) => `${data_url.issues(projectId)}/${issueId}`,
     issueEdit: (projectId, issueId) => `${data_url.issue(projectId, issueId)}/edit`,
     issueEditStatus: (projectId, issueId) => `${data_url.issues(projectId)}/${issueId}/status`,
@@ -57,7 +67,6 @@ const data_url = {
     issueEditAssignee: (projectId, issueId) => `${data_url.issues(projectId)}/${issueId}/assignee`,
     issueClose: (projectId, issueId) => `${data_url.issues(projectId)}/${issueId}/close`,
     issueReopen: (projectId, issueId) => `${data_url.issues(projectId)}/${issueId}/reopen`,
-
 
     comment: (projectId, issueId) => `${data_url.issue(projectId, issueId)}/comments`,
     comments: (projectId, issueId, comId) => `${data_url.comment(projectId, issueId)}/${comId}`,

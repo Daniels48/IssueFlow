@@ -13,6 +13,7 @@ from app.modules.comments.repository import CommentRepository
 from app.modules.comments.schema import CommentCreate, CommentResponse, CommentUpdate, CommentTreeResponse, \
     CommentResponseCreate
 from app.modules.issue.repository import IssueRepository
+from app.modules.issue.status import IssueStatus
 from app.permissions import PermissionContext, Permission, ProjectRBAC
 from app.utils.func_utils import to, get_now_dt
 
@@ -56,6 +57,9 @@ class CommentService:
 
         context = PermissionContext(user=user, project=issue.project, member=member)
         ProjectRBAC.require(permission=Permission.COMMENT_CREATE, context=context)
+
+        if issue.status == IssueStatus.CLOSED:
+            raise AppException(ErrorCode.ISSUE_CLOSED,"Issue already closed")
 
         parent_comment = None
         parent_comment_id = None
@@ -101,10 +105,11 @@ class CommentService:
         ProjectRBAC.require(permission=Permission.COMMENT_UPDATE, context=context)
 
         comment.content = data.content
-
-        await self.db.commit()
+        comment.updated_at = get_now_dt()
 
         await RabbitPublisher.publish(CommentUpdatedEvent.from_models(comment.issue, user, comment))
+
+        await self.db.commit()
 
         return to(CommentResponse, comment)
 

@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from enum import Enum
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, field_validator
@@ -58,6 +59,19 @@ class IssueStatusTransitions(BaseModel):
             "current": status,
         })
 
+class IssueStatusResponseBase(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    public_id: UUID
+
+    title: str
+    description: str | None
+
+    status: IssueStatus
+
+class IssueStatusResponse(IssueStatusResponseBase):
+    statuses: IssueStatusTransitions
+
 
 class IssueResponseStatus(IssueResponse):
     model_config = ConfigDict(from_attributes=True)
@@ -114,3 +128,30 @@ class IssuePriorityUpdate(BaseModel):
 
 class IssueStatusUpdate(BaseModel):
     status: IssueStatus
+
+
+class DueDateFilter(str, Enum):
+    OVERDUE = "overdue"
+    TODAY = "today"
+    UPCOMING = "upcoming"
+
+
+class IssueSort(str, Enum):
+    DUE_DATE_ASC = "due_date_asc"
+    DUE_DATE_DESC = "due_date_desc"
+
+    PRIORITY_ASC = "priority_asc"
+    PRIORITY_DESC = "priority_desc"
+
+    NEWEST = "newest"
+    OLDEST = "oldest"
+
+
+class IssueFilters(BaseModel):
+    search: str | None = None
+    status: IssueStatus | None = None
+    priority: IssuePriority | None = None
+    due_date: DueDateFilter | None = None
+    sort: IssueSort | None = None
+
+

@@ -88,14 +88,14 @@ let issue_comments = false
 function change_UI_status_issue(issue) {
     head_status.textContent = formatEnum(issue.status).toUpperCase();
     status.textContent = formatEnum(issue.status).toUpperCase();
-    if (issue.status === "closed") {
-        btn_issue_action.dataset.action = "reopen";
-        btn_issue_action.textContent = "Reopen";
-    } else {
-        btn_issue_action.dataset.action = "close";
-        btn_issue_action.textContent = "Close";
-    }
+    const get_action = (element) => element.status === "closed" ? "reopen" : "close";
+    const value = get_action(issue);
+    btn_issue_action.dataset.action = value;
+    btn_issue_action.textContent = value.charAt(0).toUpperCase() + value.slice(1).toLowerCase()
     issue_statuses = issue.statuses
+
+    setCommentActionsVisibility(issue.status);
+    drawCommentLines();
 }
 
 function change_UI_title_and_description(issue) {
@@ -122,6 +122,16 @@ function change_UI_updated_time(issue) {
     updated_time.textContent = window.relativeDate(issue.updated_at);
 }
 
+function setCommentActionsVisibility(value) {
+    const action = value === "closed" ? "add" : "remove";
+    const cls = "hidden";
+
+    document.querySelectorAll(".comment-actions").forEach(element => element.classList[action](cls));
+    document.querySelectorAll("span.arrow").forEach(element => element.classList[action](cls))
+    document.querySelector("section.new-comment").classList[action](cls);
+    document.querySelector("#edit-issue").classList[action](cls)
+}
+
 async function loadIssue() {
     const res = await api.get(window.data_url.issue(projectId, IssueId));
     if (!res || !res.ok) {
@@ -135,6 +145,9 @@ async function loadIssue() {
     issue_priority = Issue.priorities;
     issue_statuses = Issue.statuses;
     issue_comments = Issue.comments;
+
+    setCommentActionsVisibility(Issue.status)
+    drawCommentLines()
 }
 
 function renderIssueDetails(issue, offload=false) {
@@ -173,6 +186,7 @@ function renderComments(comments) {
     }
 
     commentsContainer.insertAdjacentHTML("beforeend", renderTree(comments));
+    drawCommentLines()
 
     function renderTree(comments, level = 0, parent = null) {
         let html = ``;
@@ -185,7 +199,7 @@ function renderComments(comments) {
 }
 
 function commentHtml(comment, level, parent) {
-    const visualLevel = Math.min(level, 3);
+    const visualLevel = Math.min(level, 8);
 
     function getChildrenAttribute(comment) {
         if (!comment.children?.length) return "";
@@ -206,7 +220,8 @@ function commentHtml(comment, level, parent) {
 
     const set_parent_id = parent => parent ? `data-parent="${parent.public_id}"` : "";
 
-    function commentReply(parent) {
+    function commentReply(parent, is_par=true) {
+        if (is_par) return "";
         return `<div class="reply-preview">
                     <span>Replying to ${parent.author.username}</span>
                     <blockquote>${parent.content}</blockquote>
@@ -216,13 +231,13 @@ function commentHtml(comment, level, parent) {
     function getUpdateTime(comment) {
         if (!comment.updated_at) return "";
         const isEdited = Math.abs(new Date(comment.updated_at) - new Date(comment.created_at)) > 1000;
-        return isEdited ? window.relativeDate(comment.updated_at, "edited") : "";
+        return isEdited ? window.relativeDate(comment.updated_at, "edited") : window.relativeDate(comment.created_at);
     }
 
     function setArticleAttributes(parent, comment, visualLevel) {
         return`
         ${set_parent_id(parent)} ${getChildrenAttribute(comment)} 
-        data-id="${comment.public_id}" class="comment level-${visualLevel} card"`
+        data-id="${comment.public_id}" class="comment level-${visualLevel} card2"`
     }
 
     let z = `<button class="toggle-replies">▼ 4 replies</button>`
@@ -232,15 +247,14 @@ function commentHtml(comment, level, parent) {
             <div class="avatar">${comment.author.username.charAt(0).toUpperCase() || ""}</div>
             <div class="comment-content">
                 <div class="comment-header">
-                    <strong class="comment-owner" data-owner="${comment.author.username}">${comment.author.username}</strong>
-                    <span class="comment-create-date">${window.formatDate(comment.created_at, 4, true)}</span>
+                    <strong class="comment-owner" data-owner="${comment.author.username}">@${comment.author.username}</strong>
+                    <span class="comment-create-date">${getUpdateTime(comment)}</span>
                 </div>
                 
                 ${parent ? commentReply(parent) : ""}
                 
                 <div class="comment-head">
                     <p class="content-comment" data-text="${comment.content}">${comment.content}</p>
-                    <div class="comment-meta">${getUpdateTime(comment)}</div>
                     <div class="comment-actions">
                         <button class="btn_reply">Reply</button>
                         <button class="btn_edit">Edit</button>
@@ -258,6 +272,72 @@ function commentHtml(comment, level, parent) {
                 
             </div>
         </article>`;
+}
+
+function drawCommentLines() {
+    const svg = document.querySelector("#comment-lines");
+    svg.innerHTML = "";
+
+    const comments = commentsContainer.querySelectorAll(".comment");
+
+    for (const child of comments) {
+        const rects = getCommentRects(child);
+
+        if (!rects) continue;
+
+        const coords = getCommentLineCoordinates(rects.parentRect, rects.childRect, svg.getBoundingClientRect())
+        const path = createCommentLine(coords)
+        svg.appendChild(path);
+    }
+
+
+    function getCommentRects(child) {
+        const parentId = child.dataset.parent;
+
+        if (!parentId) return null;
+
+        const parent = findCommentElement(parentId);
+
+        if (!parent) return null;
+
+        const parentAvatar = parent.querySelector(".avatar");
+        const childAvatar = child.querySelector(".avatar");
+
+        if (!parentAvatar || !childAvatar) return null;
+
+        return {
+            parentRect: parentAvatar.getBoundingClientRect(),
+            childRect: childAvatar.getBoundingClientRect()
+        };
+    }
+
+    function getCommentLineCoordinates(parentRect, childRect, svgRect, gap=10) {
+        const x1 = parentRect.left + parentRect.width / 2 - svgRect.left;
+        const y1 = parentRect.bottom - svgRect.top;
+
+        const x2 = childRect.left - svgRect.left - gap;
+        const y2 = childRect.top + childRect.height / 2 - svgRect.top;
+
+        return {x1: x1, y1: y1, x2: x2, y2: y2}
+    }
+
+    function createCommentLine(coords) {
+            const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            path.setAttribute("d", `
+                M ${coords.x1} ${coords.y1}
+                V ${coords.y2}
+                H ${coords.x2}`
+            );
+
+            path.setAttribute("fill", "none");
+            path.setAttribute("stroke", "#64748b");
+            path.setAttribute("stroke-width", "1");
+            path.setAttribute("stroke-linecap", "round");
+            path.setAttribute("stroke-linejoin", "round");
+            path.setAttribute("opacity", "0.5");
+
+            return path;
+    }
 }
 
 const set_count_comments = count => len_comments.textContent = `${count} comment${count === 1 ? "" : "s"}`;
@@ -376,6 +456,7 @@ function delete_comment_in_ui(id) {
     const count = commentsContainer.children.length - 1;
     set_count_comments(count);
     if (count === 0) {addTextNoComments()}
+    drawCommentLines()
 
     function deleteComment_in_js(comments, id) {
         for (let i = 0; i < comments.length; i++) {
@@ -405,6 +486,7 @@ function add_comment_in_ui(comment) {
     if (!added) return;
 
     set_count_comments(count + 1);
+    drawCommentLines()
 
     function addReplyComment(comment) {
         const parentElement = findCommentElement(comment.parent_comment_public_id)
@@ -525,6 +607,7 @@ function updateChildIdsInParents(element, ids, action = "+") {
 function initIssueFieldEditors() {
     document.querySelectorAll(".info-item.editable").forEach(item => {
         item.addEventListener("click", () => {
+            if (issue_full.status === "closed") {return;}
             openFieldEditor(item.dataset.field, item);
         });
     });
@@ -598,13 +681,27 @@ function formatEnum(value) {
 async function issue_action(event) {
     event?.preventDefault();
 
-    const url = window.data_url.issueClose(projectId,IssueId);
-    const res = await api.post(url);
-    if (!res || !res.ok) {return;}
+    const element = event.target;
 
+    const url_close = window.data_url.issueClose(projectId,IssueId);
+    const url_reopen = window.data_url.issueReopen(projectId, IssueId);
+
+    let res = false;
+
+    const action = element.dataset.action;
+
+    const result = confirm(`You want ${action.toUpperCase()} issue?`);
+
+    if (!result) return;
+
+    if (action !== "reopen") {res = await api.post(url_close)}
+    else {res = await api.post(url_reopen)}
+
+
+    if (!res || !res.ok) {return;}
     const issue = await res.json();
 
-    // closeFieldModal();
+    change_UI_status_issue(issue)
 }
 
 function closeFieldModal() {

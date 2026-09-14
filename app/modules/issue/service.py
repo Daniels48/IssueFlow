@@ -1,7 +1,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import Depends
+from fastapi import Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import TypeAdapter
 
@@ -16,7 +16,7 @@ from app.modules.comments.service import CommentService
 from app.modules.issue.priority import IssuePriority
 from app.modules.issue.schema import IssueCreate, IssueUpdate, IssueResponse, IssueResponseDetail, IssueResponseEdit, \
     IssueDueDateUpdate, IssueAssigneeUpdate, IssuePriorityUpdate, IssueStatusUpdate, IssueStatusTransitions, \
-    IssueResponseStatus
+    IssueResponseStatus, IssueStatusResponse, IssueStatusResponseBase, IssueFilters
 
 from app.modules.issue.repository import IssueRepository
 from app.modules.issue.status import IssueStatus
@@ -108,7 +108,7 @@ class IssueService:
 
         return IssueResponseEdit.model_validate(issue)
 
-    async def list(self, project_id: UUID, user: User, search: str | None = None) -> list[IssueResponse]:
+    async def list(self, project_id: UUID, user: User, filters: IssueFilters) -> list[IssueResponse]:
         project = await self.project_rep.get_by_public_id_no_full(self.db, project_id)
 
         if not project:
@@ -119,7 +119,7 @@ class IssueService:
         context = PermissionContext(user=user, project=project, member=member)
         ProjectRBAC.require(permission=Permission.ISSUE_VIEW, context=context)
 
-        list_issues = await self.rep.get_all_by_project(self.db, project.id, search)
+        list_issues = await self.rep.get_all_by_project(self.db, project.id, filters)
 
         return ISSUE_LIST_ADAPTER.validate_python(list_issues)
 
@@ -285,8 +285,8 @@ class IssueService:
             statuses=status_transitions
         )
 
-    async def close(self, issue_id: UUID, user: User) -> IssueResponse:
-        result = await self.rep.get_by_public_id_with_current_member( self.db,issue_id,user.id)
+    async def close(self, issue_id: UUID, user: User) -> IssueStatusResponse:
+        result = await self.rep.get_by_public_id_with_current_member(self.db,issue_id,user.id)
 
         if result is None:
             raise AppException(ErrorCode.ISSUE_NOT_FOUND,"Issue not found")
@@ -302,6 +302,7 @@ class IssueService:
         issue.status = IssueStatus.CLOSED
         issue.closed_at = get_now_dt()
         issue.closed_by_id = user.id
+        issue.updated_at = get_now_dt()
 
         await self.db.commit()
 
@@ -309,9 +310,15 @@ class IssueService:
         #     IssueClosedEvent.from_models(issue, user)
         # )
 
-        return to(IssueResponse, issue)
+        status_transitions = IssueStatusTransitions.from_status(issue.status)
 
-    async def reopen(self,issue_id: UUID,user: User) -> IssueResponse:
+        return IssueStatusResponse(
+            **IssueStatusResponseBase.model_validate(issue).model_dump(),
+            statuses=status_transitions
+        )
+
+
+    async def reopen(self,issue_id: UUID,user: User) -> IssueStatusResponse:
         result = await self.rep.get_by_public_id_with_current_member(self.db,issue_id,user.id)
 
         if result is None:
@@ -328,6 +335,7 @@ class IssueService:
         issue.status = IssueStatus.OPEN
         issue.closed_at = None
         issue.closed_by_id = None
+        issue.updated_at = get_now_dt()
 
         await self.db.commit()
 
@@ -335,7 +343,12 @@ class IssueService:
         #     IssueReopenedEvent.from_models(issue, user)
         # )
 
-        return to(IssueResponse, issue)
+        status_transitions = IssueStatusTransitions.from_status(issue.status)
+
+        return IssueStatusResponse(
+            **IssueStatusResponseBase.model_validate(issue).model_dump(),
+            statuses=status_transitions
+        )
 
     @staticmethod
     def ensure_not_closed(issue: Issue) -> None:
@@ -348,3 +361,15 @@ async def get_issue_service(db: DBSession) -> IssueService:
 
 
 issue_service = Annotated[IssueService,Depends(get_issue_service)]
+
+
+def get_issue_filters(
+    search: str | None = Query(default=None, min_length=1),
+    status: IssueStatus | None = None,
+    priority: IssuePriority | None = None,
+    due_date: str | None = None,
+    sort: str | None = None,
+) -> IssueFilters:
+    return IssueFilters(search=search,status=status, priority=priority,due_date=due_date, sort=sort)
+
+issue_filters = Annotated[IssueFilters, Depends(get_issue_filters)]

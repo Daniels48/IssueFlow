@@ -1,11 +1,12 @@
 from datetime import datetime
 from uuid import UUID
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, AliasPath, computed_field
 
 from app.modules.issue.priority import IssuePriority
 from app.modules.issue.schema import IssueResponse
 from app.modules.issue.status import IssueStatus
 from app.modules.project_members.project_role import ProjectRole
+from app.modules.users.schema import UserShortResponse
 
 
 class ProjectCreate(BaseModel):
@@ -25,12 +26,20 @@ class ProjectResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-class ProjectListResponse(BaseModel):
+class ProjectListBaseResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     public_id: UUID
     name: str
     description: str | None
     updated_at: datetime
-    owner: str
+    owner: UserShortResponse
+
+
+
+
+class ProjectListResponse(ProjectListBaseResponse):
+    model_config = ConfigDict(from_attributes=True)
 
     members_count: int
     issues_count: int
@@ -38,18 +47,26 @@ class ProjectListResponse(BaseModel):
 
 
 class ProjectMemberResponse(BaseModel):
-    public_id: UUID
-    username: str
+    model_config = ConfigDict(from_attributes=True)
+    public_id: UUID = Field(validation_alias=AliasPath("user", "public_id"))
+    username: str = Field(validation_alias=AliasPath("user", "username"))
     role: ProjectRole
 
 
 class ProjectDetailResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     public_id: UUID
     name: str
     description: str | None
-    owner: str
+    owner: UserShortResponse
     created_at: datetime
     updated_at: datetime
-    roles: list[str]
     members: list[ProjectMemberResponse]
     issues: list[IssueResponse]
+
+    @computed_field
+    @property
+    def roles(self) -> list[ProjectRole]:
+        return list(ProjectRole)
+

@@ -64,7 +64,7 @@ function renderProjects(projects) {
                 </div>
 
                 <footer>
-                    <span>Owner:<strong>${project.owner}</strong></span>
+                    <span>Owner:<strong>${project.owner.username}</strong></span>
                     <span>${window.relativeDate(project.updated_at, "Updated")}</span>
                 </footer>
             </article>

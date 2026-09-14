@@ -26,6 +26,12 @@ const issues_cnt_obj = document.getElementById("issues-count");
 const issue_search = document.getElementById("search_issues");
 const issue_assignee = document.getElementById("issue-assignee");
 
+const filterStatus = document.querySelector("#filter-status");
+const filterPriority = document.querySelector("#filter-priority");
+const filterDueDate = document.querySelector("#filter-due-date");
+const sortIssues = document.querySelector("#sort-issues");
+let searchTimeout;
+let UserSearchTimeout;
 
 // --------- Event Managed -----------------------------------------
 edit_btn.addEventListener("click", editProject);
@@ -33,7 +39,7 @@ del_btn.addEventListener("click", deleteProject);
 manage_btn.addEventListener("click", manage_members);
 modal_close_btn.addEventListener("click", manage_members);
 modal.addEventListener("click", modal_members);
-user_search_input.addEventListener('input', user_search);
+user_search_input.addEventListener('input', user_search_func);
 membersContainer.addEventListener("click", delete_member);
 res_search.addEventListener("click", add_member)
 membersContainer.addEventListener("change", change_role);
@@ -42,7 +48,14 @@ close_issue_modal.addEventListener("click", close_issue_func);
 form_issue.addEventListener("submit", createIssue);
 cancel_issue_form.addEventListener("click", reset_issue_form);
 modal_issue.addEventListener("click", modal_issue_func);
-issue_search.addEventListener("input", issueSearch);
+
+
+issue_search.addEventListener("input", () => loadIssuesDebounced(400));
+
+filterStatus.addEventListener("change", () => loadIssuesDebounced(400));
+filterPriority.addEventListener("change", () => loadIssuesDebounced(400));
+filterDueDate.addEventListener("change", () => loadIssuesDebounced(400));
+sortIssues.addEventListener("change", () => loadIssuesDebounced(400));
 // ---------------------------------------------------------------
 
 
@@ -65,7 +78,7 @@ function renderDetailProject(project) {
     member_cnt_obj.textContent = project.members.length;
     issues_cnt_obj.textContent = project.issues.length;
     prjct_created.textContent =  window.formatDate(project.created_at, 4);
-    project_owner.textContent = project.owner;
+    project_owner.textContent = project.owner.username;
 }
 
 function renderMembers(members, roles, is_add=false) {
@@ -128,15 +141,6 @@ function renderIssues(issues, is_add=false) {
 
 
 // --------- Issue Managed -----------------------------------------
-async function issueSearch(event) {
-    let query = event.target.value.trim();
-    query =query.length >= 2 ? query : "";
-    const response = await window.api.get(window.data_url.issues(projectId, query));
-    if (!response.ok) return;
-    const issues = await response.json();
-    renderIssues(issues);
-}
-
 function modal_issue_func(event) {
    if (event.target === modal_issue) {
        modal_issue.classList.add("hidden");
@@ -193,6 +197,62 @@ async function view_new_issue(event) {
 
     modal_issue.classList.remove("hidden");
 }
+
+function updateFiltersUrl(filters) {
+    const params = new URLSearchParams();
+
+    for (const [key, value] of Object.entries(filters)) {
+        if (value && (key !== "search" || value.length >= 2)) {
+            params.set(key, value);
+        }
+    }
+
+    const query = params.toString();
+
+    const url = query
+        ? `${window.location.pathname}?${query}`
+        : window.location.pathname;
+
+    history.replaceState(null, "", url);
+}
+
+function restoreFilters() {
+    const params = new URLSearchParams(window.location.search);
+
+    issue_search.value = params.get("search") ?? "";
+    filterStatus.value = params.get("status") ?? "";
+    filterPriority.value = params.get("priority") ?? "";
+    filterDueDate.value = params.get("due_date") ?? "";
+    sortIssues.value = params.get("sort") ?? "";
+}
+
+async function loadIssues (){
+    const search = issue_search.value.trim();
+
+    const filters = {
+        search: search.length >= 2 ? search : "",
+        status: filterStatus.value,
+        priority: filterPriority.value,
+        due_date: filterDueDate.value,
+        sort: sortIssues.value,
+    };
+
+    updateFiltersUrl(filters);
+
+    const response = await window.api.get(window.data_url.issues(projectId, filters));
+    if (!response.ok) return;
+
+    const issues = await response.json();
+
+    renderIssues(issues);
+}
+
+function loadIssuesDebounced(time = 400) {
+    clearTimeout(searchTimeout);
+
+    searchTimeout = setTimeout(loadIssues, time);
+}
+
 // -----------------------------------------------------------------
 
 
@@ -266,28 +326,37 @@ async function add_member(event) {
     res_search.innerHTML = "";
 }
 
-async function user_search(event) {
+async function user_search_func(event) {
     const query = event.target.value.trim();
     if (query.length < 2) {
         res_search.classList.add("hidden");
         res_search.innerHTML = "";
         return;
     }
-    const response = await window.api.get(window.data_url.searchUsers(query, projectId));
+    clearTimeout(UserSearchTimeout);
+    UserSearchTimeout = setTimeout(async () => {
+        const users = await load(query)
+        let html = "";
 
-    if (!response.ok) {return;}
-    else { res_search.classList.remove("hidden") }
-    const users = await response.json();
+        for (const user of users) {html += create_user_text(user);}
+        res_search.innerHTML = html;
+    }, 400);
 
-    let html = "";
+
     function create_user_text(user) {
         return `<div class="search-item" >
                     <span class="search-user" data-user-id="${user.public_id}">${user.username}</span>
                     <button class="btn-primary add-btn" data-user-id="${user.public_id}">Add</button>
                 </div >`
     }
-    for (const user of users) {html += create_user_text(user);}
-    res_search.innerHTML = html;
+
+    async function load(query) {
+        const response = await window.api.get(window.data_url.searchUsers(query, projectId));
+
+        if (!response.ok) {return;}
+        else { res_search.classList.remove("hidden") }
+        return  await response.json();
+    }
 }
 
 function manage_members() {modal.classList.toggle("hidden")}
@@ -296,5 +365,6 @@ function modal_members(e) { if (e.target === modal) {modal.classList.add("hidden
 
 // ----------------------------------------------------------------
 
-
 loadProject();
+restoreFilters();
+loadIssues();
