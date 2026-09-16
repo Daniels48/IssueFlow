@@ -87,19 +87,21 @@ function renderMembers(members, roles, is_add=false) {
     }
     else {
         let html = is_add ? membersContainer.innerHTML : "";
-        for (const user of members) {html += member_text(user);}
+        for (const member of members) {html += member_text(member);}
         membersContainer.innerHTML = html;
-        function member_text(user) {
+
+        function member_text(member) {
             let text_member_action = `<span class="owner-badge">Owner</span>`;
-            if (user.role !== "owner") {
-                text_member_action = `<select class="role-select" data-user-id="${user.public_id}">${get_option(roles, user)}</select>
-                                      <button class="remove-btn" data-user-id="${user.public_id}">Remove</button>`}
+            if (member.role !== "owner") {
+                text_member_action = `<select class="role-select" data-user-id="${member.user.public_id}">${get_option(roles, user)}</select>
+                                      <button class="remove-btn" data-user-id="${member.user.public_id}">Remove</button>`}
 
               return `<div class="member">
-                        <div class="member-info"><span class="member-name">${user.username}</span></div>
+                        <div class="member-info"><span class="member-name">${member.user.username}</span></div>
                         <div class="member-actions">${text_member_action}</div>
                     </div>`
             }
+
         function get_option(roles, user) {
             let options = "";
             function capitalize(text) {return text.charAt(0) + text.slice(1).toLowerCase();}
@@ -320,7 +322,7 @@ async function add_member(event) {
     renderMembers(list_data, ["admin", "member"], true);
     member_cnt_obj.textContent = Number(member_cnt_obj.textContent) + 1;
 
-    user_search.value = "";
+    user_search_input.value = "";
     res_search.classList.add("hidden");
     res_search.textContent = "";
     res_search.innerHTML = "";

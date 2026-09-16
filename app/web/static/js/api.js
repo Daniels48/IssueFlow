@@ -7,69 +7,78 @@ const WS_AUTH_REQUIRED = 4001;
 const user_header = document.getElementById("username");
 document.getElementById("logout").addEventListener("click", window.logout);
 
+const joinUrl = (str, value) =>
+    `${String(str).replace(/\/+$/, "")}/${String(value).replace(/^\/+|\/+$/g, "")}`;
+
 const url_api = "/api";
-const url_users = `${url_api}/users`;
-const url_auth = `${url_api}/auth`;
-const url_sessions = `${url_auth}/sessions`;
+const url_login = "/login";
+const url_register = "/register"
+const url_users = joinUrl(url_api, "users");
+const url_auth = joinUrl(url_api, "auth");
+const url_sessions = joinUrl(url_auth, "sessions");
+const url_email = joinUrl(url_auth, "email");
+const url_password = joinUrl(url_auth, "forgot-password");
+const url_projects = joinUrl(url_api, "projects");
+const protocol_ws = location.protocol === "https:" ? "wss://" : "ws://";
+const url_ws = joinUrl(location.host, "ws");
+
 const getQuery = (params) => {
     const query = new URLSearchParams();
-
-    for (const [key, value] of Object.entries(params)) {
-        if (value) {query.set(key, value)}
-    }
-
+    for (const [key, value] of Object.entries(params)) {if (value) {query.set(key, value)}}
     const string = query.toString();
-
     return string ? `?${string}` : "";
 };
 
 const data_url = {
-    ws: `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws`,
+    ws: `${protocol_ws}${url_ws}`,
 
-    login: `/login`,
-    login_api: `${url_auth}/login`,
-    register_api: `${url_auth}/register`,
-    register: `/register`,
+    login: url_login,
+    register: url_register,
+    login_api: joinUrl(url_auth, url_login),
+    register_api: joinUrl(url_auth, url_register),
 
-    refresh: `${url_auth}/refresh`,
-    logout: `${url_auth}/logout`,
-    verify_email: `${url_auth}/email/verify`,
-    resend_email_code: `${url_auth}/email/resend-code`,
-    change_email: `${url_auth}/email/change`,
-    change_password: `${url_auth}/password-change`,
-    forgot_password_request: `${url_auth}/forgot-password/request`,
-    forgot_password_verify: `${url_auth}/forgot-password/verify`,
-    forgot_password_reset: `${url_auth}/forgot-password/reset`,
+    refresh: joinUrl(url_auth, "refresh"),
+    logout: joinUrl(url_auth, "logout"),
+
+    verify_email: joinUrl(url_email, "verify"),
+    resend_email_code: joinUrl(url_email, "resend-code"),
+    change_email: joinUrl(url_email, "change"),
+
+    change_password: joinUrl(url_auth, "password-change"),
+
+    forgot_password_request: joinUrl(url_password, "request"),
+    forgot_password_verify: joinUrl(url_password, "verify"),
+    forgot_password_reset: joinUrl(url_password, "reset"),
+
     forgot_password_page_send: "/forgot-password-send",
     forgot_password_page_verify: "/forgot-password-verify",
     forgot_password_page_reset: "/forgot-password-reset",
 
 
     sessions: url_sessions,
-    logout_other:`${url_sessions}/others`,
-    revoke_session: (SessionId) => `${url_sessions}/${SessionId}`,
+    logout_other: joinUrl(url_sessions, "others"),
+    revoke_session: (SessionId) => joinUrl(url_sessions, SessionId),
 
-    me: `${url_users}/me`,
-    searchUsers: (query, projectId) => `${url_users}/search${getQuery({query, project_id: projectId,})}`,
+    me: joinUrl(url_users, "me"),
+    searchUsers: (query, projectId) => joinUrl(url_users, "search") + getQuery({query, project_id: projectId}),
 
-    projects: `${url_api}/projects`,
-    project: (projectId) => `${data_url.projects}/${projectId}`,
+    projects: url_projects,
+    project: (projectId) => joinUrl(url_projects, projectId),
 
-    members: (projectId) => `${data_url.project(projectId)}/members`,
-    member: (projectId, userId) => `${data_url.members(projectId)}/${userId}`,
+    members: (projectId) => joinUrl(data_url.project(projectId), "members"),
+    member: (projectId, userId) => joinUrl(data_url.members(projectId), userId),
 
-    issues: (projectId, params = {}) => `${data_url.project(projectId)}/issues${getQuery(params)}`,
-    issue: (projectId, issueId) => `${data_url.issues(projectId)}/${issueId}`,
-    issueEdit: (projectId, issueId) => `${data_url.issue(projectId, issueId)}/edit`,
-    issueEditStatus: (projectId, issueId) => `${data_url.issues(projectId)}/${issueId}/status`,
-    issueEditPriority: (projectId, issueId) => `${data_url.issues(projectId)}/${issueId}/priority`,
-    issueEditDueDate: (projectId, issueId) => `${data_url.issues(projectId)}/${issueId}/due-date`,
-    issueEditAssignee: (projectId, issueId) => `${data_url.issues(projectId)}/${issueId}/assignee`,
-    issueClose: (projectId, issueId) => `${data_url.issues(projectId)}/${issueId}/close`,
-    issueReopen: (projectId, issueId) => `${data_url.issues(projectId)}/${issueId}/reopen`,
+    issues: (projectId, params = {}) => joinUrl(data_url.project(projectId), "issues") + getQuery(params),
+    issue: (projectId, issueId) => joinUrl(data_url.issues(projectId), issueId),
+    issueEditStatus: (projectId, issueId) => joinUrl(data_url.issue(projectId, issueId), "status"),
+    issueEditPriority: (projectId, issueId) => joinUrl(data_url.issue(projectId, issueId), "priority"),
+    issueEditDueDate: (projectId, issueId) => joinUrl(data_url.issue(projectId, issueId), "due-date"),
+    issueEditAssignee: (projectId, issueId) => joinUrl(data_url.issue(projectId, issueId), "assignee"),
+    issueClose: (projectId, issueId) => joinUrl(data_url.issue(projectId, issueId), "close"),
+    issueReopen: (projectId, issueId) => joinUrl(data_url.issue(projectId, issueId), "reopen"),
 
-    comment: (projectId, issueId) => `${data_url.issue(projectId, issueId)}/comments`,
-    comments: (projectId, issueId, comId) => `${data_url.comment(projectId, issueId)}/${comId}`,
+    comment: (projectId, issueId) => joinUrl(data_url.issue(projectId, issueId), "comments"),
+    comments: (projectId, issueId, comId) => joinUrl(data_url.comment(projectId, issueId), comId),
 };
 
 const authPages = new Set([

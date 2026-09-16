@@ -5,11 +5,10 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, field_validator
 
 from app.modules.comments.schema import CommentTreeResponse
+from app.modules.users.schema import UserShortResponse
 from app.modules.issue.priority import IssuePriority
 from app.modules.issue.status import IssueStatus
 from app.modules.issue.transitions import ALLOWED_STATUS_TRANSITIONS_FRONT
-from app.modules.project_members.schema import ProjectMemberResponse
-from app.modules.users.schema import UserShortResponse
 
 
 class IssueCreate(BaseModel):
@@ -45,6 +44,7 @@ class IssueResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+
 class IssueStatusTransitions(BaseModel):
     previous: IssueStatus | None = None
     current: IssueStatus
@@ -59,6 +59,7 @@ class IssueStatusTransitions(BaseModel):
             "current": status,
         })
 
+
 class IssueStatusResponseBase(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -69,6 +70,7 @@ class IssueStatusResponseBase(BaseModel):
 
     status: IssueStatus
 
+
 class IssueStatusResponse(IssueStatusResponseBase):
     statuses: IssueStatusTransitions
 
@@ -77,29 +79,10 @@ class IssueResponseStatus(IssueResponse):
     model_config = ConfigDict(from_attributes=True)
     statuses: IssueStatusTransitions
 
-class IssueResponseEdit(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    public_id: UUID
-
-    title: str
-    description: str | None
-
-    status: IssueStatus
-    priority: IssuePriority
-    statuses: list[IssueStatus]
-
-    due_date: datetime | None
-
-    assignee: UserShortResponse | None
-
-    members: list[UserShortResponse]
-
-    created_at: datetime
-    updated_at: datetime
-
 
 class IssueResponseDetail(IssueResponse):
+    model_config = ConfigDict(from_attributes=True)
+
     comments: list[CommentTreeResponse]
     members: list[UserShortResponse]
     statuses: IssueStatusTransitions

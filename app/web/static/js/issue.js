@@ -630,12 +630,8 @@ function initIssueFieldEditors() {
 }
 
 async function OpenEditIssueWindow(event) {
-    const response = await window.api.get(window.data_url.issueEdit(projectId, IssueId));
-    if (!response.ok) {return;}
-    const issue = await response.json();
-
-    i_title.value = issue.title;
-    i_description.value = issue.description;
+    i_title.value = issue_full.title;
+    i_description.value = issue_full.description;
     
     modal_issue.classList.remove("hidden");
 }

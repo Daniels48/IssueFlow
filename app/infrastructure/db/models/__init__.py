@@ -4,6 +4,7 @@ from app.infrastructure.db.models.model_members import ProjectMember
 from app.infrastructure.db.models.model_session import Session
 from app.infrastructure.db.models.model_users import User
 from app.infrastructure.db.models.model_projects import Project
+from app.infrastructure.db.models.model_outbox import OutboxEvent
 
 __all__ = [
     "User",
@@ -11,5 +12,6 @@ __all__ = [
     "ProjectMember",
     "Issue",
     "Comment",
-    "Session"
+    "Session",
+    "OutboxEvent",
 ]

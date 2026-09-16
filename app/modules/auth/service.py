@@ -49,8 +49,6 @@ def _check_valid_user(user: User | None) -> User | None:
     return user
 
 
-
-
 def get_session_client_data(request: Request) -> dict:
     user_agent = request.headers.get("user-agent")
 
@@ -61,7 +59,6 @@ def get_session_client_data(request: Request) -> dict:
     ci = get_client_info(client_info)
 
     return {**ua, **ci, "ip_address":ip}
-
 
 
 def update_session_client_data(session: Session, request: Request) -> None:

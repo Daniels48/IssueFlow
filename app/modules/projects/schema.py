@@ -1,11 +1,11 @@
 from datetime import datetime
 from uuid import UUID
-from pydantic import BaseModel, Field, ConfigDict, AliasPath, computed_field
+from pydantic import BaseModel, Field, ConfigDict, computed_field
 
-from app.modules.issue.priority import IssuePriority
 from app.modules.issue.schema import IssueResponse
-from app.modules.issue.status import IssueStatus
+
 from app.modules.project_members.project_role import ProjectRole
+from app.modules.project_members.schema import ProjectMemberResponse
 from app.modules.users.schema import UserShortResponse
 
 
@@ -36,21 +36,12 @@ class ProjectListBaseResponse(BaseModel):
     owner: UserShortResponse
 
 
-
-
 class ProjectListResponse(ProjectListBaseResponse):
     model_config = ConfigDict(from_attributes=True)
 
     members_count: int
     issues_count: int
     comments_count: int
-
-
-class ProjectMemberResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    public_id: UUID = Field(validation_alias=AliasPath("user", "public_id"))
-    username: str = Field(validation_alias=AliasPath("user", "username"))
-    role: ProjectRole
 
 
 class ProjectDetailResponse(BaseModel):

@@ -14,22 +14,18 @@ from app.modules.auth.dependencies import DBSession
 
 from app.modules.comments.service import CommentService
 from app.modules.issue.priority import IssuePriority
-from app.modules.issue.schema import IssueCreate, IssueUpdate, IssueResponse, IssueResponseDetail, IssueResponseEdit, \
-    IssueDueDateUpdate, IssueAssigneeUpdate, IssuePriorityUpdate, IssueStatusUpdate, IssueStatusTransitions, \
-    IssueResponseStatus, IssueStatusResponse, IssueStatusResponseBase, IssueFilters
+from app.modules.issue import schema as schema
 
 from app.modules.issue.repository import IssueRepository
 from app.modules.issue.status import IssueStatus
-from app.modules.issue.transitions import ALLOWED_STATUS_TRANSITIONS, ALLOWED_STATUS_TRANSITIONS_FRONT
+from app.modules.issue.transitions import ALLOWED_STATUS_TRANSITIONS
 from app.modules.project_members.repository import ProjectMemberRepository
-from app.modules.project_members.schema import ProjectMemberResponse
 from app.modules.projects.repository import ProjectRepository
 from app.modules.users.repository import UserRepository
-from app.modules.users.schema import UserShortResponse
 from app.permissions import PermissionContext, Permission, ProjectRBAC
 from app.utils.func_utils import to, get_now_dt
 
-ISSUE_LIST_ADAPTER = TypeAdapter(list[IssueResponse])
+ISSUE_LIST_ADAPTER = TypeAdapter(list[schema.IssueResponse])
 
 
 class IssueService:
@@ -40,7 +36,7 @@ class IssueService:
         self.user_rep = UserRepository()
         self.db = db
 
-    async def create(self,project_id: UUID, data: IssueCreate, user: User) -> IssueResponse:
+    async def create(self,project_id: UUID, data: schema.IssueCreate, user: User) -> schema.IssueResponse:
         result = await self.project_rep.get_by_public_id_with_current_member(self.db, project_id, user.id)
 
         if result is None:
@@ -76,9 +72,9 @@ class IssueService:
 
         await self.db.commit()
 
-        return to(IssueResponse, issue)
+        return to(schema.IssueResponse, issue)
 
-    async def get(self, public_id: UUID, user: User) -> IssueResponseDetail | None:
+    async def get(self, public_id: UUID, user: User) -> schema.IssueResponseDetail | None:
         issue = await self.rep.get_by_public_id_full(self.db, public_id)
         if issue is None:
             raise AppException(ErrorCode.ISSUE_NOT_FOUND, "Issue not found")
@@ -88,27 +84,16 @@ class IssueService:
         context = PermissionContext(user=user, project=issue.project, member=member, resource=issue)
         ProjectRBAC.require(permission=Permission.ISSUE_VIEW, context=context)
 
-        return IssueResponseDetail(
-            **IssueResponse.model_validate(issue).model_dump(),
+        return schema.IssueResponseDetail(
+            **schema.IssueResponse.model_validate(issue).model_dump(),
             comments=CommentService.build_comment_tree(issue.comments),
-            members=[UserShortResponse.model_validate(member.user) for member in issue.project.members],
+            members=[schema.UserShortResponse.model_validate(member.user) for member in issue.project.members],
             priorities=list(IssuePriority),
-            statuses=IssueStatusTransitions.from_status(issue.status)
+            statuses=schema.IssueStatusTransitions.from_status(issue.status)
         )
 
-    async def get_edit(self, public_id: UUID, user: User) -> IssueResponseEdit | None:
-        issue = await self.rep.get_by_public_id_edit(self.db, public_id)
-        if issue is None:
-            raise AppException(ErrorCode.ISSUE_NOT_FOUND, "Issue not found")
 
-        member = await self.member_rep.get_by_project_and_user(self.db, issue.project.id, user.id)
-
-        context = PermissionContext(user=user, project=issue.project, member=member, resource=issue)
-        ProjectRBAC.require(permission=Permission.ISSUE_VIEW, context=context)
-
-        return IssueResponseEdit.model_validate(issue)
-
-    async def list(self, project_id: UUID, user: User, filters: IssueFilters) -> list[IssueResponse]:
+    async def list(self, project_id: UUID, user: User, filters: schema.IssueFilters) -> list[schema.IssueResponse]:
         project = await self.project_rep.get_by_public_id_no_full(self.db, project_id)
 
         if not project:
@@ -123,7 +108,7 @@ class IssueService:
 
         return ISSUE_LIST_ADAPTER.validate_python(list_issues)
 
-    async def update(self, public_id: UUID, data: IssueUpdate, user: User) -> IssueResponse:
+    async def update(self, public_id: UUID, data: schema.IssueUpdate, user: User) -> schema.IssueResponse:
         result = await self.rep.get_by_public_id_with_current_member(self.db, public_id, user.id)
 
         if result is None:
@@ -145,13 +130,12 @@ class IssueService:
 
         await self.db.commit()
 
-
         issue = await self.rep.get_by_public_id_full(self.db, public_id)
 
         event = IssueUpdatedEvent.from_models(issue, user)
         await RabbitPublisher.publish(event)
 
-        return to(IssueResponse, issue)
+        return to(schema.IssueResponse, issue)
 
     async def delete(self,public_id: UUID, user: User) -> None:
         result = await self.rep.get_by_public_id_with_current_member(self.db, public_id, user.id)
@@ -170,7 +154,7 @@ class IssueService:
 
         await self.db.commit()
 
-    async def update_due_date(self, issue_id: UUID, data: IssueDueDateUpdate, user: User) -> IssueResponse:
+    async def update_due_date(self, issue_id: UUID, data: schema.IssueDueDateUpdate, user: User) -> schema.IssueResponse:
         result = await self.rep.get_by_public_id_with_current_member(self.db, issue_id,user.id)
 
         if result is None:
@@ -189,9 +173,9 @@ class IssueService:
 
         issue = await self.rep.get_by_public_id_full(self.db, issue.public_id)
 
-        return to(IssueResponse, issue)
+        return to(schema.IssueResponse, issue)
 
-    async def update_assignee(self, issue_id: UUID,data: IssueAssigneeUpdate,user: User) -> IssueResponse:
+    async def update_assignee(self, issue_id: UUID,data: schema.IssueAssigneeUpdate,user: User) -> schema.IssueResponse:
         result = await self.rep.get_by_public_id_with_current_member(self.db, issue_id,user.id)
 
         if result is None:
@@ -223,9 +207,9 @@ class IssueService:
 
         issue = await self.rep.get_by_public_id_full(self.db, issue.public_id)
 
-        return to(IssueResponse, issue)
+        return to(schema.IssueResponse, issue)
 
-    async def update_priority(self,issue_id: UUID,data: IssuePriorityUpdate,user: User) -> IssueResponse:
+    async def update_priority(self,issue_id: UUID,data: schema.IssuePriorityUpdate,user: User) -> schema.IssueResponse:
         result = await self.rep.get_by_public_id_with_current_member(self.db,issue_id,user.id)
 
         if result is None:
@@ -244,9 +228,9 @@ class IssueService:
 
         issue = await self.rep.get_by_public_id_full(self.db, issue.public_id)
 
-        return to(IssueResponse, issue)
+        return to(schema.IssueResponse, issue)
 
-    async def update_status(self, issue_id: UUID, data: IssueStatusUpdate, user: User) -> IssueResponseStatus:
+    async def update_status(self, issue_id: UUID, data: schema.IssueStatusUpdate, user: User) -> schema.IssueResponseStatus:
         result = await self.rep.get_by_public_id_with_current_member(self.db,issue_id,user.id)
 
         if result is None:
@@ -260,9 +244,9 @@ class IssueService:
         ProjectRBAC.require(permission=Permission.ISSUE_UPDATE,context=context)
 
         if issue.status == data.status:
-            status_transitions = IssueStatusTransitions.from_status(issue.status)
-            return IssueResponseStatus(
-                **IssueResponse.model_validate(issue).model_dump(),
+            status_transitions = schema.IssueStatusTransitions.from_status(issue.status)
+            return schema.IssueResponseStatus(
+                **schema.IssueResponse.model_validate(issue).model_dump(),
                 statuses=status_transitions
             )
 
@@ -278,14 +262,14 @@ class IssueService:
 
         issue = await self.rep.get_by_public_id_full(self.db, issue.public_id)
 
-        status_transitions = IssueStatusTransitions.from_status(issue.status)
+        status_transitions = schema.IssueStatusTransitions.from_status(issue.status)
 
-        return IssueResponseStatus(
-            **IssueResponse.model_validate(issue).model_dump(),
+        return schema.IssueResponseStatus(
+            **schema.IssueResponse.model_validate(issue).model_dump(),
             statuses=status_transitions
         )
 
-    async def close(self, issue_id: UUID, user: User) -> IssueStatusResponse:
+    async def close(self, issue_id: UUID, user: User) -> schema.IssueStatusResponse:
         result = await self.rep.get_by_public_id_with_current_member(self.db,issue_id,user.id)
 
         if result is None:
@@ -310,15 +294,15 @@ class IssueService:
         #     IssueClosedEvent.from_models(issue, user)
         # )
 
-        status_transitions = IssueStatusTransitions.from_status(issue.status)
+        status_transitions = schema.IssueStatusTransitions.from_status(issue.status)
 
-        return IssueStatusResponse(
-            **IssueStatusResponseBase.model_validate(issue).model_dump(),
+        return schema.IssueStatusResponse(
+            **schema.IssueStatusResponseBase.model_validate(issue).model_dump(),
             statuses=status_transitions
         )
 
 
-    async def reopen(self,issue_id: UUID,user: User) -> IssueStatusResponse:
+    async def reopen(self,issue_id: UUID,user: User) -> schema.IssueStatusResponse:
         result = await self.rep.get_by_public_id_with_current_member(self.db,issue_id,user.id)
 
         if result is None:
@@ -343,10 +327,10 @@ class IssueService:
         #     IssueReopenedEvent.from_models(issue, user)
         # )
 
-        status_transitions = IssueStatusTransitions.from_status(issue.status)
+        status_transitions = schema.IssueStatusTransitions.from_status(issue.status)
 
-        return IssueStatusResponse(
-            **IssueStatusResponseBase.model_validate(issue).model_dump(),
+        return schema.IssueStatusResponse(
+            **schema.IssueStatusResponseBase.model_validate(issue).model_dump(),
             statuses=status_transitions
         )
 
@@ -369,7 +353,7 @@ def get_issue_filters(
     priority: IssuePriority | None = None,
     due_date: str | None = None,
     sort: str | None = None,
-) -> IssueFilters:
-    return IssueFilters(search=search,status=status, priority=priority,due_date=due_date, sort=sort)
+) -> schema.IssueFilters:
+    return schema.IssueFilters(search=search,status=status, priority=priority,due_date=due_date, sort=sort)
 
-issue_filters = Annotated[IssueFilters, Depends(get_issue_filters)]
+issue_filters = Annotated[schema.IssueFilters, Depends(get_issue_filters)]

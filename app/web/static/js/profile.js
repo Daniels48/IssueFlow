@@ -175,7 +175,7 @@ function set_count_session(count) {
 async function loadProfile() {
     window.userPromise.then(user => {
         if (!user) {
-            window.location.href = window.data_url.login;
+            // window.location.href = window.data_url.login;
             return;
         }
         user_data.textContent = user.username;
@@ -197,10 +197,10 @@ async function loadProfile() {
 
     const list_session = await api.get(window.data_url.sessions);
     if (!list_session) return;
-    if (!list_session.ok) {
-        location.href = window.data_url.login;
-        return;
-    }
+    // if (!list_session.ok) {
+    //     location.href = window.data_url.login;
+    //     return;
+    // }
     const sessions = await list_session.json();
 
     session_list.insertAdjacentHTML("beforeend", renderSession(sessions));

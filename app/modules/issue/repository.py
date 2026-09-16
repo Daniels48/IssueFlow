@@ -93,27 +93,9 @@ class IssueRepository:
 
         return result.scalar_one_or_none()
 
-    @staticmethod
-    async def get_by_public_id_edit(db: AsyncSession, public_id: UUID) -> Issue | None:
-        stmt = (
-            select(Issue)
-            .options(
-                selectinload(Issue.assignee),
-                selectinload(Issue.project)
-                .selectinload(Project.users),
-            )
-            .where(
-                Issue.public_id == public_id,
-                Issue.deleted_at.is_(None),
-            )
-        )
-
-        result = await db.execute(stmt)
-
-        return result.scalar_one_or_none()
 
     @staticmethod
-    def apply_issue_filters(stmt, filters: IssueFilters):
+    def _apply_issue_filters(stmt, filters: IssueFilters):
         if filters.search:
             search = (
                 filters.search
@@ -158,7 +140,7 @@ class IssueRepository:
         return stmt
 
     @staticmethod
-    def apply_issue_sort(stmt, sort: IssueSort | None):
+    def _apply_issue_sort(stmt, sort: IssueSort | None):
         priority_order = case(
             (Issue.priority == IssuePriority.LOW, 1),
             (Issue.priority == IssuePriority.MEDIUM, 2),
@@ -185,6 +167,7 @@ class IssueRepository:
             stmt = stmt.order_by(Issue.created_at.asc())
 
         return stmt
+
     @staticmethod
     async def get_all_by_project(db: AsyncSession, project_id: int, filters: IssueFilters) -> list[Issue]:
         stmt = (
@@ -199,8 +182,8 @@ class IssueRepository:
             )
         )
 
-        stmt = IssueRepository.apply_issue_filters(stmt, filters)
-        stmt = IssueRepository.apply_issue_sort(stmt, filters.sort)
+        stmt = IssueRepository._apply_issue_filters(stmt, filters)
+        stmt = IssueRepository._apply_issue_sort(stmt, filters.sort)
 
         result = await db.execute(stmt)
 

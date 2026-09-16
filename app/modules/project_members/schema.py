@@ -14,18 +14,8 @@ class ProjectMemberUpdate(BaseModel):
     role: ProjectRole
 
 
-
 class ProjectMemberResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     user: UserShortResponse
-    role: ProjectRole
-
-
-
-class ProjectMemberResponse_(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    public_id: UUID
-    username: str
     role: ProjectRole

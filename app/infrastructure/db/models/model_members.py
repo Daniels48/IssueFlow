@@ -12,22 +12,14 @@ if TYPE_CHECKING:
 class ProjectMember(BaseModel):
     __tablename__ = "project_members"
 
-    __table_args__ = (
-        UniqueConstraint( "project_id","user_id",name="uq_project_member"),
-    )
+    __table_args__ = (UniqueConstraint( "project_id","user_id",name="uq_project_member"),)
 
     project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
 
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
 
-    role: Mapped[ProjectRole] = mapped_column(
-        Enum(ProjectRole, name="project_role"), nullable=False, default=ProjectRole.MEMBER
-    )
+    role: Mapped[ProjectRole] = mapped_column(Enum(ProjectRole, name="project_role"), nullable=False, default=ProjectRole.MEMBER)
 
-    project: Mapped["Project"] = relationship(
-        back_populates="members",
-    )
+    project: Mapped["Project"] = relationship(back_populates="members",)
 
-    user: Mapped["User"] = relationship(
-        back_populates="project_memberships",
-    )
+    user: Mapped["User"] = relationship(back_populates="project_memberships",)

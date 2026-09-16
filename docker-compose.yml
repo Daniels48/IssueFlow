@@ -15,7 +15,6 @@ services:
       - ws
     restart: unless-stopped
 
-
   db:
     image: postgres:16-alpine
     container_name: isf_db

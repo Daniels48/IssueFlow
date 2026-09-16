@@ -12,8 +12,7 @@ from app.infrastructure.rabbitmq import RabbitPublisher
 from app.modules.auth.dependencies import DBSession
 from app.modules.project_members.project_role import ProjectRole
 from app.modules.project_members.repository import ProjectMemberRepository
-from app.modules.project_members.schema import ProjectMemberCreate, ProjectMemberUpdate, ProjectMemberResponse, \
-    ProjectMemberResponse_
+from app.modules.project_members.schema import ProjectMemberCreate, ProjectMemberUpdate, ProjectMemberResponse
 from app.modules.projects.repository import ProjectRepository
 from app.modules.users.repository import UserRepository
 from app.permissions import PermissionContext, Permission, ProjectRBAC
@@ -23,19 +22,13 @@ MEMBER_LIST_ADAPTER = TypeAdapter(list[ProjectMemberResponse])
 
 
 class ProjectMemberService:
-    def __init__(
-        self,
-        repository: ProjectMemberRepository,
-        project_repository: ProjectRepository,
-        user_repository: UserRepository,
-        db: AsyncSession,
-    ):
-        self.repository = repository
-        self.project_repository = project_repository
-        self.user_repository = user_repository
+    def __init__(self,db: AsyncSession):
+        self.repository = ProjectMemberRepository()
+        self.project_repository = ProjectRepository()
+        self.user_repository = UserRepository()
         self.db = db
 
-    async def add_member(self, project_id: UUID, data: ProjectMemberCreate, user: User) -> ProjectMemberResponse_:
+    async def add_member(self, project_id: UUID, data: ProjectMemberCreate, user: User) -> ProjectMemberResponse:
         result = await self.project_repository.get_by_public_id_with_current_member(self.db, project_id, user.id)
 
         if result is None:
@@ -56,14 +49,13 @@ class ProjectMemberService:
         if user_in_project:
             raise AppException(ErrorCode.MEMBER_ALREADY_IN_PROJECT, "Member already in project")
 
-        member = ProjectMember(project_id=project.id, user_id=added_user.id, role=ProjectRole.MEMBER)
+        member = ProjectMember(project_id=project.id, user_id=added_user.id, role=ProjectRole.MEMBER, user=added_user)
         member = await self.repository.create(self.db,member)
         await self.db.commit()
 
         await RabbitPublisher.publish(ProjectMemberAddedEvent.from_models(project, user, member))
         
-        return ProjectMemberResponse_(public_id=added_user.public_id, username=added_user.username, role=member.role)
-
+        return ProjectMemberResponse.model_validate(member)
 
     async def get_members(self, project_id: UUID, user: User) -> list[ProjectMemberResponse]:
         result = await self.project_repository.get_by_public_id_with_current_member(self.db, project_id, user.id)
@@ -80,7 +72,7 @@ class ProjectMemberService:
 
         return MEMBER_LIST_ADAPTER.validate_python(members)
 
-    async def update_role(self,project_id: UUID, user_id: UUID,data: ProjectMemberUpdate,user: User) -> ProjectMemberResponse_:
+    async def update_role(self,project_id: UUID, user_id: UUID,data: ProjectMemberUpdate,user: User) -> ProjectMemberResponse:
         result = await self.project_repository.get_by_public_id_with_current_member(self.db, project_id, user.id)
 
         if result is None:
@@ -104,7 +96,7 @@ class ProjectMemberService:
             ProjectMemberRoleChangedEvent.from_models(project, user, member)
         )
         
-        return ProjectMemberResponse_(public_id=member.user.public_id, username=member.user.username, role=member.role)
+        return ProjectMemberResponse.model_validate(member)
 
     async def delete_member(self,project_id: UUID,user_id: UUID,user: User) -> None:
         result = await self.project_repository.get_by_public_id_with_current_member(self.db, project_id, user.id)
@@ -129,12 +121,6 @@ class ProjectMemberService:
 
 
 async def get_member_service(db: DBSession) -> ProjectMemberService:
-    return ProjectMemberService(
-        repository=ProjectMemberRepository(),
-        project_repository=ProjectRepository(),
-        user_repository=UserRepository(),
-        db=db
-    )
-
+    return ProjectMemberService(db=db)
 
 MemberService = Annotated[ProjectMemberService,Depends(get_member_service)]
