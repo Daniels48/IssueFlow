@@ -49,4 +49,4 @@ class PasswordResetTokenCache:
 
         token_hash = cls._hash(token)
 
-        await redis.delete( cls._key(token_hash))
+        await redis.delete(cls._key(token_hash))

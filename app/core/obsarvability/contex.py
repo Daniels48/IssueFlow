@@ -1,4 +1,3 @@
-import json
 import time
 import uuid
 from contextvars import ContextVar
@@ -22,6 +21,8 @@ protocol_ctx = ContextVar("protocol", default=None)
 query_params_ctx = ContextVar("query_params", default=None)
 
 request_ctx = ContextVar("request", default=None)
+
+session_id_ctx = ContextVar("session_id", default=None)
 
 
 def generate_request_id(incoming_id: str | None) -> str:

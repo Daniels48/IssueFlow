@@ -14,6 +14,22 @@ class BaseCodeCache:
     TTL = 600
     COOLDOWN = 60
 
+    VERIFY_AND_DELETE_SCRIPT = """
+                   local saved_hash = redis.call('GET', KEYS[1])
+
+                   if not saved_hash then
+                       return 0
+                   end
+
+                   if saved_hash ~= ARGV[1] then
+                       return 0
+                   end
+
+                   redis.call('DEL', KEYS[1])
+
+                   return 1
+                   """
+
     @classmethod
     def _key(cls, user_id: UUID) -> str:
         return f"{cls.PREFIX}:{user_id}"
@@ -33,18 +49,29 @@ class BaseCodeCache:
 
         await redis.set(cls._key(user_id), cls._hash_code(code), ex=cls.TTL)
 
+    # @classmethod
+    # async def verify(cls, user_id: UUID, code: str) -> bool:
+    #     redis = await RedisConnection.get_client()
+    #
+    #     saved_hash = await redis.get(cls._key(user_id))
+    #
+    #     if saved_hash is None:
+    #         return False
+    #
+    #     code_hash = cls._hash_code(code)
+    #
+    #     return hmac.compare_digest(saved_hash, code_hash)
+
     @classmethod
     async def verify(cls, user_id: UUID, code: str) -> bool:
         redis = await RedisConnection.get_client()
 
-        saved_hash = await redis.get(cls._key(user_id))
-
-        if saved_hash is None:
-            return False
-
         code_hash = cls._hash_code(code)
 
-        return hmac.compare_digest(saved_hash, code_hash)
+        result = await redis.eval(cls.VERIFY_AND_DELETE_SCRIPT,1,cls._key(user_id),code_hash)
+
+        return bool(result)
+
 
     @classmethod
     async def delete(cls, user_id: UUID) -> None:

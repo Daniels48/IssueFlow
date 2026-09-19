@@ -7,7 +7,7 @@ from starlette.responses import Response
 from app.core.obsarvability.contex import set_http_context, request_ctx, set_context_after_request, \
     clear_request_context
 
-logger = logging.getLogger("IssueFlow")
+logger = logging.getLogger(__name__)
 
 
 async def logging_middleware(request: Request, call_next):

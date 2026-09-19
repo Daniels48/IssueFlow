@@ -86,7 +86,7 @@ class CommentService:
         comment = await self.repository.create(self.db, comment)
         await self.db.commit()
 
-        await RabbitPublisher.publish(CommentCreatedEvent.from_models(issue, user, comment))
+        # await RabbitPublisher.publish(CommentCreatedEvent.from_models(issue, user, comment))
 
         return CommentResponseCreate(
             **to(CommentResponse, comment).model_dump(),

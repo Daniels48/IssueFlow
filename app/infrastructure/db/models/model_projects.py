@@ -11,9 +11,9 @@ if TYPE_CHECKING:
 class Project(BaseModel):
     __tablename__ = "projects"
 
-    name: Mapped[str] = mapped_column( String(100),nullable=False)
+    name: Mapped[str] = mapped_column(String(100),nullable=False)
 
-    description: Mapped[str | None] = mapped_column( String(500), nullable=True)
+    description: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     owner_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
 

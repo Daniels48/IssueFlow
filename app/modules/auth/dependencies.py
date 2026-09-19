@@ -46,7 +46,10 @@ CurrentPayload = Annotated[AccessTokenPayload, Depends(get_current_payload)]
 
 
 async def verify_session(payload: CurrentPayload, db: DBSession):
-    session_redis = await SessionCache.exists(session_id=payload.sid)
+    try:
+        session_redis = await SessionCache.exists(session_id=payload.sid)
+    except Exception:
+        session_redis = False
 
     if not session_redis:
         session_db = await SessionRepository.get_by_session_id(db=db, session_id=payload.sid)
@@ -62,7 +65,10 @@ async def verify_session(payload: CurrentPayload, db: DBSession):
         if session_db.expires_at < get_now_dt():
             raise AppException(code=ErrorCode.SESSION_EXPIRED, message="Session expired")
 
-        await SessionCache.set(session_id=payload.sid)
+        try:
+            await SessionCache.set(session_id=payload.sid)
+        except Exception:
+            pass
 
     return payload
 

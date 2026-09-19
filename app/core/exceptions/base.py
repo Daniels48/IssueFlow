@@ -13,3 +13,7 @@ class AppException(Exception):
         self.public_message = definition.public_message
 
         super().__init__(message)
+
+
+class CacheUnavailableError(Exception):
+    pass

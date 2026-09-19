@@ -69,7 +69,7 @@ async def resend_email_code(user: CurrentUser, service: AuthServiceDep):
 
 @router.patch("/email/change", status_code=status.HTTP_204_NO_CONTENT)
 async def email_change(new_email: schema.ChangeEmailRequest, current_user: CurrentUser, service: AuthServiceDep):
-    await service.change_email_(email=new_email.email, user=current_user)
+    await service.change_email(email=new_email.email, user=current_user)
 
 
 @router.post("/forgot-password/request", status_code=status.HTTP_204_NO_CONTENT)

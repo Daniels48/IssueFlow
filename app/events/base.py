@@ -5,6 +5,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, computed_field, ConfigDict
 
+from app.utils.func_utils import get_now_dt
+
 
 class UserData(BaseModel):
     public_id: UUID
@@ -33,3 +35,12 @@ class Event(BaseModel, ABC):
     @property
     def type(self) -> str:
         return self.ROUTING_KEY
+
+
+
+
+class Event_OutBox(BaseModel, ABC):
+    event_type: str
+    aggregate_type: str
+    aggregate_id: UUID
+    occurred_at: datetime

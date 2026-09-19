@@ -18,6 +18,7 @@ COMMON_ERRORS = {
     ErrorCode.PERMISSION_DENIED: ErrorDefinition(403, "Forbidden"),
     ErrorCode.TOO_MANY_REQUESTS: ErrorDefinition(429, "Too many requests"),
     ErrorCode.INTERNAL_ERROR: ErrorDefinition(500, "Internal server error"),
+    ErrorCode.SERVICE_UNAVAILABLE: ErrorDefinition(503, "Service unavailable"),
 }
 
 AUTH_ERRORS = {

@@ -1,7 +1,8 @@
 import logging
 
 from app.core.obsarvability.contex import request_id_ctx, method_ctx, path_ctx, duration_ctx, status_code_ctx, \
-    client_ip_ctx, user_agent_ctx, client_port_ctx, protocol_ctx, request_ctx, query_params_ctx, user_data_other_ctx
+    client_ip_ctx, user_agent_ctx, client_port_ctx, protocol_ctx, request_ctx, query_params_ctx, user_data_other_ctx, \
+    session_id_ctx
 
 
 class ContextFilter(logging.Filter):
@@ -21,6 +22,7 @@ class ContextFilter(logging.Filter):
         record.client_port = client_port_ctx.get()
         record.protocol = protocol_ctx.get()
         record.query_params = query_params_ctx.get()
+        record.session_id = session_id_ctx.get()
         request = request_ctx.get()
 
         record.user_id = getattr(request.state, "user_id", None) if request else None

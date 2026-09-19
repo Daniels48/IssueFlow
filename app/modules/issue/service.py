@@ -165,7 +165,7 @@ class IssueService:
         IssueService.ensure_not_closed(issue)
 
         context = PermissionContext(user=user,project=issue.project,member=member,resource=issue)
-        ProjectRBAC.require(permission=Permission.ISSUE_UPDATE,context=context)
+        ProjectRBAC.require(permission=Permission.ISSUE_CHANGE_DUE_DATE,context=context)
 
         issue.due_date = data.due_date
 
@@ -186,7 +186,7 @@ class IssueService:
         IssueService.ensure_not_closed(issue)
 
         context = PermissionContext(user=user, project=issue.project, member=member_current, resource=issue)
-        ProjectRBAC.require(permission=Permission.ISSUE_UPDATE, context=context)
+        ProjectRBAC.require(permission=Permission.ISSUE_ASSIGNED, context=context)
 
         if data.assignee_public_id is None:
             issue.assignee_id = None
@@ -220,7 +220,7 @@ class IssueService:
         IssueService.ensure_not_closed(issue)
 
         context = PermissionContext(user=user,project=issue.project,member=member_current,resource=issue)
-        ProjectRBAC.require(permission=Permission.ISSUE_UPDATE, context=context)
+        ProjectRBAC.require(permission=Permission.ISSUE_CHANGE_PRIORITY, context=context)
 
         issue.priority = data.priority
 
@@ -241,7 +241,7 @@ class IssueService:
         IssueService.ensure_not_closed(issue)
 
         context = PermissionContext(user=user, project=issue.project, member=member_current,resource=issue)
-        ProjectRBAC.require(permission=Permission.ISSUE_UPDATE,context=context)
+        ProjectRBAC.require(permission=Permission.ISSUE_CHANGE_STATUS,context=context)
 
         if issue.status == data.status:
             status_transitions = schema.IssueStatusTransitions.from_status(issue.status)
@@ -278,7 +278,7 @@ class IssueService:
         issue, member_current = result
 
         context = PermissionContext(user=user, project=issue.project, member=member_current, resource=issue)
-        ProjectRBAC.require(permission=Permission.ISSUE_UPDATE, context=context)
+        ProjectRBAC.require(permission=Permission.ISSUE_CLOSE, context=context)
 
         if issue.status == IssueStatus.CLOSED:
             raise AppException(ErrorCode.ISSUE_ALREADY_CLOSED,"Issue is already closed")
@@ -311,7 +311,7 @@ class IssueService:
         issue, member_current = result
 
         context = PermissionContext(user=user, project=issue.project,member=member_current,resource=issue)
-        ProjectRBAC.require(permission=Permission.ISSUE_UPDATE,context=context)
+        ProjectRBAC.require(permission=Permission.ISSUE_REOPEN,context=context)
 
         if issue.status != IssueStatus.CLOSED:
             raise AppException(ErrorCode.ISSUE_NOT_CLOSED,"Issue is not closed")

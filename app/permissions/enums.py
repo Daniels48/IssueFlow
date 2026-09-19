@@ -22,6 +22,13 @@ class Permission(StrEnum):
     ISSUE_UPDATE = "issue:update"
     ISSUE_DELETE = "issue:delete"
 
+    ISSUE_CHANGE_DUE_DATE = "issue:change:due_date"
+    ISSUE_CHANGE_PRIORITY = "issue:change:priority"
+    ISSUE_CHANGE_STATUS = "issue:change:status"
+    ISSUE_CLOSE = "issue:close"
+    ISSUE_REOPEN = "issue:reopen"
+    ISSUE_ASSIGNED = "issue:assigned"
+
     COMMENT_VIEW = "comment:view"
     COMMENT_CREATE = "comment:create"
     COMMENT_UPDATE = "comment:update"

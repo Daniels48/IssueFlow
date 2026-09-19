@@ -24,6 +24,7 @@ class RedisConnection:
                 await cls._client.ping()
             except Exception:
                 await cls._client.aclose()
+                cls._client = None
                 raise
 
         return cls._client

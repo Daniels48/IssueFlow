@@ -30,7 +30,7 @@ class User(BaseModel):
 
     is_active: Mapped[bool] = mapped_column(Boolean,default=True,nullable=False)
 
-    is_superuser: Mapped[bool] = mapped_column( Boolean, default=False,nullable=False)
+    is_superuser: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True),nullable=True)
 

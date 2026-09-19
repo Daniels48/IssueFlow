@@ -17,18 +17,14 @@ class SessionRepository:
 
     @staticmethod
     async def get_by_refresh_hash(db: AsyncSession, refresh_token_hash: str) -> Session | None:
-        stmt = select(Session).where(
-            Session.refresh_token_hash == refresh_token_hash
-        )
+        stmt = select(Session).where(Session.refresh_token_hash == refresh_token_hash)
 
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
     @staticmethod
     async def get_by_session_id(db: AsyncSession, session_id: UUID) -> Session | None:
-        stmt = select(Session).where(
-            Session.public_id == session_id,
-        )
+        stmt = select(Session).where(Session.public_id == session_id)
 
         result = await db.execute(stmt)
         return result.scalar_one_or_none()

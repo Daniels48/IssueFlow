@@ -51,16 +51,11 @@ class CustomJsonFormatter(json.JsonFormatter):
         if client_info:
             log_record["client_info"] = client_info
 
-        network = {
+
+        http = {
             "protocol": getattr(record, "protocol", None),
             "path": getattr(record, "path", None),
             "query_params": getattr(record, "query_params", None),
-        }
-
-        if any(network.values()):
-            log_record["network"] = network
-
-        http = {
             "method": getattr(record, "method", None),
             "status_code": getattr(record, "status_code", None),
             "duration_ms": getattr(record, "duration_ms", None),
@@ -70,6 +65,14 @@ class CustomJsonFormatter(json.JsonFormatter):
 
         if any(http.values()):
             log_record["http"] = http
+
+
+        auth = {
+            "session_id": getattr(record, "session_id", None),
+        }
+
+        if any(auth.values()):
+            log_record["auth"] = auth
 
         if exc_info:
             log_record["error"] = {
