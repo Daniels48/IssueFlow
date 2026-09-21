@@ -14,16 +14,13 @@ router = APIRouter(prefix="/projects/{project_id}/members",tags=["Project Member
 async def add_member(project_id: UUID, data: ProjectMemberCreate, current_user: CurrentUser,service: MemberService):
     return await service.add_member(project_id=project_id, data=data, user=current_user)
 
-
 @router.get("",response_model=list[ProjectMemberResponse])
 async def get_members(project_id: UUID,current_user: CurrentUser,service: MemberService):
     return await service.get_members(project_id=project_id,user=current_user)
 
-
 @router.patch("/{user_id}", response_model=ProjectMemberResponse)
 async def update_member(project_id: UUID, user_id: UUID, data: ProjectMemberUpdate, current_user: CurrentUser, service: MemberService):
     return await service.update_role(project_id=project_id, user_id=user_id, data=data, user=current_user)
-
 
 @router.delete("/{user_id}",status_code=status.HTTP_204_NO_CONTENT)
 async def delete_member(project_id: UUID,user_id: UUID,current_user: CurrentUser,service: MemberService):

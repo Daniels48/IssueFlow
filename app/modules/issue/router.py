@@ -24,37 +24,27 @@ async def get_one(user: CurrentUser, issue_id: UUID, service: issue_service):
     return await service.get(public_id=issue_id, user=user)
 
 
-@router.delete("/{issue_id}",status_code=status.HTTP_204_NO_CONTENT)
-async def delete(issue_id: UUID, service: issue_service, user: CurrentUser):
-    await service.delete(public_id=issue_id, user=user)
-
-
-@router.patch("/{issue_id}/due-date",response_model=schema.IssueResponse)
-async def update_due_date(issue_id: UUID, data: schema.IssueDueDateUpdate,service: issue_service,user: CurrentUser):
-    return await service.update_due_date(issue_id=issue_id,data=data, user=user)
-
-
-@router.patch("/{issue_id}", response_model=schema.IssueResponse)
+@router.patch("/{issue_id}", response_model=schema.IssueUpdateResponse)
 async def update_issue(issue_id: UUID, data: schema.IssueUpdate, service: issue_service, user: CurrentUser):
     return await service.update(public_id=issue_id, data=data, user=user)
 
 
-@router.patch("/{issue_id}/due-date",response_model=schema.IssueResponse)
-async def update_due_date(issue_id: UUID, data: schema.IssueDueDateUpdate, service: issue_service, user: CurrentUser):
-    return await service.update_due_date(issue_id=issue_id, data=data, user=user)
+@router.patch("/{issue_id}/due-date",response_model=schema.IssueDueDateResponse)
+async def update_due_date(issue_id: UUID, data: schema.IssueDueDateUpdate,service: issue_service,user: CurrentUser):
+    return await service.update_due_date(issue_id=issue_id,data=data, user=user)
 
 
-@router.patch("/{issue_id}/assignee",response_model=schema.IssueResponse)
+@router.patch("/{issue_id}/assignee",response_model=schema.IssueAssigneeResponse)
 async def update_assignee(issue_id: UUID, data: schema.IssueAssigneeUpdate, service: issue_service, user: CurrentUser):
     return await service.update_assignee(issue_id=issue_id, data=data, user=user)
 
 
-@router.patch("/{issue_id}/priority", response_model=schema.IssueResponse)
+@router.patch("/{issue_id}/priority", response_model=schema.IssuePriorityResponse)
 async def update_priority(issue_id: UUID, data: schema.IssuePriorityUpdate, service: issue_service, user: CurrentUser):
     return await service.update_priority(issue_id=issue_id, data=data, user=user)
 
 
-@router.patch("/{issue_id}/status",response_model=schema.IssueResponseStatus)
+@router.patch("/{issue_id}/status",response_model=schema.IssueStatusResponse)
 async def update_status(issue_id: UUID, data: schema.IssueStatusUpdate, service: issue_service, user: CurrentUser):
     return await service.update_status(issue_id=issue_id, data=data, user=user)
 
@@ -67,3 +57,9 @@ async def close_issue(issue_id: UUID, service: issue_service, user: CurrentUser)
 @router.post("/{issue_id}/reopen",response_model=schema.IssueStatusResponse)
 async def reopen_issue(issue_id: UUID, service: issue_service, user: CurrentUser):
     return await service.reopen(issue_id=issue_id, user=user)
+
+
+
+@router.delete("/{issue_id}",status_code=status.HTTP_204_NO_CONTENT)
+async def delete(issue_id: UUID, service: issue_service, user: CurrentUser):
+    await service.delete(public_id=issue_id, user=user)

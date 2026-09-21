@@ -92,7 +92,7 @@ function change_UI_status_issue(issue) {
     const value = get_action(issue);
     btn_issue_action.dataset.action = value;
     btn_issue_action.textContent = value.charAt(0).toUpperCase() + value.slice(1).toLowerCase()
-    issue_statuses = issue.statuses
+    issue_statuses = issue.allowed_statuses
 
     setCommentActionsVisibility(issue.status);
     drawCommentLines();
@@ -143,7 +143,7 @@ async function loadIssue() {
     issue_full = Issue;
     issue_assignee = Issue.members;
     issue_priority = Issue.priorities;
-    issue_statuses = Issue.statuses;
+    issue_statuses = Issue.allowed_statuses;
     issue_comments = Issue.comments;
 
     setCommentActionsVisibility(Issue.status)
@@ -837,7 +837,7 @@ async function editAssignee() {
 
     async function updateAssignee(assigneePublicId) {
         const url = window.data_url.issueEditAssignee(projectId, IssueId);
-        const res = await api.patch(url, {assignee_public_id: assigneePublicId});
+        const res = await api.patch(url, {assignee_id: assigneePublicId});
 
         if (!res || !res.ok) {return;}
         const issue = await res.json();

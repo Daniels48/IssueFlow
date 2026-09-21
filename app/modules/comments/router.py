@@ -10,7 +10,7 @@ from app.modules.comments.service import comments_service
 router = APIRouter(prefix="/projects/{project_id}/issues/{issue_id}/comments",tags=["Comments"])
 
 
-@router.post("",response_model=schema.CommentResponseCreate, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=schema.CommentCreateResponse, status_code=status.HTTP_201_CREATED)
 async def create_comment(issue_id: UUID, data: schema.CommentCreate, current_user: CurrentUser, service: comments_service):
     return await service.create(issue_id=issue_id, data=data, user=current_user)
 

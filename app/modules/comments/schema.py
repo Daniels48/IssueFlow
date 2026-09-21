@@ -24,7 +24,7 @@ class CommentResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-class CommentResponseCreate(CommentResponse):
+class CommentCreateResponse(CommentResponse):
     parent_comment_public_id: UUID | None = None
     children: list[CommentResponse] = Field(default_factory=list)
 

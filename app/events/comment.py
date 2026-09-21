@@ -1,47 +1,102 @@
 from datetime import datetime
-from typing import ClassVar, Self
+from typing import Self
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
-from app.events.base import Event, IssueData, ProjectData, UserData
-from app.events.routing_keys import RoutingKeys
-from app.infrastructure.db.models import Comment, Issue, User
-from app.utils.func_utils import to
+from app.events import RoutingKeys
+from app.events.base import Event_OutBox
+from app.events.issue import IssueEventData
+from app.events.project import ProjectEventData
+from app.events.user import UserEventData
+from app.infrastructure.db.models import User, Comment, Issue
 
 
-class CommentData(BaseModel):
+class CommentEventData(BaseModel):
     public_id: UUID
     content: str
-    created_at: datetime
-    updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
 
 
-class BaseCommentEvent(Event):
-    project: ProjectData
-    issue: IssueData
-    author: UserData
-    comment: CommentData
+class CommentParentData(BaseModel):
+    comment: CommentEventData
+    author: UserEventData
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CommentCreatedEvent(Event_OutBox):
+    event_type: str = RoutingKeys.COMMENT_CREATED
+    aggregate_type: str = "comment"
+
+    project: ProjectEventData
+    issue: IssueEventData
+    author: UserEventData
+
+    comment: CommentEventData
+    parent: CommentParentData | None = None
 
     @classmethod
-    def from_models(cls,issue: Issue,author: User,comment: Comment) -> Self:
+    def from_model(cls, comment: Comment, user: User, issue: Issue, parent: Comment | None, occurred_at: datetime) -> Self:
         return cls(
-            project=to(ProjectData, issue.project),
-            issue=to(IssueData, issue),
-            author=to(UserData, author),
-            comment=to(CommentData, comment)
+            aggregate_id=comment.public_id,
+            author=UserEventData.model_validate(user),
+            occurred_at=occurred_at,
+            issue=IssueEventData.model_validate(issue),
+            comment=CommentEventData.model_validate(comment),
+            project=ProjectEventData.model_validate(issue.project),
+            parent=(
+                CommentParentData(
+                    comment=CommentEventData.model_validate(parent),
+                    author=UserEventData.model_validate(parent.author),
+                )
+                if parent is not None
+                else None
+            )
         )
 
 
-class CommentCreatedEvent(BaseCommentEvent):
-    ROUTING_KEY: ClassVar[str] = RoutingKeys.COMMENT_CREATED
-    
-    
-class CommentUpdatedEvent(BaseCommentEvent):
-    ROUTING_KEY: ClassVar[str] = RoutingKeys.COMMENT_UPDATED
+class CommentUpdatedEvent(Event_OutBox):
+    event_type: str = RoutingKeys.COMMENT_UPDATED
+    aggregate_type: str = "comment"
+
+    comment: CommentEventData
+    project: ProjectEventData
+    issue: IssueEventData
+    author: UserEventData
+
+    old_value: str
+
+    @classmethod
+    def from_model(cls, comment: Comment, old_value: str, user: User, occurred_at: datetime) -> Self:
+        return cls(
+            aggregate_id=comment.public_id,
+            author=UserEventData.model_validate(user),
+            occurred_at=occurred_at,
+            issue=IssueEventData.model_validate(comment.issue),
+            comment=CommentEventData.model_validate(comment),
+            project=ProjectEventData.model_validate(comment.issue.project),
+            old_value=old_value,
+        )
 
 
-class CommentDeletedEvent(BaseCommentEvent):
-    ROUTING_KEY: ClassVar[str] = RoutingKeys.COMMENT_DELETED
+class CommentDeletedEvent(Event_OutBox):
+    event_type: str = RoutingKeys.COMMENT_DELETED
+    aggregate_type: str = "comment"
+
+    comment: CommentEventData
+    project: ProjectEventData
+    issue: IssueEventData
+    author: UserEventData
+
+    @classmethod
+    def from_model(cls, comment: Comment, user: User, occurred_at: datetime) -> Self:
+        return cls(
+            aggregate_id=comment.public_id,
+            author=UserEventData.model_validate(user),
+            occurred_at=occurred_at,
+            issue=IssueEventData.model_validate(comment.issue),
+            comment=CommentEventData.model_validate(comment),
+            project=ProjectEventData.model_validate(comment.issue.project),
+        )

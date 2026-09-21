@@ -29,8 +29,7 @@ class ProjectMemberRepository:
 
 
     @staticmethod
-    async def get_by_project_and_user_public_id(db: AsyncSession, project_id: int, user_public_id: UUID
-    ) -> ProjectMember | None:
+    async def get_by_project_and_user_id(db: AsyncSession, project_id: int, user_public_id: UUID) -> ProjectMember | None:
         result = await db.execute(
             select(ProjectMember)
             .options(selectinload(ProjectMember.user))
@@ -57,11 +56,6 @@ class ProjectMemberRepository:
 
         return list(result.scalars().all())
 
-    @staticmethod
-    async def update(db: AsyncSession,member: ProjectMember) -> ProjectMember:
-        await db.flush()
-        await db.refresh(member)
-        return member
 
     @staticmethod
     async def delete(db: AsyncSession,member: ProjectMember) -> None:

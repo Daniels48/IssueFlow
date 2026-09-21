@@ -1,59 +1,62 @@
 from datetime import datetime
-from typing import ClassVar, Self
+from typing import Self
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
-from app.events.base import Event, UserData, ProjectData, IssueData
-from app.events.routing_keys import RoutingKeys
-from app.infrastructure.db.models import Issue, User, ProjectMember, Project
+from app.events import RoutingKeys
+from app.events.base import Event_OutBox
+from app.events.project import ProjectEventData
+from app.events.user import UserEventData
+from app.infrastructure.db.models import ProjectMember, User, Project
 from app.modules.project_members.project_role import ProjectRole
-from app.utils.func_utils import to
 
 
-class MemberData(BaseModel):
+class MemberEventData(BaseModel):
     public_id: UUID
-    
-    username: str
     role: ProjectRole
-
-    created_at: datetime
-    updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
 
-    @classmethod
-    def from_models(cls,user: User,member: ProjectMember) -> Self:
-        return cls(
-            public_id=user.public_id,
-            username=user.username,
-            role=member.role,
-            created_at=member.created_at,
-            updated_at=member.updated_at,
-        )
 
-
-class BaseMemberEvent(Event):
-    project: ProjectData
-    author: UserData
-    member: MemberData
+class MemberEvent(Event_OutBox):
+    aggregate_type: str = "member"
 
     @classmethod
-    def from_models(cls, project: Project, author: User, member: ProjectMember) -> Self:
+    def _base_data( cls, member: ProjectMember, author: User, occurred_at: datetime) -> dict:
+        return {
+            "aggregate_id": member.user.public_id,
+            "occurred_at": occurred_at,
+            "member": MemberEventData.model_validate(member),
+            "user": UserEventData.model_validate(member.user),
+            "project": ProjectEventData.model_validate(member.project),
+            "author": UserEventData.model_validate(author),
+        }
+
+
+class MemberAddedEvent(MemberEvent):
+    event_type: str = RoutingKeys.PROJECT_MEMBER_ADDED
+
+    @classmethod
+    def from_model(cls,member: ProjectMember,user: User, occurred_at: datetime) -> Self:
+        return cls(**cls._base_data(member=member, author=user, occurred_at=occurred_at))
+
+
+class MemberUpdatedEvent(MemberEvent):
+    event_type: str = RoutingKeys.PROJECT_MEMBER_ROLE_CHANGED
+
+    old_value: ProjectRole
+
+    @classmethod
+    def from_model(cls,old_value: ProjectRole ,member: ProjectMember,user: User, occurred_at: datetime) -> Self:
         return cls(
-            project=to(ProjectData, project),
-            author=to(UserData, author),
-            member=MemberData.from_models(member.user, member),
+            **cls._base_data(member=member, author=user, occurred_at=occurred_at),
+            old_value=old_value,
         )
 
+class MemberDeletedEvent(MemberEvent):
+    event_type: str = RoutingKeys.PROJECT_MEMBER_REMOVED
 
-class ProjectMemberAddedEvent(BaseMemberEvent):
-    ROUTING_KEY: ClassVar[str] = RoutingKeys.PROJECT_MEMBER_ADDED
-
-
-class ProjectMemberRoleChangedEvent(BaseMemberEvent):
-    ROUTING_KEY: ClassVar[str] = RoutingKeys.PROJECT_MEMBER_ROLE_CHANGED
-
-
-class ProjectMemberRemovedEvent(BaseMemberEvent):
-    ROUTING_KEY: ClassVar[str] = RoutingKeys.PROJECT_MEMBER_REMOVED
+    @classmethod
+    def from_model(cls,member: ProjectMember,user: User,occurred_at: datetime) -> Self:
+        return cls(**cls._base_data(member, user, occurred_at))

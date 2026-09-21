@@ -5,16 +5,23 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import AppException, ErrorCode
-from app.events import CommentCreatedEvent, CommentDeletedEvent, CommentUpdatedEvent
+from app.infrastructure.db.database import DBSession
+
+from app.events.comment import CommentCreatedEvent, CommentDeletedEvent, CommentUpdatedEvent
+from app.events.outbox import OutboxFactory
+
 from app.infrastructure.db.models import Comment, User
-from app.infrastructure.rabbitmq import RabbitPublisher
-from app.modules.auth.dependencies import DBSession
+
+
+
 from app.modules.comments.repository import CommentRepository
-from app.modules.comments.schema import CommentCreate, CommentResponse, CommentUpdate, CommentTreeResponse, \
-    CommentResponseCreate
+from app.modules.comments import schema as schema
+
 from app.modules.issue.repository import IssueRepository
 from app.modules.issue.status import IssueStatus
+
 from app.permissions import PermissionContext, Permission, ProjectRBAC
+
 from app.utils.func_utils import to, get_now_dt
 
 
@@ -25,12 +32,12 @@ class CommentService:
         self.db = db
 
     @staticmethod
-    def _to_comment_tree_node(comment: Comment) -> CommentTreeResponse:
-        base = to(CommentResponse, comment)
-        return CommentTreeResponse(**base.model_dump(), children=[])
+    def _to_comment_tree_node(comment: Comment) -> schema.CommentTreeResponse:
+        base = to(schema.CommentResponse, comment)
+        return schema.CommentTreeResponse(**base.model_dump(), children=[])
 
     @staticmethod
-    def build_comment_tree(comments: list[Comment]) -> list[CommentTreeResponse]:
+    def build_comment_tree(comments: list[Comment]) -> list[schema.CommentTreeResponse]:
         comment_map = {comment.id: CommentService._to_comment_tree_node(comment) for comment in comments}
 
         roots = []
@@ -47,7 +54,7 @@ class CommentService:
 
         return roots
 
-    async def create(self, issue_id: UUID, data: CommentCreate, user: User) -> CommentResponseCreate:
+    async def create(self, issue_id: UUID, data: schema.CommentCreate, user: User) -> schema.CommentCreateResponse:
         result = await self.issue_repository.get_by_public_id_with_current_member(self.db, issue_id, user.id)
 
         if result is None:
@@ -75,25 +82,32 @@ class CommentService:
 
             parent_comment_id = parent_comment.id
 
+        now = get_now_dt()
+
         comment = Comment(
             issue_id=issue.id,
             author_id=user.id,
             parent_comment_id=parent_comment_id,
             content=data.content,
-            author=user
+            parent=parent_comment,
+            author=user,
+            created_at=now,
+            updated_at=now,
         )
 
         comment = await self.repository.create(self.db, comment)
+
+        event = CommentCreatedEvent.from_model(comment, user, issue, parent_comment, now)
+        self.db.add(OutboxFactory.from_event(event))
+
         await self.db.commit()
 
-        # await RabbitPublisher.publish(CommentCreatedEvent.from_models(issue, user, comment))
-
-        return CommentResponseCreate(
-            **to(CommentResponse, comment).model_dump(),
+        return schema.CommentCreateResponse(
+            **to(schema.CommentResponse, comment).model_dump(),
             parent_comment_public_id=parent_comment.public_id if parent_comment else None,
         )
 
-    async def update(self, comment_id: UUID, data: CommentUpdate, user: User) -> CommentResponse:
+    async def update(self, comment_id: UUID, data: schema.CommentUpdate, user: User) -> schema.CommentResponse:
         result = await self.repository.get_by_public_id_with_current_member(self.db, comment_id, user.id)
 
         if result is None:
@@ -101,17 +115,27 @@ class CommentService:
 
         comment, member = result
 
+        if comment.issue.status == IssueStatus.CLOSED:
+            raise AppException(ErrorCode.ISSUE_CLOSED,"Issue already closed")
+
         context = PermissionContext(user=user, project=comment.issue.project, member=member, resource=comment)
         ProjectRBAC.require(permission=Permission.COMMENT_UPDATE, context=context)
 
-        comment.content = data.content
-        comment.updated_at = get_now_dt()
+        if comment.content == data.content:
+            return to(schema.CommentResponse, comment)
 
-        await RabbitPublisher.publish(CommentUpdatedEvent.from_models(comment.issue, user, comment))
+        now = get_now_dt()
+
+        old_content = comment.content
+        comment.content = data.content
+        comment.updated_at = now
+
+        event = CommentUpdatedEvent.from_model(comment=comment, old_value=old_content,user=user,occurred_at=now)
+        self.db.add(OutboxFactory.from_event(event))
 
         await self.db.commit()
 
-        return to(CommentResponse, comment)
+        return to(schema.CommentResponse, comment)
 
     async def delete(self, comment_id: UUID, user: User) -> None:
         result = await self.repository.get_by_public_id_with_current_member(self.db, comment_id, user.id)
@@ -121,16 +145,20 @@ class CommentService:
 
         comment, member = result
 
+        if comment.issue.status == IssueStatus.CLOSED:
+            raise AppException(ErrorCode.ISSUE_CLOSED,"Issue already closed")
+
         context = PermissionContext(user=user, project=comment.issue.project, member=member, resource=comment)
         ProjectRBAC.require(permission=Permission.COMMENT_DELETE, context=context)
 
-        comment.deleted_at = get_now_dt()
+        now = get_now_dt()
 
-        event = CommentDeletedEvent.from_models(comment.issue, user, comment)
+        comment.deleted_at = now
+
+        event = CommentDeletedEvent.from_model(comment=comment,user=user,occurred_at=now)
+        self.db.add(OutboxFactory.from_event(event))
 
         await self.db.commit()
-
-        await RabbitPublisher.publish(event)
 
 
 async def get_comments_service(db: DBSession) -> CommentService:

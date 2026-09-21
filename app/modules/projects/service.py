@@ -9,7 +9,7 @@ from sqlalchemy.orm import selectinload
 
 from app.infrastructure.db.models import User, ProjectMember, Issue
 from app.infrastructure.db.models.model_projects import Project
-from app.modules.auth.dependencies import DBSession
+from app.infrastructure.db.database import DBSession
 from app.modules.issue.schema import IssueResponse
 from app.modules.project_members.project_role import ProjectRole
 from app.modules.project_members.repository import ProjectMemberRepository

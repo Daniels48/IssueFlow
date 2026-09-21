@@ -165,7 +165,7 @@ async function createIssue(event) {
     const data = {
         title: document.getElementById("issue-title").value,
         description: document.getElementById("issue-description").value || null,
-        assignee_public_id: publicId,
+        assignee_id: publicId,
         priority: document.getElementById("issue-priority").value,
         due_date: document.getElementById("issue-date").value || null,
     };

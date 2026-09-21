@@ -1,74 +1,179 @@
 from datetime import datetime
-from typing import ClassVar, Self
+from typing import Self
+from uuid import UUID
 
-from pydantic import ConfigDict, BaseModel
+from pydantic import BaseModel, ConfigDict
 
-from app.events.routing_keys import RoutingKeys
-from app.events.base import Event, UserData, IssueData, ProjectData
-from app.infrastructure.db.models import Issue, User
+from app.events import RoutingKeys
+from app.events.base import Event_OutBox
+from app.events.project import ProjectEventData
+from app.events.user import UserEventData
+from app.infrastructure.db.models import User, Issue
 from app.modules.issue.priority import IssuePriority
 from app.modules.issue.status import IssueStatus
-from app.utils.func_utils import to
 
 
-class IssueDataDetail(BaseModel):
+class IssueEventData(BaseModel):
+    public_id: UUID
     title: str
     description: str | None
-    
-    status: IssueStatus
-    priority: IssuePriority
-    
-    due_date: datetime
-    
-    created_at: datetime
-    updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
 
 
-class BaseIssueEvent(Event):
-    project: ProjectData
-    issue: IssueData
-    author: UserData
-    assignee: UserData | None
-    issue_data: IssueDataDetail
+class IssueEvent(Event_OutBox):
+    aggregate_type: str = "issue"
 
     @classmethod
-    def from_models(cls, issue: Issue, author: User) -> Self:
+    def _base_data(cls, issue: Issue, user: User,occurred_at: datetime) -> dict:
+        return {
+            "aggregate_id": issue.public_id,
+            "occurred_at": occurred_at,
+            "issue": IssueEventData.model_validate(issue),
+            "project": ProjectEventData.model_validate(issue.project),
+            "author": UserEventData.model_validate(user),
+        }
+
+
+class IssueCreateEventData(BaseModel):
+    public_id: UUID
+    title: str
+    description: str | None = None
+    priority: IssuePriority
+    assignee: UserEventData | None = None
+    due_date: datetime | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class IssueCreatedEvent(IssueEvent):
+    event_type: str = RoutingKeys.ISSUE_CREATED
+
+    issue: IssueCreateEventData
+    project: ProjectEventData
+    author: UserEventData
+
+    @classmethod
+    def from_model(cls, issue: Issue, user: User, occurred_at: datetime) -> Self:
         return cls(
-            project=to(ProjectData, issue.project),
-            issue=to(IssueData, issue),
-            author=to(UserData, author),
-            assignee=to(UserData, issue.assignee) if issue.assignee else None,
-            issue_data=to(IssueDataDetail, issue)
+            aggregate_id=issue.public_id,
+            occurred_at=occurred_at,
+            issue=IssueCreateEventData.model_validate(issue),
+            project=ProjectEventData.model_validate(issue.project),
+            author=UserEventData.model_validate(user),
         )
-    
-    
-class IssueCreatedEvent(BaseIssueEvent):
-    ROUTING_KEY: ClassVar[str] = RoutingKeys.ISSUE_CREATED
 
 
-class IssueUpdatedEvent(BaseIssueEvent):
-    ROUTING_KEY: ClassVar[str] = RoutingKeys.ISSUE_UPDATED
+class IssueDeleteEvent(IssueEvent):
+    event_type: str = RoutingKeys.ISSUE_DELETED
+
+    @classmethod
+    def from_model(cls, issue: Issue, user: User, occurred_at: datetime) -> Self:
+        return cls(**cls._base_data(issue, user, occurred_at))
 
 
-class IssueDeletedEvent(BaseIssueEvent):
-    ROUTING_KEY: ClassVar[str] = RoutingKeys.ISSUE_DELETED
+class IssueUpdateEvent(IssueEvent):
+    event_type: str = RoutingKeys.ISSUE_UPDATED
+
+    old_value: IssueEventData
+
+    @classmethod
+    def from_model(cls, issue_old: IssueEventData, issue: Issue, user: User, occurred_at: datetime) -> Self:
+        return cls(
+            **cls._base_data(issue, user, occurred_at),
+            old_value=issue_old,
+        )
 
 
-class IssueAssignedEvent(BaseIssueEvent):
-    ROUTING_KEY: ClassVar[str] = RoutingKeys.ISSUE_ASSIGNED
+class IssueChangeDueDateEvent(IssueEvent):
+    event_type: str = RoutingKeys.ISSUE_DUE_DATE_CHANGED
+
+    old_value: datetime | None = None
+    new_value: datetime | None = None
+
+    @classmethod
+    def from_model(cls, old_value: datetime | None, issue: Issue, user: User, occurred_at: datetime) -> Self:
+        return cls(
+            **cls._base_data(issue, user, occurred_at),
+            old_value=old_value,
+            new_value=issue.due_date,
+        )
 
 
-class IssueStatusChangedEvent(BaseIssueEvent):
-    ROUTING_KEY: ClassVar[str] = RoutingKeys.ISSUE_STATUS_CHANGED
+class IssueChangeAssigneeEvent(IssueEvent):
+    event_type: str = RoutingKeys.ISSUE_ASSIGNED
+
+    old_value: UserEventData | None = None
+    new_value: UserEventData | None = None
+
+    @classmethod
+    def from_model(cls, old_value: User | None, new_value: User, issue: Issue, user: User, occurred_at: datetime) -> Self:
+        return cls(
+            **cls._base_data(issue, user, occurred_at),
+            old_value=UserEventData.model_validate(old_value),
+            new_value=UserEventData.model_validate(new_value),
+        )
 
 
-class IssuePriorityChangedEvent(BaseIssueEvent):
-    ROUTING_KEY: ClassVar[str] = RoutingKeys.ISSUE_PRIORITY_CHANGED
+class IssueUnAssigneeEvent(IssueEvent):
+    event_type: str = RoutingKeys.ISSUE_UNASSIGNED
+
+    old_value: UserEventData | None = None
+
+    @classmethod
+    def from_model(cls, old_value: User, issue: Issue, user: User, occurred_at: datetime) -> Self:
+        return cls(
+            **cls._base_data(issue, user, occurred_at),
+            old_value=UserEventData.model_validate(old_value),
+        )
 
 
-class IssueDueDateChangedEvent(BaseIssueEvent):
-    ROUTING_KEY: ClassVar[str] = RoutingKeys.ISSUE_DUE_DATE_CHANGED
+class IssueChangePriorityEvent(IssueEvent):
+    event_type: str = RoutingKeys.ISSUE_PRIORITY_CHANGED
 
-    
+    old_value: IssuePriority
+    new_value: IssuePriority
+
+    @classmethod
+    def from_model(cls, old_value: IssuePriority, issue: Issue, user: User, occurred_at: datetime) -> Self:
+        return cls(
+            **cls._base_data(issue, user, occurred_at),
+            old_value=old_value,
+            new_value=issue.priority
+        )
+
+
+class IssueChangeStatusEvent(IssueEvent):
+    event_type: str = RoutingKeys.ISSUE_STATUS_CHANGED
+
+    old_value: IssueStatus
+    new_value: IssueStatus
+
+    @classmethod
+    def from_model(cls, old_value: IssueStatus, issue: Issue, user: User, occurred_at: datetime) -> Self:
+        return cls(
+            **cls._base_data(issue, user, occurred_at),
+            old_value=old_value,
+            new_value=issue.status
+        )
+
+
+class IssueCloseEvent(IssueEvent):
+    event_type: str = RoutingKeys.ISSUE_CLOSED
+
+    old_value: IssueStatus
+
+    @classmethod
+    def from_model(cls, old_value: IssueStatus, issue: Issue, user: User, occurred_at: datetime) -> Self:
+        return cls(
+            **cls._base_data(issue, user, occurred_at),
+            old_value=old_value
+        )
+
+
+class IssueReopenEvent(IssueEvent):
+    event_type: str = RoutingKeys.ISSUE_REOPENED
+
+    @classmethod
+    def from_model(cls, issue: Issue, user: User, occurred_at: datetime) -> Self:
+        return cls(**cls._base_data(issue, user, occurred_at))

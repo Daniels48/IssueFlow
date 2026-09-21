@@ -4,7 +4,7 @@ from uuid import UUID
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.auth.dependencies import DBSession
+from app.infrastructure.db.database import DBSession
 from app.modules.project_members.repository import ProjectMemberRepository
 from app.modules.projects.repository import ProjectRepository
 from app.modules.users.repository import UserRepository

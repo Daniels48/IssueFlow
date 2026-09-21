@@ -12,7 +12,7 @@ from app.core.exceptions import AppException, ErrorCode, CacheUnavailableError
 from app.core.obsarvability.utils import parse_user_agent, get_client_info
 
 from app.events.outbox import OutboxFactory
-from app.events import user_outbox as user_events
+from app.events import user as user_events
 
 from app.infrastructure.db.models import User, Session
 

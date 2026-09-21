@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
@@ -6,11 +7,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import TypeAdapter
 
 from app.core.exceptions import AppException, ErrorCode
-from app.events import IssueUpdatedEvent
-from app.infrastructure.db.models import User, Issue
-from app.infrastructure.rabbitmq import RabbitPublisher
+from app.events.issue import IssueCreatedEvent, IssueUpdateEvent, IssueEventData, IssueDeleteEvent, \
+    IssueChangeDueDateEvent, IssueUnAssigneeEvent, IssueChangeAssigneeEvent, IssueChangePriorityEvent, \
+    IssueChangeStatusEvent, IssueCloseEvent, IssueReopenEvent
+from app.events.outbox import OutboxFactory
+from app.infrastructure.db.models import User, Issue, ProjectMember
 
-from app.modules.auth.dependencies import DBSession
+from app.infrastructure.db.database import DBSession
 
 from app.modules.comments.service import CommentService
 from app.modules.issue.priority import IssuePriority
@@ -50,15 +53,15 @@ class IssueService:
         create_data = data.model_dump(exclude_unset=True)
 
         if not ProjectRBAC.is_admin(context):
-            admin_fields = {"assignee_public_id", "priority", "due_date"}
+            admin_fields = {"assignee_id", "priority", "due_date"}
 
             if admin_fields & create_data.keys():
                 raise AppException(ErrorCode.PERMISSION_DENIED,"You do not have permission to set these fields")
 
-        assignee_public_id = create_data.pop("assignee_public_id", None)
+        assignee_id = create_data.pop("assignee_id", None)
 
-        if assignee_public_id is not None:
-            member_assignee = await self.member_rep.get_by_project_and_user_public_id(self.db, project.id, assignee_public_id)
+        if assignee_id is not None:
+            member_assignee = await self.member_rep.get_by_project_and_user_id(self.db, project.id, assignee_id)
 
             if not member_assignee:
                 raise AppException(ErrorCode.USER_IS_NOT_A_PROJECT_MEMBER,"User is not a project member")
@@ -66,9 +69,14 @@ class IssueService:
             create_data["assignee_id"] = member_assignee.user_id
             create_data["assignee"] = member_assignee.user
 
-        issue = Issue(project_id=project.id, reporter_id=user.id, reporter=user, **create_data)
+        now = get_now_dt()
+
+        issue = Issue(project_id=project.id, reporter_id=user.id, reporter=user, created_at=now, **create_data)
 
         issue = await self.rep.create(self.db, issue)
+
+        event = IssueCreatedEvent.from_model(issue, user, now)
+        self.db.add(OutboxFactory.from_event(event))
 
         await self.db.commit()
 
@@ -89,9 +97,8 @@ class IssueService:
             comments=CommentService.build_comment_tree(issue.comments),
             members=[schema.UserShortResponse.model_validate(member.user) for member in issue.project.members],
             priorities=list(IssuePriority),
-            statuses=schema.IssueStatusTransitions.from_status(issue.status)
+            allowed_statuses=schema.IssueStatusTransitions.from_status(issue.status)
         )
-
 
     async def list(self, project_id: UUID, user: User, filters: schema.IssueFilters) -> list[schema.IssueResponse]:
         project = await self.project_rep.get_by_public_id_no_full(self.db, project_id)
@@ -108,7 +115,7 @@ class IssueService:
 
         return ISSUE_LIST_ADAPTER.validate_python(list_issues)
 
-    async def update(self, public_id: UUID, data: schema.IssueUpdate, user: User) -> schema.IssueResponse:
+    async def update(self, public_id: UUID, data: schema.IssueUpdate, user: User) -> schema.IssueUpdateResponse:
         result = await self.rep.get_by_public_id_with_current_member(self.db, public_id, user.id)
 
         if result is None:
@@ -121,21 +128,32 @@ class IssueService:
         context = PermissionContext(user=user, project=issue.project, member=member, resource=issue)
         ProjectRBAC.require(permission=Permission.ISSUE_UPDATE, context=context)
 
-        update_data = data.model_dump(exclude_unset=True)
+        old_issue = IssueEventData.model_validate(issue)
 
-        for field, value in update_data.items():
-            setattr(issue, field, value)
+        changed = False
 
-        await self.rep.update(self.db, issue)
+        if data.description is not None and data.description != issue.description:
+            issue.description = data.description
+            changed = True
 
-        await self.db.commit()
+        if data.title is not None and data.title != issue.title:
+            issue.title = data.title
+            changed = True
 
-        issue = await self.rep.get_by_public_id_full(self.db, public_id)
+        if changed:
+            now = get_now_dt()
 
-        event = IssueUpdatedEvent.from_models(issue, user)
-        await RabbitPublisher.publish(event)
+            issue.updated_at = now
 
-        return to(schema.IssueResponse, issue)
+            # event = IssueUpdatedEvent.from_models(issue, user)
+            # await RabbitPublisher.publish(event)
+
+            event = IssueUpdateEvent.from_model(old_issue, issue, user, now)
+            self.db.add(OutboxFactory.from_event(event))
+
+            await self.db.commit()
+
+        return to(schema.IssueUpdateResponse, issue)
 
     async def delete(self,public_id: UUID, user: User) -> None:
         result = await self.rep.get_by_public_id_with_current_member(self.db, public_id, user.id)
@@ -150,11 +168,21 @@ class IssueService:
         context = PermissionContext(user=user, project=issue.project, member=member, resource=issue)
         ProjectRBAC.require(permission=Permission.ISSUE_DELETE, context=context)
 
-        await self.rep.delete(self.db, issue)
+        now = get_now_dt()
+
+        issue.updated_at = now
+        issue.deleted_at = now
+
+        # event = IssueUpdatedEvent.from_models(issue, user)
+        # await RabbitPublisher.publish(event)
+
+        event = IssueDeleteEvent.from_model(issue, user, now)
+        self.db.add(OutboxFactory.from_event(event))
 
         await self.db.commit()
 
-    async def update_due_date(self, issue_id: UUID, data: schema.IssueDueDateUpdate, user: User) -> schema.IssueResponse:
+    async def update_due_date(self, issue_id: UUID, data: schema.IssueDueDateUpdate, user: User) \
+            -> schema.IssueDueDateResponse:
         result = await self.rep.get_by_public_id_with_current_member(self.db, issue_id,user.id)
 
         if result is None:
@@ -167,16 +195,25 @@ class IssueService:
         context = PermissionContext(user=user,project=issue.project,member=member,resource=issue)
         ProjectRBAC.require(permission=Permission.ISSUE_CHANGE_DUE_DATE,context=context)
 
+        if issue.due_date == data.due_date:
+            return to(schema.IssueDueDateResponse, issue)
+
+        now = get_now_dt()
+
+        old_value = issue.due_date
         issue.due_date = data.due_date
+        issue.updated_at = now
+
+        event = IssueChangeDueDateEvent.from_model(old_value, issue, user, now)
+        self.db.add(OutboxFactory.from_event(event))
 
         await self.db.commit()
 
-        issue = await self.rep.get_by_public_id_full(self.db, issue.public_id)
+        return to(schema.IssueDueDateResponse, issue)
 
-        return to(schema.IssueResponse, issue)
-
-    async def update_assignee(self, issue_id: UUID,data: schema.IssueAssigneeUpdate,user: User) -> schema.IssueResponse:
-        result = await self.rep.get_by_public_id_with_current_member(self.db, issue_id,user.id)
+    async def update_assignee(self, issue_id: UUID,data: schema.IssueAssigneeUpdate,user: User) \
+            -> schema.IssueAssigneeResponse:
+        result = await self.rep.get_by_public_id_with_current_member_and_assignee(self.db, issue_id,user.id)
 
         if result is None:
             raise AppException(ErrorCode.ISSUE_NOT_FOUND,"Issue not found")
@@ -188,28 +225,47 @@ class IssueService:
         context = PermissionContext(user=user, project=issue.project, member=member_current, resource=issue)
         ProjectRBAC.require(permission=Permission.ISSUE_ASSIGNED, context=context)
 
-        if data.assignee_public_id is None:
-            issue.assignee_id = None
-            issue.assignee = None
+        now = get_now_dt()
+
+        old_value = issue.assignee
+
+        def set_assignee(assignee_value: ProjectMember | None):
+            issue.assignee = assignee_value.user if assignee_value is not None else None
+            issue.assignee_id = assignee_value.user_id if assignee_value is not None else None
+            issue.updated_at = now
+
+        if data.assignee_id is None:
+
+            if issue.assignee_id is None:
+                return to(schema.IssueAssigneeResponse, issue)
+
+            set_assignee(None)
+
+            event = IssueUnAssigneeEvent.from_model(old_value, issue, user, now)
 
         else:
-            member_assignee = await self.member_rep.get_by_project_and_user_public_id(
-                self.db, issue.project_id, data.assignee_public_id
+            member_assignee = await self.member_rep.get_by_project_and_user_id(
+                self.db, issue.project_id, data.assignee_id
             )
 
             if member_assignee is None:
                 raise AppException(ErrorCode.USER_IS_NOT_A_PROJECT_MEMBER,"User is not a project member")
 
-            issue.assignee_id = member_assignee.user_id
-            issue.assignee = member_assignee.user
+            if issue.assignee_id == member_assignee.user_id:
+                return to(schema.IssueAssigneeResponse, issue)
 
+            set_assignee(member_assignee)
+
+            event = IssueChangeAssigneeEvent.from_model(old_value, member_assignee.user, issue, user, now)
+
+
+        self.db.add(OutboxFactory.from_event(event))
         await self.db.commit()
 
-        issue = await self.rep.get_by_public_id_full(self.db, issue.public_id)
+        return to(schema.IssueAssigneeResponse, issue)
 
-        return to(schema.IssueResponse, issue)
-
-    async def update_priority(self,issue_id: UUID,data: schema.IssuePriorityUpdate,user: User) -> schema.IssueResponse:
+    async def update_priority(self,issue_id: UUID,data: schema.IssuePriorityUpdate,user: User) \
+            -> schema.IssuePriorityResponse:
         result = await self.rep.get_by_public_id_with_current_member(self.db,issue_id,user.id)
 
         if result is None:
@@ -222,15 +278,25 @@ class IssueService:
         context = PermissionContext(user=user,project=issue.project,member=member_current,resource=issue)
         ProjectRBAC.require(permission=Permission.ISSUE_CHANGE_PRIORITY, context=context)
 
+        if issue.priority == data.priority:
+            return to(schema.IssuePriorityResponse, issue)
+
+        now = get_now_dt()
+
+        old_value = issue.priority
+
         issue.priority = data.priority
+        issue.updated_at = now
+
+        event = IssueChangePriorityEvent.from_model(old_value, issue, user, now)
+        self.db.add(OutboxFactory.from_event(event))
 
         await self.db.commit()
 
-        issue = await self.rep.get_by_public_id_full(self.db, issue.public_id)
+        return to(schema.IssuePriorityResponse, issue)
 
-        return to(schema.IssueResponse, issue)
-
-    async def update_status(self, issue_id: UUID, data: schema.IssueStatusUpdate, user: User) -> schema.IssueResponseStatus:
+    async def update_status(self, issue_id: UUID, data: schema.IssueStatusUpdate, user: User) \
+            -> schema.IssueStatusResponse:
         result = await self.rep.get_by_public_id_with_current_member(self.db,issue_id,user.id)
 
         if result is None:
@@ -244,11 +310,7 @@ class IssueService:
         ProjectRBAC.require(permission=Permission.ISSUE_CHANGE_STATUS,context=context)
 
         if issue.status == data.status:
-            status_transitions = schema.IssueStatusTransitions.from_status(issue.status)
-            return schema.IssueResponseStatus(
-                **schema.IssueResponse.model_validate(issue).model_dump(),
-                statuses=status_transitions
-            )
+            return self._get_status_response(issue)
 
         allowed_statuses = ALLOWED_STATUS_TRANSITIONS.get(issue.status, set())
 
@@ -256,18 +318,18 @@ class IssueService:
             msg = f"Cannot change status from '{issue.status}' to '{data.status}'"
             raise AppException(ErrorCode.INVALID_STATUS_TRANSITION,msg)
 
+        now = get_now_dt()
+        old_value = issue.status
+
         issue.status = data.status
+        issue.updated_at = now
+
+        event = IssueChangeStatusEvent.from_model(old_value, issue, user, now)
+        self.db.add(OutboxFactory.from_event(event))
 
         await self.db.commit()
 
-        issue = await self.rep.get_by_public_id_full(self.db, issue.public_id)
-
-        status_transitions = schema.IssueStatusTransitions.from_status(issue.status)
-
-        return schema.IssueResponseStatus(
-            **schema.IssueResponse.model_validate(issue).model_dump(),
-            statuses=status_transitions
-        )
+        return self._get_status_response(issue)
 
     async def close(self, issue_id: UUID, user: User) -> schema.IssueStatusResponse:
         result = await self.rep.get_by_public_id_with_current_member(self.db,issue_id,user.id)
@@ -283,24 +345,25 @@ class IssueService:
         if issue.status == IssueStatus.CLOSED:
             raise AppException(ErrorCode.ISSUE_ALREADY_CLOSED,"Issue is already closed")
 
-        issue.status = IssueStatus.CLOSED
-        issue.closed_at = get_now_dt()
-        issue.closed_by_id = user.id
-        issue.updated_at = get_now_dt()
+        now = get_now_dt()
 
-        await self.db.commit()
+        old_value = issue.status
+
+        issue.status = IssueStatus.CLOSED
+        issue.closed_at = now
+        issue.closed_by_id = user.id
+        issue.updated_at = now
 
         # await RabbitPublisher.publish(
         #     IssueClosedEvent.from_models(issue, user)
         # )
 
-        status_transitions = schema.IssueStatusTransitions.from_status(issue.status)
+        event = IssueCloseEvent.from_model(old_value, issue, user, now)
+        self.db.add(OutboxFactory.from_event(event))
 
-        return schema.IssueStatusResponse(
-            **schema.IssueStatusResponseBase.model_validate(issue).model_dump(),
-            statuses=status_transitions
-        )
+        await self.db.commit()
 
+        return self._get_status_response(issue)
 
     async def reopen(self,issue_id: UUID,user: User) -> schema.IssueStatusResponse:
         result = await self.rep.get_by_public_id_with_current_member(self.db,issue_id,user.id)
@@ -316,22 +379,29 @@ class IssueService:
         if issue.status != IssueStatus.CLOSED:
             raise AppException(ErrorCode.ISSUE_NOT_CLOSED,"Issue is not closed")
 
+        now = get_now_dt()
+
         issue.status = IssueStatus.OPEN
         issue.closed_at = None
         issue.closed_by_id = None
-        issue.updated_at = get_now_dt()
-
-        await self.db.commit()
+        issue.updated_at = now
 
         # await RabbitPublisher.publish(
         #     IssueReopenedEvent.from_models(issue, user)
         # )
 
-        status_transitions = schema.IssueStatusTransitions.from_status(issue.status)
+        event = IssueReopenEvent.from_model(issue, user, now)
+        self.db.add(OutboxFactory.from_event(event))
 
+        await self.db.commit()
+
+        return self._get_status_response(issue)
+
+    @staticmethod
+    def _get_status_response(issue: Issue) -> schema.IssueStatusResponse:
         return schema.IssueStatusResponse(
-            **schema.IssueStatusResponseBase.model_validate(issue).model_dump(),
-            statuses=status_transitions
+            **schema.IssueStatusBaseResponse.model_validate(issue).model_dump(),
+            allowed_statuses=schema.IssueStatusTransitions.from_status(issue.status)
         )
 
     @staticmethod

@@ -18,20 +18,6 @@ class IssueRepository:
         await db.flush()
         return issue
 
-    @staticmethod
-    async def get_by_public_id(db: AsyncSession,public_id: UUID) -> Issue:
-        result = await db.execute(
-            select(Issue)
-            .options(
-                joinedload(Issue.project)
-            )
-            .where(
-                Issue.public_id == public_id,
-                Issue.deleted_at.is_(None),
-            )
-        )
-
-        return result.scalar_one()
 
     @staticmethod
     async def get_by_public_id_with_current_member(db: AsyncSession, public_id: UUID, user_id: int,
@@ -56,6 +42,39 @@ class IssueRepository:
         result = await db.execute(stmt)
 
         row = result.one_or_none()
+        if row is None:
+            return None
+
+        issue, member_current = row
+
+        return issue, member_current
+
+    @staticmethod
+    async def get_by_public_id_with_current_member_and_assignee(db: AsyncSession,public_id: UUID, user_id: int,
+    ) -> tuple[Issue, ProjectMember | None] | None:
+
+        stmt = (
+            select(Issue, ProjectMember)
+            .join(Issue.project)
+            .outerjoin(
+                ProjectMember,
+                (ProjectMember.project_id == Project.id)
+                & (ProjectMember.user_id == user_id),
+            )
+            .options(
+                contains_eager(Issue.project),
+                selectinload(Issue.assignee),
+            )
+            .where(
+                Issue.public_id == public_id,
+                Issue.deleted_at.is_(None),
+            )
+        )
+
+        result = await db.execute(stmt)
+
+        row = result.one_or_none()
+
         if row is None:
             return None
 
@@ -92,7 +111,6 @@ class IssueRepository:
         result = await db.execute(stmt)
 
         return result.scalar_one_or_none()
-
 
     @staticmethod
     def _apply_issue_filters(stmt, filters: IssueFilters):
@@ -188,18 +206,3 @@ class IssueRepository:
         result = await db.execute(stmt)
 
         return list(result.scalars().all())
-
-    @staticmethod
-    async def update(db: AsyncSession,issue: Issue) -> Issue:
-        await db.flush()
-        await db.refresh(issue)
-        return issue
-
-    @staticmethod
-    async def delete(db: AsyncSession, issue: Issue) -> Issue:
-        issue.deleted_at = datetime.now(timezone.utc)
-
-        await db.flush()
-        await db.refresh(issue)
-
-        return issue

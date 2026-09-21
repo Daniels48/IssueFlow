@@ -6,17 +6,16 @@ from pydantic import TypeAdapter
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import AppException, ErrorCode
-from app.events import ProjectMemberAddedEvent, ProjectMemberRoleChangedEvent, ProjectMemberRemovedEvent
+from app.events.member import MemberAddedEvent, MemberUpdatedEvent, MemberDeletedEvent
+from app.events.outbox import OutboxFactory
 from app.infrastructure.db.models import User, ProjectMember
-from app.infrastructure.rabbitmq import RabbitPublisher
-from app.modules.auth.dependencies import DBSession
-from app.modules.project_members.project_role import ProjectRole
+from app.infrastructure.db.database import DBSession
 from app.modules.project_members.repository import ProjectMemberRepository
 from app.modules.project_members.schema import ProjectMemberCreate, ProjectMemberUpdate, ProjectMemberResponse
 from app.modules.projects.repository import ProjectRepository
 from app.modules.users.repository import UserRepository
 from app.permissions import PermissionContext, Permission, ProjectRBAC
-
+from app.utils.func_utils import to, get_now_dt
 
 MEMBER_LIST_ADAPTER = TypeAdapter(list[ProjectMemberResponse])
 
@@ -49,13 +48,17 @@ class ProjectMemberService:
         if user_in_project:
             raise AppException(ErrorCode.MEMBER_ALREADY_IN_PROJECT, "Member already in project")
 
-        member = ProjectMember(project_id=project.id, user_id=added_user.id, role=ProjectRole.MEMBER, user=added_user)
+        now = get_now_dt()
+
+        member = ProjectMember(project_id=project.id, project=project, user_id=added_user.id, user=added_user, created_at=now)
         member = await self.repository.create(self.db,member)
+
+        event = MemberAddedEvent.from_model(member=member, user=user, occurred_at=now)
+        self.db.add(OutboxFactory.from_event(event))
+
         await self.db.commit()
 
-        await RabbitPublisher.publish(ProjectMemberAddedEvent.from_models(project, user, member))
-        
-        return ProjectMemberResponse.model_validate(member)
+        return to(ProjectMemberResponse, member)
 
     async def get_members(self, project_id: UUID, user: User) -> list[ProjectMemberResponse]:
         result = await self.project_repository.get_by_public_id_with_current_member(self.db, project_id, user.id)
@@ -83,20 +86,27 @@ class ProjectMemberService:
         context = PermissionContext(user=user, project=project, member=member_current)
         ProjectRBAC.require(permission=Permission.MEMBER_ROLE_UPDATE, context=context)
 
-        member = await self.repository.get_by_project_and_user_public_id(self.db, project.id, user_id)
+        member = await self.repository.get_by_project_and_user_id(self.db, project.id, user_id)
 
         if not member:
             raise AppException(ErrorCode.USER_IS_NOT_A_PROJECT_MEMBER, "Member not found")
 
+        if member.role == data.role:
+            return to(ProjectMemberResponse, member)
+
+        now = get_now_dt()
+
+        old_value = member.role
         member.role = data.role
-        member = await self.repository.update(self.db,member)
+        member.project = project
+        member.updated_at = now
+
+        event = MemberUpdatedEvent.from_model(old_value=old_value, member=member, user=user, occurred_at=now)
+        self.db.add(OutboxFactory.from_event(event))
+
         await self.db.commit()
 
-        await RabbitPublisher.publish(
-            ProjectMemberRoleChangedEvent.from_models(project, user, member)
-        )
-        
-        return ProjectMemberResponse.model_validate(member)
+        return to(ProjectMemberResponse, member)
 
     async def delete_member(self,project_id: UUID,user_id: UUID,user: User) -> None:
         result = await self.project_repository.get_by_public_id_with_current_member(self.db, project_id, user.id)
@@ -109,15 +119,20 @@ class ProjectMemberService:
         context = PermissionContext(user=user, project=project, member=member_current)
         ProjectRBAC.require(permission=Permission.MEMBER_REMOVE, context=context)
 
-        member = await ProjectMemberRepository.get_by_project_and_user_public_id(self.db, project.id, user_id)
+        member = await self.repository.get_by_project_and_user_id(self.db, project.id, user_id)
 
         if not member:
             raise AppException(ErrorCode.USER_IS_NOT_A_PROJECT_MEMBER, "Member not found")
 
-        await self.repository.delete(self.db,member)
-        await self.db.commit()
+        now = get_now_dt()
+        member.project = project
 
-        await RabbitPublisher.publish(ProjectMemberRemovedEvent.from_models(project, user, member))
+        event = MemberDeletedEvent.from_model(member=member, user=user, occurred_at=now)
+        self.db.add(OutboxFactory.from_event(event))
+
+        await self.repository.delete(self.db, member)
+
+        await self.db.commit()
 
 
 async def get_member_service(db: DBSession) -> ProjectMemberService:

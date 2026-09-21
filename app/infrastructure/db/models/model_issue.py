@@ -55,5 +55,5 @@ class Issue(BaseModel):
         return self.project.users
 
     @property
-    def statuses(self) -> list[IssueStatus]:
+    def allowed_statuses(self) -> list[IssueStatus]:
         return list(IssueStatus)

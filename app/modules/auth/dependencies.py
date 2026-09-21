@@ -2,10 +2,9 @@ from typing import Annotated
 from dataclasses import dataclass
 
 from fastapi import Depends, Cookie, Request
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import AppException, ErrorCode
-from app.infrastructure.db.database import get_db
+from app.infrastructure.db.database import DBSession
 from app.infrastructure.db.models import User
 from app.modules.auth.cache import SessionCache
 from app.modules.auth.cookie import AuthCookie
@@ -15,8 +14,6 @@ from app.modules.auth.schema import AccessTokenPayload
 from app.modules.auth.service import AuthService
 from app.modules.users.repository import UserRepository
 from app.utils.func_utils import get_now_dt
-
-DBSession = Annotated[AsyncSession, Depends(get_db)]
 
 RefreshToken = Annotated[str | None, Cookie(alias=AuthCookie.REFRESH)]
 AccessToken = Annotated[str | None, Cookie(alias=AuthCookie.ACCESS)]
