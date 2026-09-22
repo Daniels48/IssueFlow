@@ -7,5 +7,5 @@ from app.infrastructure.db.models import User, Project, ProjectMember, Issue, Co
 class PermissionContext:
     user: User
     project: Project
-    member: ProjectMember | None
+    member: ProjectMember | None = None
     resource: Issue | Comment | None = None

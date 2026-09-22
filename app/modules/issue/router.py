@@ -59,7 +59,6 @@ async def reopen_issue(issue_id: UUID, service: issue_service, user: CurrentUser
     return await service.reopen(issue_id=issue_id, user=user)
 
 
-
 @router.delete("/{issue_id}",status_code=status.HTTP_204_NO_CONTENT)
 async def delete(issue_id: UUID, service: issue_service, user: CurrentUser):
     await service.delete(public_id=issue_id, user=user)

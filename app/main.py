@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from asgi_profiler import install
 
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
@@ -12,7 +13,9 @@ from app.infrastructure.rabbitmq import RabbitConnection, RabbitPublisher
 from app.modules.router import api_router
 from app.web.router import router as web_router
 
+
 setup_logging()
+
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
@@ -25,6 +28,8 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan, title="issueflow") #app
+
+install(app)
 
 
 # --------------------------- STATIC -----------------------------

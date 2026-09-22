@@ -369,4 +369,4 @@ function modal_members(e) { if (e.target === modal) {modal.classList.add("hidden
 
 loadProject();
 restoreFilters();
-loadIssues();
+// loadIssues();

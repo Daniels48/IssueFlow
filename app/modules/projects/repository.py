@@ -14,71 +14,10 @@ class ProjectRepository:
     async def create(db: AsyncSession,project: Project) -> Project:
         db.add(project)
         await db.flush()
-        await db.refresh(project)
         return project
 
-    # @staticmethod
-    # async def get_by_public_id(db: AsyncSession, public_id: UUID, user_id: int) -> Project | None:
-    #     stmt = (
-    #         select(Project)
-    #         .options(
-    #             selectinload(Project.members).selectinload(ProjectMember.user),
-    #             selectinload(Project.issues).selectinload(Issue.reporter),
-    #             selectinload(Project.issues).selectinload(Issue.assignee),
-    #
-    #             with_loader_criteria(
-    #                 ProjectMember,
-    #                 ProjectMember.deleted_at.is_(None),
-    #                 include_aliases=True,
-    #             ),
-    #             with_loader_criteria(
-    #                 Issue,
-    #                 Issue.deleted_at.is_(None),
-    #                 include_aliases=True,
-    #             ),
-    #         )
-    #         .join(
-    #             ProjectMember,
-    #             and_(
-    #                 ProjectMember.project_id == Project.id,
-    #                 # ProjectMember.user_id == user_id,
-    #                 ProjectMember.deleted_at.is_(None),
-    #             ),
-    #         )
-    #         .where(
-    #             Project.public_id == public_id,
-    #             Project.deleted_at.is_(None),
-    #         )
-    #     )
-    #     result = await db.execute(stmt)
-    #
-    #     project = result.scalar_one_or_none()
-    #
-    #     return project
-
     @staticmethod
-    async def get_by_public_id_one(db: AsyncSession,public_id: UUID, user_id: int) -> Project | None:
-        stmt = (
-            select(Project)
-            .join(ProjectMember, ProjectMember.project_id == Project.id)
-            .where(
-                Project.public_id == public_id,
-                ProjectMember.user_id == user_id,
-                ProjectMember.deleted_at.is_(None),
-                Project.deleted_at.is_(None),
-            )
-            .options(
-                selectinload(Project.members).selectinload(ProjectMember.user),
-                selectinload(Project.issues).selectinload(Issue.reporter),
-                selectinload(Project.issues).selectinload(Issue.assignee),
-            )
-        )
-
-        result = await db.execute(stmt)
-        return result.scalar_one_or_none()
-
-    @staticmethod
-    async def get_by_public_id(db: AsyncSession,public_id: UUID, user_id: int) -> Project | None:
+    async def get_by_public_id(db: AsyncSession,public_id: UUID) -> Project | None:
         stmt = (
             select(Project)
             .options(
@@ -87,16 +26,8 @@ class ProjectRepository:
                 selectinload(Project.issues).selectinload(Issue.reporter),
                 selectinload(Project.issues).selectinload(Issue.assignee),
 
-                with_loader_criteria(
-                    ProjectMember,
-                    ProjectMember.deleted_at.is_(None),
-                    include_aliases=True,
-                ),
-                with_loader_criteria(
-                    Issue,
-                    Issue.deleted_at.is_(None),
-                    include_aliases=True,
-                ),
+                with_loader_criteria(ProjectMember, ProjectMember.deleted_at.is_(None), include_aliases=True),
+                with_loader_criteria(Issue, Issue.deleted_at.is_(None), include_aliases=True),
             )
             .where(
                 Project.public_id == public_id,
@@ -109,32 +40,42 @@ class ProjectRepository:
         return result.scalar_one_or_none()
 
     @staticmethod
-    async def get_all(db: AsyncSession) -> list[Project]:
-        result = await db.execute(
-            select(Project)
-        )
+    async def get_by_public_id_with_current_member_detail( db: AsyncSession,public_id: UUID, user_id: int,
+    ) -> tuple[Project, ProjectMember | None] | None:
+        stmt = (
+            select(Project, ProjectMember)
+            .outerjoin(
+                ProjectMember,
+                (ProjectMember.project_id == Project.id)
+                & (ProjectMember.user_id == user_id),
+            )
+            .options(
+                selectinload(Project.members)
+                .selectinload(ProjectMember.user),
 
-        return list(result.scalars().all())
+                selectinload(Project.issues)
+                .selectinload(Issue.reporter),
 
-    @staticmethod
-    async def update(db: AsyncSession, project: Project | None) -> Project | None:
-        await db.flush()
-        await db.refresh(project)
-        return project
+                selectinload(Project.issues)
+                .selectinload(Issue.assignee),
 
-    @staticmethod
-    async def delete(db: AsyncSession,project: Project) -> None:
-        await db.delete(project)
-
-    @staticmethod
-    async def get_all_by_owner(db: AsyncSession,owner_id: int) -> list[Project]:
-        result = await db.execute(
-            select(Project).where(
-                Project.owner_id == owner_id,
+                with_loader_criteria(  ProjectMember,  ProjectMember.deleted_at.is_(None),  include_aliases=True),
+                with_loader_criteria(Issue, Issue.deleted_at.is_(None), include_aliases=True ),
+            )
+            .where(
+                Project.public_id == public_id,
+                Project.deleted_at.is_(None),
             )
         )
 
-        return list(result.scalars().all())
+        result = await db.execute(stmt)
+        row = result.one_or_none()
+
+        if row is None:
+            return None
+
+        project, member = row
+        return project, member
 
     @staticmethod
     def _members_get_query():
@@ -239,14 +180,15 @@ class ProjectRepository:
         return result.scalar_one_or_none()
 
     @staticmethod
-    async def get_by_public_id_with_current_member(db: AsyncSession, public_id: UUID, user_id: int,
+    async def get_by_public_id_with_current_member(db: AsyncSession,public_id: UUID,user_id: int,
     ) -> tuple[Project, ProjectMember | None] | None:
         stmt = (
             select(Project, ProjectMember)
             .outerjoin(
                 ProjectMember,
                 (ProjectMember.project_id == Project.id)
-                & (ProjectMember.user_id == user_id),
+                & (ProjectMember.user_id == user_id)
+                & (ProjectMember.deleted_at.is_(None)),
             )
             .where(
                 Project.public_id == public_id,
@@ -255,8 +197,12 @@ class ProjectRepository:
         )
 
         result = await db.execute(stmt)
+        row = result.one_or_none()
 
-        return result.one_or_none()
+        if row is None:
+            return None
+
+        return row
 
     @staticmethod
     async def get_all_with_users(db: AsyncSession) -> list[Project]:

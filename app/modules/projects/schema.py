@@ -18,6 +18,14 @@ class ProjectUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
 
+class ProjectUpdateResponse(ProjectUpdate):
+    model_config = ConfigDict(from_attributes=True)
+    public_id: UUID
+    name: str | None = None
+    description: str | None = None
+    updated_at: datetime
+
+
 
 class ProjectResponse(BaseModel):
     public_id: UUID

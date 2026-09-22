@@ -4,7 +4,7 @@ from fastapi import APIRouter, status
 
 from app.modules.auth.dependencies import CurrentUser
 from app.modules.projects.schema import ProjectCreate, ProjectResponse, ProjectUpdate, ProjectListResponse, \
-    ProjectDetailResponse
+    ProjectDetailResponse, ProjectUpdateResponse
 from app.modules.projects.service import project_service
 
 
@@ -23,10 +23,10 @@ async def get_projects(current_user: CurrentUser, service: project_service):
 
 @router.get("/{public_id}",response_model=ProjectDetailResponse)
 async def get_project(public_id: UUID, current_user: CurrentUser, service: project_service):
-    return await service.get_by_public_id(public_id, current_user)
+    return await service.get_one(public_id, current_user)
 
 
-@router.patch("/{public_id}", response_model=ProjectUpdate)
+@router.patch("/{public_id}", response_model=ProjectUpdateResponse)
 async def update_project(public_id: UUID, data: ProjectUpdate, current_user: CurrentUser, service: project_service):
     return await service.update(public_id, data, current_user)
 

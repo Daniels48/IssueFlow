@@ -12,7 +12,6 @@ class ProjectMemberRepository:
     async def create(db: AsyncSession,member: ProjectMember) -> ProjectMember:
         db.add(member)
         await db.flush()
-        await db.refresh(member)
         return member
 
     @staticmethod
