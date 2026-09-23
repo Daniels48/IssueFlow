@@ -2,7 +2,9 @@ from datetime import datetime
 from uuid import UUID
 from pydantic import BaseModel, Field, ConfigDict, computed_field
 
+from app.modules.issue.priority import IssuePriority
 from app.modules.issue.schema import IssueResponse
+from app.modules.issue.status import IssueStatus
 
 from app.modules.project_members.project_role import ProjectRole
 from app.modules.project_members.schema import ProjectMemberResponse
@@ -28,6 +30,7 @@ class ProjectUpdateResponse(ProjectUpdate):
 
 
 class ProjectResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     public_id: UUID
     name: str
     description: str | None
@@ -63,6 +66,63 @@ class ProjectDetailResponse(BaseModel):
     updated_at: datetime
     members: list[ProjectMemberResponse]
     issues: list[IssueResponse]
+
+    @computed_field
+    @property
+    def roles(self) -> list[ProjectRole]:
+        return list(ProjectRole)
+
+
+
+
+class ProjectMemberResponse1(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    user: UserShortResponse
+    role: ProjectRole
+
+
+class IssueResponse1(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    public_id: UUID
+
+    title: str
+    description: str | None
+
+    status: IssueStatus
+    priority: IssuePriority
+
+    reporter: UserShortResponse
+    assignee: UserShortResponse | None
+
+    due_date: datetime | None
+
+    created_at: datetime
+    updated_at: datetime
+
+
+class ProjectResponse1(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    public_id: UUID
+    name: str
+    description: str | None
+    owner: UserShortResponse
+    created_at: datetime
+    updated_at: datetime
+
+
+class ProjectDetailResponse1(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    public_id: UUID
+    name: str
+    description: str | None
+    owner: UserShortResponse
+    created_at: datetime
+    updated_at: datetime
+    members: list[ProjectMemberResponse1]
+    issues: list[IssueResponse1]
 
     @computed_field
     @property

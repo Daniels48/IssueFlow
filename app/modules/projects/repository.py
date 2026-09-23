@@ -1,12 +1,14 @@
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select, func, and_, Row, or_
+from sqlalchemy import select, func, and_, Row, or_, case
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload, with_loader_criteria, joinedload
+from sqlalchemy.orm import selectinload, with_loader_criteria, joinedload, aliased
 
 from app.infrastructure.db.models import ProjectMember, Comment, Issue, User
 from app.infrastructure.db.models.model_projects import Project
+from sqlalchemy import select, func, literal, cast
+from sqlalchemy.dialects.postgresql import JSONB
 
 
 class ProjectRepository:
@@ -76,6 +78,93 @@ class ProjectRepository:
 
         project, member = row
         return project, member
+
+    @staticmethod
+    async def get_by_public_id_detail_aggregate(db: AsyncSession,public_id: UUID) -> tuple[Any, Any, Any] | None:
+
+        Reporter = aliased(User)
+        Assignee = aliased(User)
+
+        member_value = func.jsonb_build_object(
+                            "public_id", ProjectMember.public_id,
+                            "role", ProjectMember.role,
+                            "user", func.jsonb_build_object(
+                                "public_id", User.public_id,
+                                "username", User.username,
+                            ),
+                        )
+
+        members_subq = (
+            select(func.coalesce(func.jsonb_agg(member_value), cast("[]", JSONB)))
+            .select_from(ProjectMember)
+            .join(User, User.id == ProjectMember.user_id)
+            .where(
+                ProjectMember.project_id == Project.id,
+                ProjectMember.deleted_at.is_(None),
+            )
+            .correlate(Project)
+            .scalar_subquery()
+        )
+
+        issue_value = func.jsonb_build_object(
+                            "public_id", Issue.public_id,
+                            "title", Issue.title,
+                            "description", Issue.description,
+                            "status", Issue.status,
+                            "priority", Issue.priority,
+                            "due_date", Issue.due_date,
+                            "created_at", Issue.created_at,
+                            "updated_at", Issue.updated_at,
+
+                            "reporter", func.jsonb_build_object(
+                                "public_id", Reporter.public_id,
+                                "username", Reporter.username,
+                            ),
+
+                            "assignee", case((
+                            Assignee.id.is_not(None),
+                                func.jsonb_build_object(
+                                    "public_id", Assignee.public_id,
+                                    "username", Assignee.username,
+                                ),),
+                            else_=None,),
+                        )
+
+        issues_subq = (
+            select(func.coalesce(func.jsonb_agg(issue_value).filter(Issue.id.is_not(None)), cast("[]", JSONB)))
+            .select_from(Issue)
+            .join(Reporter, Reporter.id == Issue.reporter_id)
+            .outerjoin(Assignee, Assignee.id == Issue.assignee_id)
+            .where(
+                Issue.project_id == Project.id,
+                Issue.deleted_at.is_(None),
+            )
+            .correlate(Project)
+            .scalar_subquery()
+        )
+
+        stmt = (
+            select(
+                Project,
+                members_subq.label("members"),
+                issues_subq.label("issues"),
+            )
+            .where(
+                Project.public_id == public_id,
+                Project.deleted_at.is_(None),
+            )
+        )
+
+        result = await db.execute(stmt)
+
+        row = result.one_or_none()
+
+        if row is None:
+            return None
+
+        project, members, issues = row
+
+        return project, members, issues
 
     @staticmethod
     def _members_get_query():

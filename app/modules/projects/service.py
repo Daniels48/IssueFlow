@@ -16,7 +16,8 @@ from app.modules.project_members.project_role import ProjectRole
 from app.modules.project_members.repository import ProjectMemberRepository
 from app.modules.projects.repository import ProjectRepository
 from app.modules.projects.schema import ProjectCreate, ProjectUpdate, ProjectListResponse, \
-    ProjectDetailResponse, ProjectListBaseResponse, ProjectResponse, ProjectUpdateResponse
+    ProjectDetailResponse, ProjectListBaseResponse, ProjectResponse, ProjectUpdateResponse, ProjectMemberResponse1, \
+    ProjectDetailResponse1, IssueResponse1, ProjectResponse1
 from app.permissions import PermissionContext, ProjectRBAC, Permission
 from app.utils.func_utils import get_now_dt, to
 
@@ -58,18 +59,31 @@ class ProjectService:
         ]
 
     async def get_one(self, public_id: UUID, user: User) -> ProjectDetailResponse:
-        # project = await self.repository.get_by_public_id(db=self.db, public_id=public_id)
-        result = await self.repository.get_by_public_id_with_current_member_detail(self.db, public_id, user.id)
+        #1 project = await self.repository.get_by_public_id(db=self.db, public_id=public_id)
+        # result = await self.repository.get_by_public_id_with_current_member_detail(self.db, public_id, user.id)
+        #
+        # if result is None:
+        #     raise AppException(ErrorCode.PROJECT_NOT_FOUND, "Project not found.")
+        #
+        # project, member = result
+        project, members, issues = await self.repository.get_by_public_id_detail_aggregate(self.db, public_id)
 
-        if result is None:
-            raise AppException(ErrorCode.PROJECT_NOT_FOUND, "Project not found.")
+        # Получаем member текущего пользователя отдельно
+        member = await self.mem_rep.get_by_project_and_user_id(
+            self.db,
+            project.id,
+            user.public_id,
+        )
 
-        project, member = result
-
-        context = PermissionContext(user=user, project=project)
+        context = PermissionContext(user=user, project=project, member=member)
         ProjectRBAC.require(permission=Permission.PROJECT_VIEW, context=context)
 
-        return to(ProjectDetailResponse, project)
+        # return to(ProjectDetailResponse, project)
+        return ProjectDetailResponse1(
+            **to(ProjectResponse1, project).model_dump(),
+            members=[ProjectMemberResponse1.model_validate(member) for member in members],
+            issues=[IssueResponse1.model_validate(issue) for issue in issues],
+        )
 
 
     async def update(self, public_id: UUID, data: ProjectUpdate, user: User) -> ProjectUpdateResponse:

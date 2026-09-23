@@ -21,7 +21,8 @@ async def get_projects(current_user: CurrentUser, service: project_service):
     return await service.get_all(current_user)
 
 
-@router.get("/{public_id}",response_model=ProjectDetailResponse)
+# @router.get("/{public_id}",response_model=ProjectDetailResponse)
+@router.get("/{public_id}")
 async def get_project(public_id: UUID, current_user: CurrentUser, service: project_service):
     return await service.get_one(public_id, current_user)
 

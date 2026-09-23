@@ -145,9 +145,6 @@ class IssueService:
 
             issue.updated_at = now
 
-            # event = IssueUpdatedEvent.from_models(issue, user)
-            # await RabbitPublisher.publish(event)
-
             event = IssueUpdateEvent.from_model(old_issue, issue, user, now)
             self.db.add(OutboxFactory.from_event(event))
 
@@ -172,9 +169,6 @@ class IssueService:
 
         issue.updated_at = now
         issue.deleted_at = now
-
-        # event = IssueUpdatedEvent.from_models(issue, user)
-        # await RabbitPublisher.publish(event)
 
         event = IssueDeleteEvent.from_model(issue, user, now)
         self.db.add(OutboxFactory.from_event(event))

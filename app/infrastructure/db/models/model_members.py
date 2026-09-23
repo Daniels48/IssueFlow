@@ -5,6 +5,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.db.base import BaseModel
 from app.modules.project_members.project_role import ProjectRole
+from app.utils.func_utils import pg_enum
 
 if TYPE_CHECKING:
     from app.infrastructure.db.models import Project, User
@@ -18,7 +19,7 @@ class ProjectMember(BaseModel):
 
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
 
-    role: Mapped[ProjectRole] = mapped_column(Enum(ProjectRole, name="project_role"), nullable=False, default=ProjectRole.MEMBER)
+    role: Mapped[ProjectRole] = mapped_column(pg_enum(ProjectRole, "project_role"), nullable=False, default=ProjectRole.MEMBER)
 
     project: Mapped["Project"] = relationship(back_populates="members",)
 

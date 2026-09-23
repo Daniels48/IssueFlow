@@ -7,6 +7,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.infrastructure.db.base import BaseModel
 from app.modules.issue.priority import IssuePriority
 from app.modules.issue.status import IssueStatus
+from app.utils.func_utils import pg_enum
 
 if TYPE_CHECKING:
     from app.infrastructure.db.models import Project, User, Comment
@@ -25,9 +26,9 @@ class Issue(BaseModel):
 
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    status: Mapped[IssueStatus] = mapped_column(default=IssueStatus.OPEN, nullable=False)
+    status: Mapped[IssueStatus] = mapped_column(pg_enum(IssueStatus, "issue_status"), default=IssueStatus.OPEN, nullable=False)
 
-    priority: Mapped[IssuePriority] = mapped_column(default=IssuePriority.MEDIUM, nullable=False)
+    priority: Mapped[IssuePriority] = mapped_column(pg_enum(IssuePriority, "issue_priority"), default=IssuePriority.MEDIUM, nullable=False)
 
     due_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
