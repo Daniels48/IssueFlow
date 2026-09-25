@@ -1,4 +1,3 @@
-from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
@@ -6,19 +5,14 @@ from fastapi import Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import TypeAdapter
 
+from app import events
+from app.events.issue import IssueEventData
 from app.core.exceptions import AppException, ErrorCode
-from app.events.issue import IssueCreatedEvent, IssueUpdateEvent, IssueEventData, IssueDeleteEvent, \
-    IssueChangeDueDateEvent, IssueUnAssigneeEvent, IssueChangeAssigneeEvent, IssueChangePriorityEvent, \
-    IssueChangeStatusEvent, IssueCloseEvent, IssueReopenEvent
-from app.events.outbox import OutboxFactory
-from app.infrastructure.db.models import User, Issue, ProjectMember
-
 from app.infrastructure.db.database import DBSession
-
+from app.infrastructure.db.models import User, Issue, ProjectMember
 from app.modules.comments.service import CommentService
 from app.modules.issue.priority import IssuePriority
 from app.modules.issue import schema as schema
-
 from app.modules.issue.repository import IssueRepository
 from app.modules.issue.status import IssueStatus
 from app.modules.issue.transitions import ALLOWED_STATUS_TRANSITIONS
@@ -75,8 +69,8 @@ class IssueService:
 
         issue = await self.rep.create(self.db, issue)
 
-        event = IssueCreatedEvent.from_model(issue, user, now)
-        self.db.add(OutboxFactory.from_event(event))
+        event = events.IssueCreatedEvent.from_model(issue, user, now)
+        self.db.add(events.OutboxFactory.from_event(event))
 
         await self.db.commit()
 
@@ -101,7 +95,7 @@ class IssueService:
         )
 
     async def list(self, project_id: UUID, user: User, filters: schema.IssueFilters) -> list[schema.IssueResponse]:
-        project = await self.project_rep.get_by_public_id_no_full(self.db, project_id)
+        project = await self.project_rep.get_by_public_id(self.db, project_id)
 
         if not project:
             raise AppException(ErrorCode.PROJECT_NOT_FOUND, "Project not found")
@@ -145,8 +139,8 @@ class IssueService:
 
             issue.updated_at = now
 
-            event = IssueUpdateEvent.from_model(old_issue, issue, user, now)
-            self.db.add(OutboxFactory.from_event(event))
+            event = events.IssueUpdateEvent.from_model(old_issue, issue, user, now)
+            self.db.add(events.OutboxFactory.from_event(event))
 
             await self.db.commit()
 
@@ -170,8 +164,8 @@ class IssueService:
         issue.updated_at = now
         issue.deleted_at = now
 
-        event = IssueDeleteEvent.from_model(issue, user, now)
-        self.db.add(OutboxFactory.from_event(event))
+        event = events.IssueDeleteEvent.from_model(issue, user, now)
+        self.db.add(events.OutboxFactory.from_event(event))
 
         await self.db.commit()
 
@@ -198,8 +192,8 @@ class IssueService:
         issue.due_date = data.due_date
         issue.updated_at = now
 
-        event = IssueChangeDueDateEvent.from_model(old_value, issue, user, now)
-        self.db.add(OutboxFactory.from_event(event))
+        event = events.IssueChangeDueDateEvent.from_model(old_value, issue, user, now)
+        self.db.add(events.OutboxFactory.from_event(event))
 
         await self.db.commit()
 
@@ -235,7 +229,7 @@ class IssueService:
 
             set_assignee(None)
 
-            event = IssueUnAssigneeEvent.from_model(old_value, issue, user, now)
+            event = events.IssueUnAssigneeEvent.from_model(old_value, issue, user, now)
 
         else:
             member_assignee = await self.member_rep.get_by_project_and_user_id(
@@ -250,10 +244,10 @@ class IssueService:
 
             set_assignee(member_assignee)
 
-            event = IssueChangeAssigneeEvent.from_model(old_value, member_assignee.user, issue, user, now)
+            event = events.IssueChangeAssigneeEvent.from_model(old_value, member_assignee.user, issue, user, now)
 
 
-        self.db.add(OutboxFactory.from_event(event))
+        self.db.add(events.OutboxFactory.from_event(event))
         await self.db.commit()
 
         return to(schema.IssueAssigneeResponse, issue)
@@ -282,8 +276,8 @@ class IssueService:
         issue.priority = data.priority
         issue.updated_at = now
 
-        event = IssueChangePriorityEvent.from_model(old_value, issue, user, now)
-        self.db.add(OutboxFactory.from_event(event))
+        event = events.IssueChangePriorityEvent.from_model(old_value, issue, user, now)
+        self.db.add(events.OutboxFactory.from_event(event))
 
         await self.db.commit()
 
@@ -318,8 +312,8 @@ class IssueService:
         issue.status = data.status
         issue.updated_at = now
 
-        event = IssueChangeStatusEvent.from_model(old_value, issue, user, now)
-        self.db.add(OutboxFactory.from_event(event))
+        event = events.IssueChangeStatusEvent.from_model(old_value, issue, user, now)
+        self.db.add(events.OutboxFactory.from_event(event))
 
         await self.db.commit()
 
@@ -348,12 +342,8 @@ class IssueService:
         issue.closed_by_id = user.id
         issue.updated_at = now
 
-        # await RabbitPublisher.publish(
-        #     IssueClosedEvent.from_models(issue, user)
-        # )
-
-        event = IssueCloseEvent.from_model(old_value, issue, user, now)
-        self.db.add(OutboxFactory.from_event(event))
+        event = events.IssueCloseEvent.from_model(old_value, issue, user, now)
+        self.db.add(events.OutboxFactory.from_event(event))
 
         await self.db.commit()
 
@@ -380,12 +370,8 @@ class IssueService:
         issue.closed_by_id = None
         issue.updated_at = now
 
-        # await RabbitPublisher.publish(
-        #     IssueReopenedEvent.from_models(issue, user)
-        # )
-
-        event = IssueReopenEvent.from_model(issue, user, now)
-        self.db.add(OutboxFactory.from_event(event))
+        event = events.IssueReopenEvent.from_model(issue, user, now)
+        self.db.add(events.OutboxFactory.from_event(event))
 
         await self.db.commit()
 

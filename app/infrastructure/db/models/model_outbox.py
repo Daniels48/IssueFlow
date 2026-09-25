@@ -11,7 +11,7 @@ from sqlalchemy.orm import mapped_column, Mapped
 from uuid6 import uuid7
 
 from app.infrastructure.db.base import Base
-
+from app.utils.func_utils import pg_enum
 
 
 class OutboxStatus(str, Enum):
@@ -34,7 +34,7 @@ class OutboxEvent(Base):
 
     payload: Mapped[dict] = mapped_column(JSONB, nullable=False)
 
-    status: Mapped[str] = mapped_column(String(20), nullable=False, default=OutboxStatus.PENDING)
+    status: Mapped[OutboxStatus] = mapped_column(pg_enum(OutboxStatus, "outbox_status"),nullable=False,default=OutboxStatus.PENDING)
 
     attempts: Mapped[int] = mapped_column(Integer,nullable=False,default=0)
 

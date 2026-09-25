@@ -4,24 +4,15 @@ from uuid import UUID
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.events import CommentCreatedEvent, CommentDeletedEvent, CommentUpdatedEvent, OutboxFactory
 from app.core.exceptions import AppException, ErrorCode
 from app.infrastructure.db.database import DBSession
-
-from app.events.comment import CommentCreatedEvent, CommentDeletedEvent, CommentUpdatedEvent
-from app.events.outbox import OutboxFactory
-
 from app.infrastructure.db.models import Comment, User
-
-
-
 from app.modules.comments.repository import CommentRepository
 from app.modules.comments import schema as schema
-
 from app.modules.issue.repository import IssueRepository
 from app.modules.issue.status import IssueStatus
-
 from app.permissions import PermissionContext, Permission, ProjectRBAC
-
 from app.utils.func_utils import to, get_now_dt
 
 

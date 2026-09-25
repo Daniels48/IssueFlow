@@ -1,10 +1,10 @@
 from datetime import datetime
-from typing import Self
+from typing import Self, ClassVar
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
-from app.events.base import Event_OutBox
+from app.events.base import Event
 from app.events.routing_keys import RoutingKeys
 from app.infrastructure.db.models import User
 
@@ -17,9 +17,9 @@ class UserEventData(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class UserRegisteredEvent(Event_OutBox):
-    event_type: str = RoutingKeys.USER_REGISTERED
-    aggregate_type: str = "user"
+class UserRegisteredEvent(Event):
+    event_type: ClassVar[str] = RoutingKeys.USER_REGISTERED
+    aggregate_type: ClassVar[str] = "user"
 
     user: UserEventData
     session_id: UUID
@@ -34,9 +34,9 @@ class UserRegisteredEvent(Event_OutBox):
         )
 
 
-class UserEmailChangedEvent(Event_OutBox):
-    event_type: str = RoutingKeys.USER_EMAIL_CHANGED
-    aggregate_type: str = "user"
+class UserEmailChangedEvent(Event):
+    event_type: ClassVar[str] = RoutingKeys.USER_EMAIL_CHANGED
+    aggregate_type: ClassVar[str] = "user"
 
     user: UserEventData
     old_email: str
@@ -53,9 +53,9 @@ class UserEmailChangedEvent(Event_OutBox):
         )
 
 
-class UserEmailVerifyEvent(Event_OutBox):
-    event_type: str = RoutingKeys.USER_EMAIL_VERIFIED
-    aggregate_type: str = "user"
+class UserEmailVerifyEvent(Event):
+    event_type: ClassVar[str] = RoutingKeys.USER_EMAIL_VERIFIED
+    aggregate_type: ClassVar[str] = "user"
 
     user: UserEventData
 
@@ -68,9 +68,9 @@ class UserEmailVerifyEvent(Event_OutBox):
         )
 
 
-class UserPasswordChangedEvent(Event_OutBox):
-    event_type: str = RoutingKeys.USER_PASSWORD_CHANGED
-    aggregate_type: str = "user"
+class UserPasswordChangedEvent(Event):
+    event_type: ClassVar[str] = RoutingKeys.USER_PASSWORD_CHANGED
+    aggregate_type: ClassVar[str] = "user"
 
     user: UserEventData
     session_ids: list[UUID]
@@ -85,9 +85,9 @@ class UserPasswordChangedEvent(Event_OutBox):
         )
 
 
-class UserLoggedInEvent(Event_OutBox):
-    event_type: str = RoutingKeys.USER_LOGGED_IN
-    aggregate_type: str = "user"
+class UserLoggedInEvent(Event):
+    event_type: ClassVar[str] = RoutingKeys.USER_LOGGED_IN
+    aggregate_type: ClassVar[str] = "user"
 
     user: UserEventData
     session_id: UUID
@@ -102,9 +102,9 @@ class UserLoggedInEvent(Event_OutBox):
         )
 
 
-class UserLoggedOutEvent(Event_OutBox):
-    event_type: str = RoutingKeys.USER_LOGGED_OUT
-    aggregate_type: str = "user"
+class UserLoggedOutEvent(Event):
+    event_type: ClassVar[str] = RoutingKeys.USER_LOGGED_OUT
+    aggregate_type: ClassVar[str] = "user"
 
     user: UserEventData
     session_id: UUID
@@ -119,9 +119,9 @@ class UserLoggedOutEvent(Event_OutBox):
         )
 
 
-class UserLoggedOutAllEvent(Event_OutBox):
-    event_type: str = RoutingKeys.USER_LOGGED_OUT_ALL
-    aggregate_type: str = "user"
+class UserLoggedOutAllEvent(Event):
+    event_type: ClassVar[str] = RoutingKeys.USER_LOGGED_OUT_ALL
+    aggregate_type: ClassVar[str] = "user"
 
     user: UserEventData
     session_ids: list[UUID]
@@ -136,9 +136,9 @@ class UserLoggedOutAllEvent(Event_OutBox):
         )
 
 
-class UserEmailVerificationRequestedEvent(Event_OutBox):
-    event_type: str = RoutingKeys.USER_EMAIL_VERIFICATION_REQUESTED
-    aggregate_type: str = "user"
+class UserEmailVerificationRequestedEvent(Event):
+    event_type: ClassVar[str] = RoutingKeys.USER_EMAIL_VERIFICATION_REQUESTED
+    aggregate_type: ClassVar[str] = "user"
 
     user: UserEventData
 
@@ -151,9 +151,9 @@ class UserEmailVerificationRequestedEvent(Event_OutBox):
         )
 
 
-class UserPasswordResetRequestedEvent(Event_OutBox):
-    event_type: str = RoutingKeys.USER_PASSWORD_RESET_REQUESTED
-    aggregate_type: str = "user"
+class UserPasswordResetRequestedEvent(Event):
+    event_type: ClassVar[str] = RoutingKeys.USER_PASSWORD_RESET_REQUESTED
+    aggregate_type: ClassVar[str] = "user"
 
     user: UserEventData
 
@@ -166,9 +166,9 @@ class UserPasswordResetRequestedEvent(Event_OutBox):
         )
 
 
-class UserDeletedEvent(Event_OutBox):
-    event_type: str = RoutingKeys.USER_DELETED
-    aggregate_type: str = "user"
+class UserDeletedEvent(Event):
+    event_type: ClassVar[str] = RoutingKeys.USER_DELETED
+    aggregate_type: ClassVar[str] = "user"
 
     user: UserEventData
 

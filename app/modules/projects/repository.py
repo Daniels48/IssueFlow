@@ -1,14 +1,12 @@
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select, func, and_, Row, or_, case
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload, with_loader_criteria, joinedload, aliased
-
-from app.infrastructure.db.models import ProjectMember, Comment, Issue, User
-from app.infrastructure.db.models.model_projects import Project
-from sqlalchemy import select, func, literal, cast
+from sqlalchemy import and_, Row, or_, case, select, func, cast, literal
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload, joinedload, aliased
+
+from app.infrastructure.db.models import ProjectMember, Comment, Issue, User, Project
 
 
 class ProjectRepository:
@@ -19,68 +17,7 @@ class ProjectRepository:
         return project
 
     @staticmethod
-    async def get_by_public_id(db: AsyncSession,public_id: UUID) -> Project | None:
-        stmt = (
-            select(Project)
-            .options(
-                selectinload(Project.members).selectinload(ProjectMember.user),
-
-                selectinload(Project.issues).selectinload(Issue.reporter),
-                selectinload(Project.issues).selectinload(Issue.assignee),
-
-                with_loader_criteria(ProjectMember, ProjectMember.deleted_at.is_(None), include_aliases=True),
-                with_loader_criteria(Issue, Issue.deleted_at.is_(None), include_aliases=True),
-            )
-            .where(
-                Project.public_id == public_id,
-                Project.deleted_at.is_(None),
-            )
-        )
-
-        result = await db.execute(stmt)
-
-        return result.scalar_one_or_none()
-
-    @staticmethod
-    async def get_by_public_id_with_current_member_detail( db: AsyncSession,public_id: UUID, user_id: int,
-    ) -> tuple[Project, ProjectMember | None] | None:
-        stmt = (
-            select(Project, ProjectMember)
-            .outerjoin(
-                ProjectMember,
-                (ProjectMember.project_id == Project.id)
-                & (ProjectMember.user_id == user_id),
-            )
-            .options(
-                selectinload(Project.members)
-                .selectinload(ProjectMember.user),
-
-                selectinload(Project.issues)
-                .selectinload(Issue.reporter),
-
-                selectinload(Project.issues)
-                .selectinload(Issue.assignee),
-
-                with_loader_criteria(  ProjectMember,  ProjectMember.deleted_at.is_(None),  include_aliases=True),
-                with_loader_criteria(Issue, Issue.deleted_at.is_(None), include_aliases=True ),
-            )
-            .where(
-                Project.public_id == public_id,
-                Project.deleted_at.is_(None),
-            )
-        )
-
-        result = await db.execute(stmt)
-        row = result.one_or_none()
-
-        if row is None:
-            return None
-
-        project, member = row
-        return project, member
-
-    @staticmethod
-    async def get_by_public_id_detail_aggregate(db: AsyncSession,public_id: UUID) -> tuple[Any, Any, Any] | None:
+    async def get_by_public_id_detail_aggregate(db: AsyncSession,public_id: UUID) -> Row[tuple[Any, Any, Any]] | None:
 
         Reporter = aliased(User)
         Assignee = aliased(User)
@@ -95,7 +32,7 @@ class ProjectRepository:
                         )
 
         members_subq = (
-            select(func.coalesce(func.jsonb_agg(member_value), cast("[]", JSONB)))
+            select(func.coalesce(func.jsonb_agg(member_value), cast(literal("[]"), JSONB),))
             .select_from(ProjectMember)
             .join(User, User.id == ProjectMember.user_id)
             .where(
@@ -121,17 +58,16 @@ class ProjectRepository:
                                 "username", Reporter.username,
                             ),
 
-                            "assignee", case((
-                            Assignee.id.is_not(None),
+                            "assignee", case((Assignee.id.is_not(None),
                                 func.jsonb_build_object(
                                     "public_id", Assignee.public_id,
                                     "username", Assignee.username,
-                                ),),
-                            else_=None,),
+                                ),
+                            ),else_=None,),
                         )
 
         issues_subq = (
-            select(func.coalesce(func.jsonb_agg(issue_value).filter(Issue.id.is_not(None)), cast("[]", JSONB)))
+            select(func.coalesce(func.jsonb_agg(issue_value).filter(Issue.id.is_not(None)), cast(literal("[]"), JSONB),))
             .select_from(Issue)
             .join(Reporter, Reporter.id == Issue.reporter_id)
             .outerjoin(Assignee, Assignee.id == Issue.assignee_id)
@@ -149,6 +85,9 @@ class ProjectRepository:
                 members_subq.label("members"),
                 issues_subq.label("issues"),
             )
+            .options(
+                joinedload(Project.owner)
+            )
             .where(
                 Project.public_id == public_id,
                 Project.deleted_at.is_(None),
@@ -157,18 +96,11 @@ class ProjectRepository:
 
         result = await db.execute(stmt)
 
-        row = result.one_or_none()
-
-        if row is None:
-            return None
-
-        project, members, issues = row
-
-        return project, members, issues
+        return result.one_or_none()
 
     @staticmethod
-    def _members_get_query():
-        return (
+    async def get_all_by_user(db: AsyncSession, user_id: int,is_admin: bool) -> list[Row[tuple[Any, Any, Any, Any]]]:
+        members_subq = (
             select(
                 ProjectMember.project_id.label("project_id"),
                 func.count(ProjectMember.id).label("members_count"),
@@ -178,9 +110,7 @@ class ProjectRepository:
             .subquery()
         )
 
-    @staticmethod
-    def _issues_get_query():
-        return (
+        issues_subq = (
             select(
                 Issue.project_id.label("project_id"),
                 func.count(Issue.id).label("issues_count"),
@@ -190,9 +120,7 @@ class ProjectRepository:
             .subquery()
         )
 
-    @staticmethod
-    def _comments_get_query():
-        return (
+        comments_subq = (
             select(
                 Issue.project_id.label("project_id"),
                 func.count(Comment.id).label("comments_count"),
@@ -209,12 +137,6 @@ class ProjectRepository:
             .group_by(Issue.project_id)
             .subquery()
         )
-
-    @staticmethod
-    async def get_all_by_user(db: AsyncSession, user_id: int,is_admin: bool) -> list[Row[tuple[Any, Any, Any, Any]]]:
-        members_subq = ProjectRepository._members_get_query()
-        issues_subq = ProjectRepository._issues_get_query()
-        comments_subq = ProjectRepository._comments_get_query()
 
         stmt = (
             select(
@@ -255,7 +177,7 @@ class ProjectRepository:
         return list(result.all())
 
     @staticmethod
-    async def get_by_public_id_no_full(db: AsyncSession, public_id: UUID) -> Project | None:
+    async def get_by_public_id(db: AsyncSession, public_id: UUID) -> Project | None:
         stmt = (
             select(Project)
             .where(
@@ -286,12 +208,8 @@ class ProjectRepository:
         )
 
         result = await db.execute(stmt)
-        row = result.one_or_none()
 
-        if row is None:
-            return None
-
-        return row
+        return result.one_or_none()
 
     @staticmethod
     async def get_all_with_users(db: AsyncSession) -> list[Project]:

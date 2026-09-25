@@ -5,19 +5,17 @@ from uuid import UUID
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-
 from app.core.exceptions import AppException, ErrorCode
-from app.events.outbox import OutboxFactory
-from app.events.project import ProjectCreatedEvent, ProjectUpdatedEvent, ProjectEventData, ProjectDeletedEvent
-from app.infrastructure.db.models import User, ProjectMember, Issue
-from app.infrastructure.db.models.model_projects import Project
+from app.events.project import ProjectEventData
+from app.events import ProjectCreatedEvent, ProjectUpdatedEvent, ProjectDeletedEvent, OutboxFactory
+from app.infrastructure.db.models import User, ProjectMember, Project
 from app.infrastructure.db.database import DBSession
+from app.modules.issue.schema import IssueResponse
 from app.modules.project_members.project_role import ProjectRole
 from app.modules.project_members.repository import ProjectMemberRepository
+from app.modules.project_members.schema import ProjectMemberResponse
 from app.modules.projects.repository import ProjectRepository
-from app.modules.projects.schema import ProjectCreate, ProjectUpdate, ProjectListResponse, \
-    ProjectDetailResponse, ProjectListBaseResponse, ProjectResponse, ProjectUpdateResponse, ProjectMemberResponse1, \
-    ProjectDetailResponse1, IssueResponse1, ProjectResponse1
+from app.modules.projects import schema as schema
 from app.permissions import PermissionContext, ProjectRBAC, Permission
 from app.utils.func_utils import get_now_dt, to
 
@@ -28,7 +26,7 @@ class ProjectService:
         self.mem_rep = mem_rep
         self.db = db
 
-    async def create(self, data: ProjectCreate, current_user: User) -> ProjectResponse:
+    async def create(self, data: schema.ProjectCreate, current_user: User) -> schema.ProjectResponse:
         now = get_now_dt()
 
         project = Project(name=data.name,description=data.description,owner_id=current_user.id, created_at=now)
@@ -42,51 +40,44 @@ class ProjectService:
 
         await self.db.commit()
 
-        return to(ProjectResponse, project)
+        return to(schema.ProjectResponse, project)
 
-
-    async def get_all(self, user: User) -> list[ProjectListResponse]:
+    async def get_all(self, user: User) -> list[schema.ProjectListResponse]:
         rows = await self.repository.get_all_by_user(db=self.db, user_id=user.id, is_admin=user.is_superuser)
 
-        return [
-            ProjectListResponse(
-                **ProjectListBaseResponse.model_validate(project).model_dump(),
+        def get_one_value(item):
+            project, members_count, issues_count, comments_count = item
+            base = schema.ProjectListBaseResponse.model_validate(project).model_dump()
+
+            return schema.ProjectListResponse(
+                **base,
                 members_count=members_count,
                 issues_count=issues_count,
                 comments_count=comments_count,
             )
-            for project, members_count, issues_count, comments_count in rows
-        ]
 
-    async def get_one(self, public_id: UUID, user: User) -> ProjectDetailResponse:
-        #1 project = await self.repository.get_by_public_id(db=self.db, public_id=public_id)
-        # result = await self.repository.get_by_public_id_with_current_member_detail(self.db, public_id, user.id)
-        #
-        # if result is None:
-        #     raise AppException(ErrorCode.PROJECT_NOT_FOUND, "Project not found.")
-        #
-        # project, member = result
-        project, members, issues = await self.repository.get_by_public_id_detail_aggregate(self.db, public_id)
+        return [get_one_value(item) for item in rows]
 
-        # Получаем member текущего пользователя отдельно
-        member = await self.mem_rep.get_by_project_and_user_id(
-            self.db,
-            project.id,
-            user.public_id,
-        )
+    async def get_one(self, public_id: UUID, user: User) -> schema.ProjectDetailResponse:
+        result = await self.repository.get_by_public_id_detail_aggregate(self.db, public_id)
 
-        context = PermissionContext(user=user, project=project, member=member)
+        if result is None:
+            raise AppException(ErrorCode.PROJECT_NOT_FOUND, "Project not found.")
+
+        project, members, issues = result
+
+        member_current = await self.mem_rep.get_by_project_and_user_id(self.db, project.id, user.public_id)
+
+        context = PermissionContext(user=user, project=project, member=member_current)
         ProjectRBAC.require(permission=Permission.PROJECT_VIEW, context=context)
 
-        # return to(ProjectDetailResponse, project)
-        return ProjectDetailResponse1(
-            **to(ProjectResponse1, project).model_dump(),
-            members=[ProjectMemberResponse1.model_validate(member) for member in members],
-            issues=[IssueResponse1.model_validate(issue) for issue in issues],
+        return schema.ProjectDetailResponse(
+            **to(schema.ProjectBaseDetailResponse, project).model_dump(),
+            members=[ProjectMemberResponse.model_validate(member) for member in members],
+            issues=[IssueResponse.model_validate(issue) for issue in issues],
         )
 
-
-    async def update(self, public_id: UUID, data: ProjectUpdate, user: User) -> ProjectUpdateResponse:
+    async def update(self, public_id: UUID, data: schema.ProjectUpdate, user: User) -> schema.ProjectUpdateResponse:
         result = await self.repository.get_by_public_id_with_current_member(self.db, public_id, user.id)
 
         if result is None:
@@ -110,7 +101,7 @@ class ProjectService:
             changed = True
 
         if not changed:
-            return to(ProjectUpdateResponse, project)
+            return to(schema.ProjectUpdateResponse, project)
 
         now = get_now_dt()
 
@@ -121,7 +112,7 @@ class ProjectService:
 
         await self.db.commit()
 
-        return to(ProjectUpdateResponse, project)
+        return to(schema.ProjectUpdateResponse, project)
 
     async def delete(self, public_id: UUID, user: User) -> None:
         result = await self.repository.get_by_public_id_with_current_member(self.db, public_id, user.id)

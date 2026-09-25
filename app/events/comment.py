@@ -1,11 +1,11 @@
 from datetime import datetime
-from typing import Self
+from typing import Self, ClassVar
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
 from app.events import RoutingKeys
-from app.events.base import Event_OutBox
+from app.events.base import Event
 from app.events.issue import IssueEventData
 from app.events.project import ProjectEventData
 from app.events.user import UserEventData
@@ -26,9 +26,28 @@ class CommentParentData(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class CommentCreatedEvent(Event_OutBox):
-    event_type: str = RoutingKeys.COMMENT_CREATED
-    aggregate_type: str = "comment"
+class CommentEvent(Event):
+    aggregate_type: ClassVar[str] = "comment"
+
+    issue: IssueEventData
+    project: ProjectEventData
+    author: UserEventData
+    comment: CommentEventData
+
+    @classmethod
+    def _base_data(cls, comment: Comment,user: User,occurred_at: datetime) -> dict:
+        return {
+            "aggregate_id": comment.public_id,
+            "occurred_at": occurred_at,
+            "issue": IssueEventData.model_validate(comment.issue),
+            "project": ProjectEventData.model_validate(comment.issue.project),
+            "author": UserEventData.model_validate(user),
+            "comment": CommentEventData.model_validate(comment),
+        }
+
+class CommentCreatedEvent(Event):
+    event_type: ClassVar[str] = RoutingKeys.COMMENT_CREATED
+    aggregate_type: ClassVar[str] = "comment"
 
     project: ProjectEventData
     issue: IssueEventData
@@ -57,46 +76,19 @@ class CommentCreatedEvent(Event_OutBox):
         )
 
 
-class CommentUpdatedEvent(Event_OutBox):
-    event_type: str = RoutingKeys.COMMENT_UPDATED
-    aggregate_type: str = "comment"
-
-    comment: CommentEventData
-    project: ProjectEventData
-    issue: IssueEventData
-    author: UserEventData
+class CommentUpdatedEvent(CommentEvent):
+    event_type: ClassVar[str] = RoutingKeys.COMMENT_UPDATED
 
     old_value: str
 
     @classmethod
-    def from_model(cls, comment: Comment, old_value: str, user: User, occurred_at: datetime) -> Self:
-        return cls(
-            aggregate_id=comment.public_id,
-            author=UserEventData.model_validate(user),
-            occurred_at=occurred_at,
-            issue=IssueEventData.model_validate(comment.issue),
-            comment=CommentEventData.model_validate(comment),
-            project=ProjectEventData.model_validate(comment.issue.project),
-            old_value=old_value,
-        )
+    def from_model(cls,comment: Comment,old_value: str, user: User,occurred_at: datetime) -> Self:
+        return cls(**cls._base_data(comment, user, occurred_at),old_value=old_value)
 
 
-class CommentDeletedEvent(Event_OutBox):
-    event_type: str = RoutingKeys.COMMENT_DELETED
-    aggregate_type: str = "comment"
-
-    comment: CommentEventData
-    project: ProjectEventData
-    issue: IssueEventData
-    author: UserEventData
+class CommentDeletedEvent(CommentEvent):
+    event_type: ClassVar[str] = RoutingKeys.COMMENT_DELETED
 
     @classmethod
-    def from_model(cls, comment: Comment, user: User, occurred_at: datetime) -> Self:
-        return cls(
-            aggregate_id=comment.public_id,
-            author=UserEventData.model_validate(user),
-            occurred_at=occurred_at,
-            issue=IssueEventData.model_validate(comment.issue),
-            comment=CommentEventData.model_validate(comment),
-            project=ProjectEventData.model_validate(comment.issue.project),
-        )
+    def from_model(cls,comment: Comment,user: User,occurred_at: datetime) -> Self:
+        return cls(**cls._base_data(comment, user, occurred_at))

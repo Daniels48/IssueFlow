@@ -124,93 +124,6 @@ navigator.geolocation.getCurrentPosition(
     },
 );
 
-class WSClient {
-    constructor() {
-        this.socket = null;
-        this.connected = false;
-        this.reconnectDelay = 3000;
-        this.reconnectTimer = null;
-        this.handlers = {};
-        this.queue = [];
-    }
-
-    connect() {
-        if (this.connected || this.socket?.readyState === WebSocket.CONNECTING) {return}
-        this.socket = new WebSocket(data_url.ws);
-        this.socket.onopen = () => {
-            console.log("WS connected");
-            this.connected = true;
-            if (this.reconnectTimer) {
-                clearTimeout(this.reconnectTimer);
-                this.reconnectTimer = null;
-            }
-            while (this.queue.length) {this.socket.send(this.queue.shift())}
-        };
-
-        this.socket.onmessage = ({ data }) => {
-            const event = JSON.parse(data);
-            const handlers = this.handlers[event.type] ?? [];
-            for (const handler of handlers) {handler(event);}
-            const globalHandlers = this.handlers["*"] ?? [];
-            for (const handler of globalHandlers) {handler(event);}
-        };
-
-        this.socket.onclose = async (event) => {
-            console.log("WS disconnected");
-            this.connected = false;
-            if (event.code === WS_AUTH_REQUIRED) {
-               const refreshed = await refreshToken();
-                if (!refreshed) {window.location.href = data_url.login;return;}
-                this.connect();
-                return;
-            }
-            this.reconnect();
-        };
-
-        this.socket.onerror = (error) => {
-            console.error(error);
-            this.socket.close();
-        };
-    }
-
-    reconnect() {
-        if (this.reconnectTimer) {return;}
-        console.log(`Reconnect in ${this.reconnectDelay / 1000}s`);
-        this.reconnectTimer = setTimeout(() => {this.connect()}, this.reconnectDelay);
-    }
-
-    disconnect() {
-        clearTimeout(this.reconnectTimer);
-        this.reconnectTimer = null;
-        this.connected = false;
-        this.socket?.close();
-    }
-
-    send(data) {
-        const message = JSON.stringify(data);
-        if (!this.connected) {this.queue.push(message);return;}
-        this.socket.send(message);
-    }
-
-    on(type, callback) {
-        if (!this.handlers[type]) {this.handlers[type] = [];}
-        this.handlers[type].push(callback);
-    }
-
-    off(type, callback) {
-        if (!this.handlers[type]) {return;}
-        this.handlers[type] = this.handlers[type].filter(handler => handler !== callback);
-    }
-
-    once(type, callback) {
-        const wrapper = (event) => {
-            callback(event);
-            this.off(type, wrapper);
-        };
-        this.on(type, wrapper);
-    }
-}
-
 
 async function request(url, options = {}) {
     const headers = new Headers(options.headers);
@@ -337,6 +250,93 @@ const api = {
     del: (url) => apiFetch(url, { method: "DELETE" }),
 };
 
+class WSClient {
+    constructor() {
+        this.socket = null;
+        this.connected = false;
+        this.reconnectDelay = 3000;
+        this.reconnectTimer = null;
+        this.handlers = {};
+        this.queue = [];
+    }
+
+    connect() {
+        if (this.connected || this.socket?.readyState === WebSocket.CONNECTING) {return}
+        this.socket = new WebSocket(data_url.ws);
+        this.socket.onopen = () => {
+            console.log("WS connected");
+            this.connected = true;
+            if (this.reconnectTimer) {
+                clearTimeout(this.reconnectTimer);
+                this.reconnectTimer = null;
+            }
+            while (this.queue.length) {this.socket.send(this.queue.shift())}
+        };
+
+        this.socket.onmessage = ({ data }) => {
+            const event = JSON.parse(data);
+            const handlers = this.handlers[event.event_type] ?? [];
+            for (const handler of handlers) {handler(event);}
+            const globalHandlers = this.handlers["*"] ?? [];
+            for (const handler of globalHandlers) {handler(event);}
+        };
+
+        this.socket.onclose = async (event) => {
+            console.log("WS disconnected");
+            this.connected = false;
+            if (event.code === WS_AUTH_REQUIRED) {
+               const refreshed = await refreshToken();
+                if (!refreshed) {window.location.href = data_url.login;return;}
+                this.connect();
+                return;
+            }
+            this.reconnect();
+        };
+
+        this.socket.onerror = (error) => {
+            console.error(error);
+            this.socket.close();
+        };
+    }
+
+    reconnect() {
+        if (this.reconnectTimer) {return;}
+        console.log(`Reconnect in ${this.reconnectDelay / 1000}s`);
+        this.reconnectTimer = setTimeout(() => {this.connect()}, this.reconnectDelay);
+    }
+
+    disconnect() {
+        clearTimeout(this.reconnectTimer);
+        this.reconnectTimer = null;
+        this.connected = false;
+        this.socket?.close();
+    }
+
+    send(data) {
+        const message = JSON.stringify(data);
+        if (!this.connected) {this.queue.push(message);return;}
+        this.socket.send(message);
+    }
+
+    on(type, callback) {
+        if (!this.handlers[type]) {this.handlers[type] = [];}
+        this.handlers[type].push(callback);
+    }
+
+    off(type, callback) {
+        if (!this.handlers[type]) {return;}
+        this.handlers[type] = this.handlers[type].filter(handler => handler !== callback);
+    }
+
+    once(type, callback) {
+        const wrapper = (event) => {
+            callback(event);
+            this.off(type, wrapper);
+        };
+        this.on(type, wrapper);
+    }
+}
+
 window.ws = new WSClient();
 
 window.api = api;
@@ -365,3 +365,4 @@ if (!isAuthPage) {
         window.ws.connect();
     });
 }
+

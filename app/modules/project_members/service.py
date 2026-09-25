@@ -6,8 +6,7 @@ from pydantic import TypeAdapter
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import AppException, ErrorCode
-from app.events.member import MemberAddedEvent, MemberUpdatedEvent, MemberDeletedEvent
-from app.events.outbox import OutboxFactory
+from app.events import MemberAddedEvent, MemberUpdatedEvent, MemberDeletedEvent, OutboxFactory
 from app.infrastructure.db.models import User, ProjectMember
 from app.infrastructure.db.database import DBSession
 from app.modules.project_members.repository import ProjectMemberRepository

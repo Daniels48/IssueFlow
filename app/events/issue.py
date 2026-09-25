@@ -1,11 +1,11 @@
 from datetime import datetime
-from typing import Self
+from typing import Self, ClassVar
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
 from app.events import RoutingKeys
-from app.events.base import Event_OutBox
+from app.events.base import Event
 from app.events.project import ProjectEventData
 from app.events.user import UserEventData
 from app.infrastructure.db.models import User, Issue
@@ -21,11 +21,15 @@ class IssueEventData(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class IssueEvent(Event_OutBox):
-    aggregate_type: str = "issue"
+class IssueEvent(Event):
+    aggregate_type: ClassVar[str] = "issue"
+
+    issue: IssueEventData
+    project: ProjectEventData
+    author: UserEventData
 
     @classmethod
-    def _base_data(cls, issue: Issue, user: User,occurred_at: datetime) -> dict:
+    def _base_data( cls,issue: Issue,user: User,occurred_at: datetime) -> dict:
         return {
             "aggregate_id": issue.public_id,
             "occurred_at": occurred_at,
@@ -33,7 +37,6 @@ class IssueEvent(Event_OutBox):
             "project": ProjectEventData.model_validate(issue.project),
             "author": UserEventData.model_validate(user),
         }
-
 
 class IssueCreateEventData(BaseModel):
     public_id: UUID
@@ -47,7 +50,7 @@ class IssueCreateEventData(BaseModel):
 
 
 class IssueCreatedEvent(IssueEvent):
-    event_type: str = RoutingKeys.ISSUE_CREATED
+    event_type: ClassVar[str] = RoutingKeys.ISSUE_CREATED
 
     issue: IssueCreateEventData
     project: ProjectEventData
@@ -65,7 +68,7 @@ class IssueCreatedEvent(IssueEvent):
 
 
 class IssueDeleteEvent(IssueEvent):
-    event_type: str = RoutingKeys.ISSUE_DELETED
+    event_type: ClassVar[str] = RoutingKeys.ISSUE_DELETED
 
     @classmethod
     def from_model(cls, issue: Issue, user: User, occurred_at: datetime) -> Self:
@@ -73,7 +76,7 @@ class IssueDeleteEvent(IssueEvent):
 
 
 class IssueUpdateEvent(IssueEvent):
-    event_type: str = RoutingKeys.ISSUE_UPDATED
+    event_type: ClassVar[str] = RoutingKeys.ISSUE_UPDATED
 
     old_value: IssueEventData
 
@@ -86,7 +89,7 @@ class IssueUpdateEvent(IssueEvent):
 
 
 class IssueChangeDueDateEvent(IssueEvent):
-    event_type: str = RoutingKeys.ISSUE_DUE_DATE_CHANGED
+    event_type: ClassVar[str] = RoutingKeys.ISSUE_DUE_DATE_CHANGED
 
     old_value: datetime | None = None
     new_value: datetime | None = None
@@ -101,7 +104,7 @@ class IssueChangeDueDateEvent(IssueEvent):
 
 
 class IssueChangeAssigneeEvent(IssueEvent):
-    event_type: str = RoutingKeys.ISSUE_ASSIGNED
+    event_type: ClassVar[str] = RoutingKeys.ISSUE_ASSIGNED
 
     old_value: UserEventData | None = None
     new_value: UserEventData | None = None
@@ -116,7 +119,7 @@ class IssueChangeAssigneeEvent(IssueEvent):
 
 
 class IssueUnAssigneeEvent(IssueEvent):
-    event_type: str = RoutingKeys.ISSUE_UNASSIGNED
+    event_type: ClassVar[str] = RoutingKeys.ISSUE_UNASSIGNED
 
     old_value: UserEventData | None = None
 
@@ -129,7 +132,7 @@ class IssueUnAssigneeEvent(IssueEvent):
 
 
 class IssueChangePriorityEvent(IssueEvent):
-    event_type: str = RoutingKeys.ISSUE_PRIORITY_CHANGED
+    event_type: ClassVar[str] = RoutingKeys.ISSUE_PRIORITY_CHANGED
 
     old_value: IssuePriority
     new_value: IssuePriority
@@ -144,7 +147,7 @@ class IssueChangePriorityEvent(IssueEvent):
 
 
 class IssueChangeStatusEvent(IssueEvent):
-    event_type: str = RoutingKeys.ISSUE_STATUS_CHANGED
+    event_type: ClassVar[str] = RoutingKeys.ISSUE_STATUS_CHANGED
 
     old_value: IssueStatus
     new_value: IssueStatus
@@ -159,7 +162,7 @@ class IssueChangeStatusEvent(IssueEvent):
 
 
 class IssueCloseEvent(IssueEvent):
-    event_type: str = RoutingKeys.ISSUE_CLOSED
+    event_type: ClassVar[str] = RoutingKeys.ISSUE_CLOSED
 
     old_value: IssueStatus
 
@@ -172,7 +175,7 @@ class IssueCloseEvent(IssueEvent):
 
 
 class IssueReopenEvent(IssueEvent):
-    event_type: str = RoutingKeys.ISSUE_REOPENED
+    event_type: ClassVar[str] = RoutingKeys.ISSUE_REOPENED
 
     @classmethod
     def from_model(cls, issue: Issue, user: User, occurred_at: datetime) -> Self:

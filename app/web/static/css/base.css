@@ -355,14 +355,26 @@ button {
     color:#1f2937;
 }
 
-.notification-message{
-    color: black;
-    padding:12px;
-    border-radius:8px;
-    white-space:pre-wrap;
-    line-height:1.5;
-    background:#f3f4f6;
-    border-left:4px solid #3b82f6;
+.notification-message {
+    margin: 0;
+    padding: 10px 12px;
+
+    color: #111827;
+    background: #f3f4f6;
+
+    border-radius: 8px;
+    border-left: 4px solid #3b82f6;
+
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+.notification-value{
+    font-weight: 500;
+}
+
+strong.notification-value {
+    font-weight: 600;
 }
 
 .notification-open{

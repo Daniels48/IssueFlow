@@ -9,7 +9,6 @@ from app.infrastructure.rabbitmq.publisher import RabbitPublisher
 
 logger = logging.getLogger(__name__)
 
-
 POLL_INTERVAL = 1
 BATCH_SIZE = 100
 
@@ -26,6 +25,7 @@ async def process_events() -> None:
         for event in events:
             try:
                 await RabbitPublisher.publish(event)
+
                 await repository.mark_published(event.id)
                 await session.commit()
 
@@ -33,7 +33,8 @@ async def process_events() -> None:
 
             except Exception as error:
                 await session.rollback()
-                logger.exception("Failed to publish outbox event: %s",event.id)
+
+                logger.exception("Failed to publish outbox event: %s", event.id)
 
                 try:
                     await repository.mark_failed(event.id,str(error))
@@ -41,6 +42,7 @@ async def process_events() -> None:
 
                 except Exception:
                     await session.rollback()
+
                     logger.exception("Failed to mark outbox event as failed: %s",event.id)
 
 
@@ -62,7 +64,6 @@ async def main() -> None:
     finally:
         await RabbitPublisher.close()
         await RabbitConnection.close()
-
         await engine.dispose()
 
         logger.info("Outbox Worker stopped")

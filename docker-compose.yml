@@ -75,6 +75,21 @@ services:
 
     restart: unless-stopped
 
+  event_worker:
+    build: .
+    container_name: isf_event_worker
+    command: python -m app.workers.event_worker.main
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
   ws:
     build: .
     container_name: isf_ws

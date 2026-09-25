@@ -131,10 +131,17 @@ class NotificationCenter {
 class NotificationCard {
     constructor(notification) {
         this.notification = notification;
+
         this.collapsed = notification.collapsed ?? false;
+
         this.element = null;
         this.body = null;
+        this.timeElement = null;
+
+        this.timer = null;
+        this.collapseTimer = null;
     }
+
     getType() {
         return NotificationRegistry[this.notification.type] ?? {
             title: "Notification",
@@ -143,6 +150,7 @@ class NotificationCard {
             template: BaseNotification,
         };
     }
+
     getTime() {
         const occurred = new Date(this.notification.occurred_at);
         const now = new Date();
@@ -156,10 +164,11 @@ class NotificationCard {
         if (days < 7) {return `${days} d ago`;}
         return occurred.toLocaleDateString();
     }
+
     render() {
         const card = document.createElement("article");
         card.className = "notification-card";
-        let cat_activity = this.notification.category === "activity";
+        const isActivity = this.notification.category === "activity";
         const type = this.getType();
         card.style.borderLeftColor = type.color;
         card.innerHTML = `
@@ -168,170 +177,113 @@ class NotificationCard {
                     <span class="notification-icon">${type.icon}</span>
                     <span>${type.title}</span>
                 </div>
+
                 <div class="notification-card-actions">
                     <span class="notification-card-time"></span>
-                    ${cat_activity ? `<button class="notification-collapse">▼</button>` : ""}
+                    ${isActivity ? `<button class="notification-collapse">▼</button>` : ""}
                     <button class="notification-close">✕</button>
                 </div>
             </div>
             <div class="notification-card-body">${this.renderBody()}</div>
         `;
+
         this.element = card;
         this.body = card.querySelector(".notification-card-body");
+        this.timeElement = card.querySelector(".notification-card-time");
         this.bindEvents();
         if (this.collapsed) {this.collapse();}
-        if (this.notification.category === "activity") {
-        setTimeout(() => {if (!this.collapsed) {this.collapse();}}, 5000);}
-        this.timeElement = card.querySelector(".notification-card-time");
+        if (isActivity) {
+            this.collapseTimer = setTimeout(() => {if (!this.collapsed) {this.collapse();}}, 5000);
+        }
         this.timeElement.textContent = this.getTime();
         this.timer = setInterval(() => {this.timeElement.textContent = this.getTime();}, 60000);
         return card;
     }
+
     renderBody() {
         const type = this.getType();
         return new type.template(this.notification).render();
     }
+
     bindEvents() {
         const close = this.element.querySelector(".notification-close");
-        close.addEventListener("click", (e) => {
-            e.stopPropagation();
+
+        close.addEventListener("click", (event) => {
+            event.stopPropagation();
             this.remove();
         });
+
         const collapse = this.element.querySelector(".notification-collapse");
+
         if (collapse) {
-            collapse.addEventListener("click", (e) => {
-                e.stopPropagation();
+            collapse.addEventListener("click", (event) => {
+                event.stopPropagation();
                 this.toggle();
             });
         }
     }
+
     toggle() {
-        if (this.collapsed) {this.expand();}
-        else {this.collapse();}
+        if (this.collapsed) {this.expand();
+        } else {this.collapse();}
     }
+
     collapse() {
         this.collapsed = true;
         this.body.style.display = "none";
         const button = this.element.querySelector(".notification-collapse");
         if (button) {button.textContent = "▶";}
     }
+
     expand() {
         this.collapsed = false;
         this.body.style.display = "";
         const button = this.element.querySelector(".notification-collapse");
         if (button) {button.textContent = "▼";}
     }
-    remove() {clearInterval(this.timer);notificationCenter.remove(this.notification.id);}
+
+    remove() {
+        clearInterval(this.timer);
+        clearTimeout(this.collapseTimer);
+        notificationCenter.remove(this.notification.id);
+    }
 }
 
 class BaseNotification {
     constructor(notification) {this.notification = notification;}
+
     row(label, value) {
         if (!value) {return "";}
-        return `
-            <div class="notification-row">
-                <div class="notification-label">${label}</div>
-                <div class="notification-value">${value}</div>
-            </div>
-        `;
+
+        return `<div class="notification-row">
+                    <div class="notification-label">${label}</div>
+                    <div class="notification-value">${value}</div>
+                </div>`;
     }
 
     message(text = this.notification.message) {
-        if (!text) {
-            return "";
-        }
-
-        return `
-            <blockquote class="notification-message">
-                ${text}
-            </blockquote>
-        `;
+        if (!text) {return "";}
+        return `<blockquote class="notification-message">${text}</blockquote>`;
     }
 
     action() {
-        if (!this.notification.action) {
-            return "";
-        }
-
-        return `
-            <a class="notification-open"
-               href="${this.notification.action.url}">
-                ${this.notification.action.text} →
-            </a>
-        `;
+        const action = this.notification.action;
+        if (!action) {return "";}
+        return `<a class="notification-open" href="${action.url}">${action.text} →</a>`;
     }
 
-    render() {
-        return this.message() + this.action();
-    }
-}
-
-class CommentNotification extends BaseNotification {
-    render() {
-        return `
-            ${this.row("Project", this.notification.project.name)}
-            ${this.row("Issue", this.notification.issue.title)}
-            ${this.row("Author", this.notification.author.username)}
-            ${this.message()}
-            ${this.action()}
-        `;
-    }
-}
-
-class ProjectNotification extends BaseNotification {
-    render() {
-        return `
-            ${this.row("Project", this.notification.project.name)}
-            ${this.row("Owner", this.notification.author.username)}
-            ${this.action()}
-        `;
-    }
-}
-
-class IssueNotification extends BaseNotification {
-    render() {
-        return `
-            ${this.row("Project", this.notification.project.name)}
-            ${this.row("Issue", this.notification.issue.title)}
-            ${this.row("Author", this.notification.author.username)}
-            ${this.action()}
-        `;
-    }
-}
-
-class UserRegisteredNotification extends BaseNotification {
-    render() {
-        return `
-            <div class="notification-big-title">🎉 ${this.notification.author.username}</div>
-            <div class="notification-description">Joined IssueFlow</div>
-            ${this.action()}
-        `;
-    }
-
-}
-
-class UserNotification extends BaseNotification {
-    render() {
-        return ` ${this.message()}${this.action()}`;
-    }
-}
-
-class ProjectMemberNotification extends BaseNotification {
-    render() {
-        return `
-            ${this.row("Project", this.notification.project.name)}
-            ${this.row("User", this.notification.member.username)}
-            ${this.row("Role", this.notification.member.role)}
-            ${this.action()}
-        `;
-    }
+    render() {return `${this.message()}${this.action()}`;}
 }
 
 class NotificationFactory {
     static handlers = {
-        "issue.comment.created": this.commentCreated,
-        "issue.comment.updated": this.commentUpdated,
-        "issue.comment.deleted": this.commentDeleted,
+        "project.created": this.projectCreated,
+        "project.updated": this.projectUpdated,
+        "project.deleted": this.projectDeleted,
+
+        "project.member.added": this.projectMemberAdded,
+        "project.member.removed": this.projectMemberRemoved,
+        "project.member.role.changed": this.projectMemberRoleChanged,
 
         "issue.created": this.issueCreated,
         "issue.updated": this.issueUpdated,
@@ -344,13 +296,12 @@ class NotificationFactory {
         "issue.priority.changed": this.issuePriorityChanged,
         "issue.due_date.changed": this.issueDueDateChanged,
 
-        "project.created": this.projectCreated,
-        "project.updated": this.projectUpdated,
-        "project.deleted": this.projectDeleted,
+        "issue.closed": this.issueClosed,
+        "issue.reopened": this.issueReopened,
 
-        "project.member.added": this.projectMemberAdded,
-        "project.member.removed": this.projectMemberRemoved,
-        "project.member.role.changed": this.projectMemberRoleChanged,
+        "issue.comment.created": this.commentCreated,
+        "issue.comment.updated": this.commentUpdated,
+        "issue.comment.deleted": this.commentDeleted,
 
         "user.logged_in": this.userLoggedIn,
         "user.logged_out": this.userLoggedOut,
@@ -361,284 +312,448 @@ class NotificationFactory {
     };
 
     static fromEvent(event) {
-        const handler = this.handlers[event.type];
+        const handler = this.handlers[event.event_type];
+
         if (!handler) {
-            console.warn(`Unknown notification type: ${event.type}`);
+            console.warn(`Unknown notification type: ${event.event_type}`);
             return null;
         }
-        return handler.call(this, event);
+
+        const data = {
+            event_type: event.event_type,
+            ...event.payload,
+        };
+
+        return handler.call(this, data);
     }
-    static create(event, data = {}) {
+
+    static getType(event) {
+        const eventType = event.event_type;
+
+        if (eventType.startsWith("project.member.")) {return "member";}
+
+        if (eventType.startsWith("issue.comment.")) {return "comment";}
+
+        if (eventType.startsWith("project.")) {return "project";}
+
+        if (eventType.startsWith("issue.")) {return "issue";}
+
+        if (eventType.startsWith("user.")) {return "user";}
+
+        return "unknown";
+    }
+
+    static create(event, {category = "activity", message = "", action = null} = {}) {
         return {
             id: crypto.randomUUID(),
-            type: event.type,
-            category: data.category ?? "activity",
-            occurred_at: event.occurred_at ?? new Date().toISOString(),
-            project: data.project ?? null,
-            issue: data.issue ?? null,
-            author: data.author ?? null,
-            message: data.message ?? "",
-            action: data.action ?? null,
+            type: this.getType(event),
+            category,
+            message,
+            action,
+            occurred_at: event.occurred_at,
         };
     }
-    static getProject(event) {return event.project ?? null;}
-    static getIssue(event) {return event.issue ?? null;}
-    static getAuthor(event) {return event.author ?? null;}
+
     static openIssue(event) {
-        if (!event.project?.public_id || !event.issue?.public_id) {return null;}
+        if (!event.project?.public_id || !event.issue?.public_id) {
+            return null;
+        }
+
         return {
             text: "Open Issue",
             url: `/projects/${event.project.public_id}/issues/${event.issue.public_id}`,
         };
     }
-    // -------------------------
-    // COMMENTS
-    // -------------------------
-    static commentCreated(event) {
-        return this.create(event, {
-            category: "activity",
-            project: this.getProject(event),
-            issue: this.getIssue(event),
-            author: this.getAuthor(event),
-            message: event.comment.content,
-            action: this.openIssue(event),
-        });
 
+    static openProject(event) {
+        if (!event.project?.public_id) {return null;}
+
+        return {
+            text: "Open Project",
+            url: `/projects/${event.project.public_id}`,
+        };
     }
-    static commentUpdated(event) {return this.commentCreated(event);}
-    static commentDeleted(event) {return this.commentCreated(event);}
-    // -------------------------
-    // ISSUES
-    // -------------------------
-    static issueCreated(event) {
-        return this.create(event, {
-            category: "activity",
-            project: this.getProject(event),
-            issue: this.getIssue(event),
-            author: this.getAuthor(event),
-            message: event.title,
-            action: this.openIssue(event),
-        });
+
+    static is_personal(obj) {
+        return obj?.public_id === window.user?.public_id;
     }
-    static issueUpdated(event) {return this.issueCreated(event);}
-    static issueDeleted(event) {return this.issueCreated(event);}
-    static issueAssigned(event) {
-        return this.create(event, {
-            category: "personal",
-            project: this.getProject(event),
-            issue: this.getIssue(event),
-            author: this.getAuthor(event),
-            message: `${event.author.username} assigned you to the issue.`,
-            action: this.openIssue(event),
-        });
+
+    static truncate(text, maxLength = 30) {
+        if (typeof text !== "string") {return "";}
+
+        return text.length > maxLength
+            ? `${text.slice(0, maxLength - 3)}...`
+            : text;
     }
-    static issueUnassigned(event) {return this.issueAssigned(event);}
-    static issueStatusChanged(event) {return this.issueCreated(event);}
-    static issuePriorityChanged(event) {return this.issueCreated(event);}
-    static issueDueDateChanged(event) {return this.issueCreated(event);}
-    // -------------------------
+
+    static formatStatus(status) {
+        const statuses = {
+            open: "Open",
+            in_progress: "In progress",
+            closed: "Closed",
+        };
+
+        return statuses[status] ?? status;
+    }
+
+    static formatPriority(priority) {
+        const priorities = {
+            low: "Low",
+            medium: "Medium",
+            high: "High",
+            critical: "Critical",
+        };
+
+        return priorities[priority] ?? priority;
+    }
+
+    static formatDueDate(date) {
+        if (!date) {return null;}
+        const parsed = new Date(date);
+        if (Number.isNaN(parsed.getTime())) {return null;}
+
+        const parts = new Intl.DateTimeFormat("en-GB", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+        }).formatToParts(parsed);
+
+        const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+
+        return `${values.day}.${values.month}.${values.year} ` + `${values.hour}:${values.minute}`;
+    }
+
+    static value(value) {
+        return `<span class="notification-value">${value}</span>`;
+    }
+
+    static strongValue(value) {
+        return `<strong class="notification-value">${value}</strong>`;
+    }
+
     // PROJECTS
-    // -------------------------
+
     static projectCreated(event) {
+        const data = this.get_memberData(event)
         return this.create(event, {
             category: "activity",
-            project: this.getProject(event),
-            author: this.getAuthor(event),
-            message: event.name,
+            message: `${data.author} created project "${data.project}".`,
+            action: this.openProject(event),
         });
     }
-    static projectUpdated(event) {return this.projectCreated(event);}
-    static projectDeleted(event) {return this.projectCreated(event);}
-    static projectMemberAdded(event) {return this.projectCreated(event);}
-    static projectMemberRemoved(event) {return this.projectCreated(event);}
-    static projectMemberRoleChanged(event) {return this.projectCreated(event);}
-    // -------------------------
+
+    static projectUpdated(event) {
+        const data = this.get_memberData(event)
+        return this.create(event, {
+            category: "activity",
+            message: `${data.author} updated project "${data.project}".`,
+            action: this.openProject(event),
+        });
+    }
+
+    static projectDeleted(event) {
+        const data = this.get_memberData(event)
+        return this.create(event, {
+            category: "activity",
+            message: `${data.author} deleted project "${data.project}".`,
+        });
+    }
+
+    // MEMBERS
+
+    static get_memberData(event){
+        return {
+            project: this.value(this.truncate(event.project?.name ?? "Untitled project")),
+            username: this.strongValue(event.user?.username ?? "member"),
+            author: this.strongValue(event.author?.username ?? "Someone"),
+            oldRole: this.strongValue(event.old_value ?? null),
+            newRole: this.strongValue(event.member?.role ?? null),
+        }
+    }
+
+    static projectMemberAdded(event) {
+        const data = this.get_memberData(event)
+
+        return this.create(event, {
+            category: "activity",
+            message: `${data.author} added ${data.username} to "${data.project}".`,
+            action: this.openProject(event),
+        });
+    }
+
+    static projectMemberRemoved(event) {
+        const data = this.get_memberData(event)
+
+        return this.create(event, {
+            category: "activity",
+            message: `${data.author} removed ${data.username} from "${data.project}".`,
+            action: this.openProject(event),
+        });
+    }
+
+    static projectMemberRoleChanged(event) {
+        const data = this.get_memberData(event)
+
+        return this.create(event, {
+            category: "activity",
+            message:
+                `${data.author} changed ${data.username}'s role in "${data.project}" ` +
+                `from ${data.oldRole} to ${data.newRole}.`,
+            action: this.openProject(event),
+        });
+    }
+
+    // ISSUES
+
+    static get_issueData(event) {
+        return {
+            author: this.strongValue(event.author?.username ?? "Someone"),
+            title: this.strongValue(this.truncate(event.issue?.title ?? "Untitled issue")),
+            old_user: this.strongValue(event.old_value?.username ?? null),
+            new_user: this.strongValue(event.new_value?.username ?? null),
+            old_status: this.strongValue(event.old_value ? this.formatStatus(event.old_value) : null),
+            new_status: this.strongValue(event.new_value ? this.formatStatus(event.new_value) : null),
+            old_priority: this.strongValue(event.old_value ? this.formatPriority(event.old_value) : null),
+            new_priority: this.strongValue(event.new_value ? this.formatPriority(event.new_value) : null),
+            old_date: this.strongValue(event.old_value ? this.formatDueDate(event.old_value) : null),
+            new_date: this.strongValue(event.new_value ? this.formatDueDate(event.new_value) : null),
+        };
+    }
+
+    static issueCreated(event) {
+        const data = this.get_issueData(event)
+        return this.create(event, {
+            category: "activity",
+            message: `${data.author} created issue "${data.title}".`,
+            action: this.openIssue(event),
+        });
+    }
+
+    static issueUpdated(event) {
+        const data = this.get_issueData(event)
+        return this.create(event, {
+            category: "activity",
+            message: `${data.author} updated issue "${data.title}".`,
+            action: this.openIssue(event),
+        });
+    }
+
+    static issueDeleted(event) {
+        const data = this.get_issueData(event)
+        return this.create(event, {
+            category: "activity",
+            message: `${data.author} deleted issue "${data.title}".`,
+        });
+    }
+
+    static issueAssigned(event) {
+        const personal = this.is_personal(event.new_value);
+        const data = this.get_issueData(event);
+
+        let message;
+
+        if (personal) {
+            message = `${data.author} assigned you to "${data.title}".`;
+        } else if (data.old_user) {
+            message = `${data.author} reassigned "${data.title}" from ${data.old_user} to ${data.new_user}.`;
+        } else {
+            message = `${data.author} assigned ${data.new_user} to "${data.title}".`;
+        }
+
+        return this.create(event, {
+            category: personal ? "personal" : "activity",
+            message,
+            action: this.openIssue(event),
+        });
+    }
+
+    static issueUnassigned(event) {
+        const personal = this.is_personal(event.old_value);
+        const data = this.get_issueData(event);
+        const pre_msg = personal ? "you": `${data.old_user}`;
+        const message = `${data.author} unassigned ${pre_msg} from "${data.title}".`
+
+        return this.create(event, {
+            category: personal ? "personal" : "activity",
+            message,
+            action: this.openIssue(event),
+        });
+    }
+
+    static issueStatusChanged(event) {
+        const data = this.get_issueData(event);
+
+        return this.create(event, {
+            category: "activity",
+            message: `${data.author} changed the status of "${data.title}" from ${data.old_status} to ${data.new_status}.`,
+            action: this.openIssue(event),
+        });
+    }
+
+    static issuePriorityChanged(event) {
+        const data = this.get_issueData(event);
+
+        return this.create(event, {
+            category: "activity",
+            message: `${data.author} changed the priority of "${data.title}" from ${data.old_priority} to ${data.new_priority}.`,
+            action: this.openIssue(event),
+        });
+    }
+
+    static issueDueDateChanged(event) {
+        const data = this.get_issueData(event);
+
+        return this.create(event, {
+            category: "activity",
+            message: `${data.author} changed the due date of "${data.title}" from ${data.old_date} to ${data.new_date}.`,
+            action: this.openIssue(event),
+        });
+    }
+
+    static issueClosed(event) {
+        const data = this.get_issueData(event);
+
+        return this.create(event, {
+            category: "activity",
+            message: `${data.author} closed "${data.title}".`,
+            action: this.openIssue(event),
+        });
+    }
+
+    static issueReopened(event) {
+        const data = this.get_issueData(event);
+
+        return this.create(event, {
+            category: "activity",
+            message: `${data.author} reopened "${data.title}".`,
+            action: this.openIssue(event),
+        });
+    }
+
+    // COMMENTS
+
+    static get_dataComment(event) {
+        const title = this.value(this.truncate(event.issue?.title ?? "Untitled issue"));
+        const content = this.value(this.truncate(event.comment?.content ?? ""));
+        const author = this.strongValue(event.author?.username ?? "Someone");
+        const parentAuthor = this.strongValue(event.parent?.author?.username ?? "someone");
+
+        return {
+            title: title,
+            content: content,
+            author: author,
+            parentAuthor: parentAuthor,
+        }
+    }
+
+    static commentCreated(event) {
+        const data = this.get_dataComment(event);
+        const personal = event.parent?.author?.public_id === window.user?.public_id;
+
+        let middleText;
+
+        if (event.parent) {middleText = personal ? "replied to your comment" : `replied to ${data.parentAuthor}`}
+        else {middleText = "commented";}
+
+        const message = `${data.author} ${middleText} on "${data.title}": "${data.content}"`;
+
+        return this.create(event, {
+            category: personal ? "personal" : "activity",
+            message,
+            action: this.openIssue(event),
+        });
+    }
+
+    static commentUpdated(event) {
+        const data = this.get_dataComment(event)
+
+        return this.create(event, {
+            category: "activity",
+            message: `${data.author} edited a comment on "${data.title}".`,
+            action: this.openIssue(event),
+        });
+    }
+
+    static commentDeleted(event) {
+        const data = this.get_dataComment(event)
+
+        return this.create(event, {
+            category: "activity",
+            message: `${data.author} deleted a comment from "${data.title}".`,
+            action: this.openIssue(event),
+        });
+    }
+
+
     // USER
-    // -------------------------
+
     static userLoggedIn(event) {
         return this.create(event, {
             category: "personal",
             message: "Successful login.",
         });
     }
-    static userLoggedOut(event) {return this.userLoggedIn(event);}
-    static userLoggedOutAll(event) {return this.userLoggedIn(event);}
-    static userPasswordChanged(event) {return this.userLoggedIn(event);}
-    static userEmailVerified(event) {return this.userLoggedIn(event);}
-    static userDeleted(event) {return this.userLoggedIn(event);}
+
+    static userLoggedOut(event) {
+        return this.userLoggedIn(event);
+    }
+
+    static userLoggedOutAll(event) {
+        return this.userLoggedIn(event);
+    }
+
+    static userPasswordChanged(event) {
+        return this.userLoggedIn(event);
+    }
+
+    static userEmailVerified(event) {
+        return this.userLoggedIn(event);
+    }
+
+    static userDeleted(event) {
+        return this.userLoggedIn(event);
+    }
 }
 
 
 window.notificationCenter = new NotificationCenter();
 window.NotificationFactory = NotificationFactory
 const NotificationRegistry = {
-
-    "issue.created": {
-        title: "Issue Created",
-        icon: "📝",
-        color: "#10b981",
-        template: IssueNotification,
+    project: {
+        title: "Project",
+        icon: "📁",
+        color: "#...",
+        template: BaseNotification,
     },
 
-    "issue.updated": {
-        title: "Issue Updated",
-        icon: "📝",
-        color: "#3b82f6",
-        template: IssueNotification,
+    issue: {
+        title: "Issue",
+        icon: "📋",
+        color: "#...",
+        template: BaseNotification,
     },
 
-    "issue.deleted": {
-        title: "Issue Deleted",
-        icon: "🗑️",
-        color: "#ef4444",
-        template: IssueNotification,
-    },
-
-    "issue.assigned": {
-        title: "Assigned",
-        icon: "🎯",
-        color: "#8b5cf6",
-        template: IssueNotification,
-    },
-
-    "issue.unassigned": {
-        title: "Unassigned",
+    member: {
+        title: "Member",
         icon: "👤",
-        color: "#64748b",
-        template: IssueNotification,
+        color: "#...",
+        template: BaseNotification,
     },
 
-    "issue.status.changed": {
-        title: "Status Changed",
-        icon: "🔄",
-        color: "#06b6d4",
-        template: IssueNotification,
-    },
-
-    "issue.priority.changed": {
-        title: "Priority Changed",
-        icon: "⚡",
-        color: "#f59e0b",
-        template: IssueNotification,
-    },
-
-    "issue.due_date.changed": {
-        title: "Due Date Changed",
-        icon: "📅",
-        color: "#f97316",
-        template: IssueNotification,
-    },
-
-    "issue.comment.created": {
-        title: "Comment Added",
+    comment: {
+        title: "Comment",
         icon: "💬",
-        color: "#3b82f6",
-        template: CommentNotification,
+        color: "#...",
+        template: BaseNotification,
     },
 
-    "issue.comment.updated": {
-        title: "Comment Updated",
-        icon: "✏️",
-        color: "#2563eb",
-        template: CommentNotification,
-    },
-
-    "issue.comment.deleted": {
-        title: "Comment Deleted",
-        icon: "🗑️",
-        color: "#dc2626",
-        template: CommentNotification,
-    },
-
-    "project.created": {
-        title: "Project Created",
-        icon: "📁",
-        color: "#10b981",
-        template: ProjectNotification,
-    },
-
-    "project.updated": {
-        title: "Project Updated",
-        icon: "📁",
-        color: "#3b82f6",
-        template: ProjectNotification,
-    },
-
-    "project.deleted": {
-        title: "Project Deleted",
-        icon: "🗑️",
-        color: "#ef4444",
-        template: ProjectNotification,
-    },
-
-    "project.member.added": {
-        title: "Member Added",
-        icon: "👥",
-        color: "#8b5cf6",
-        template: ProjectMemberNotification,
-    },
-
-    "project.member.removed": {
-        title: "Member Removed",
+    user: {
+        title: "User",
         icon: "👤",
-        color: "#ef4444",
-        template: ProjectMemberNotification,
+        color: "#...",
+        template: BaseNotification,
     },
-
-    "project.member.role.changed": {
-        title: "Role Changed",
-        icon: "🛡️",
-        color: "#f59e0b",
-        template: ProjectMemberNotification,
-    },
-
-    "user.registered": {
-        title: "Welcome!",
-        icon: "🎉",
-        color: "#10b981",
-        template: UserRegisteredNotification,
-    },
-
-    "user.email.verified": {
-        title: "Email Verified",
-        icon: "✅",
-        color: "#10b981",
-        template: UserNotification,
-    },
-
-    "user.password.changed": {
-        title: "Password Changed",
-        icon: "🔒",
-        color: "#f59e0b",
-        template: UserNotification,
-    },
-
-    "user.logged_in": {
-        title: "Signed In",
-        icon: "🔑",
-        color: "#10b981",
-        template: UserNotification,
-    },
-
-    "user.logged_out": {
-        title: "Signed Out",
-        icon: "🚪",
-        color: "#64748b",
-        template: UserNotification,
-    },
-
-    "user.logged_out_all": {
-        title: "Signed Out Everywhere",
-        icon: "🚪",
-        color: "#ef4444",
-        template: UserNotification,
-    },
-
-    "user.deleted": {
-        title: "Account Deleted",
-        icon: "🗑️",
-        color: "#ef4444",
-        template: UserNotification,
-    },
-
 };

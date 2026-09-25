@@ -14,6 +14,7 @@ class ProjectMemberRepository:
         await db.flush()
         return member
 
+
     @staticmethod
     async def get_by_project_and_user(db: AsyncSession,project_id: int, user_id: int) -> ProjectMember | None:
         result = await db.execute(

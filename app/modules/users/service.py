@@ -17,7 +17,7 @@ class UserService:
         self.repository = repository
 
     async def search_users(self, query: str, project_id: UUID, current_user_id:int) -> list[UserShortResponse]:
-        project = await ProjectRepository.get_by_public_id_no_full(self.db, project_id)
+        project = await ProjectRepository.get_by_public_id(self.db, project_id)
         if not project:
             return []
         Member_is = await ProjectMemberRepository.user_in_project(self.db, project.id, current_user_id)
