@@ -25,25 +25,44 @@ class CommentService:
     @staticmethod
     def _to_comment_tree_node(comment: Comment) -> schema.CommentTreeResponse:
         base = to(schema.CommentResponse, comment)
+        if comment.deleted_at is not None:
+            base.content = None
         return schema.CommentTreeResponse(**base.model_dump(), children=[])
 
     @staticmethod
     def build_comment_tree(comments: list[Comment]) -> list[schema.CommentTreeResponse]:
-        comment_map = {comment.id: CommentService._to_comment_tree_node(comment) for comment in comments}
+        comment_map = { comment.id: CommentService._to_comment_tree_node(comment) for comment in comments}
+
+        for comment in comments:
+            if comment.parent_comment_id is None:
+                continue
+
+            parent = comment_map.get(comment.parent_comment_id)
+
+            if parent:
+                parent.children.append(comment_map[comment.id])
+
+        def clean_tree(node: schema.CommentTreeResponse) -> bool:
+            node.children = [child for child in node.children if clean_tree(child)]
+
+            if node.deleted_at is not None and not node.children:
+                return False
+
+            return True
 
         roots = []
 
         for comment in comments:
+            if comment.parent_comment_id is not None:
+                continue
+
             dto = comment_map[comment.id]
 
-            if comment.parent_comment_id is None:
+            if clean_tree(dto):
                 roots.append(dto)
-            else:
-                parent = comment_map.get(comment.parent_comment_id)
-                if parent:
-                    parent.children.append(dto)
 
         return roots
+
 
     async def create(self, issue_id: UUID, data: schema.CommentCreate, user: User) -> schema.CommentCreateResponse:
         result = await self.issue_repository.get_by_public_id_with_current_member(self.db, issue_id, user.id)

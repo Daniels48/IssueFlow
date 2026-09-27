@@ -68,6 +68,7 @@ class IssueService:
         issue = Issue(project_id=project.id, reporter_id=user.id, reporter=user, created_at=now, **create_data)
 
         issue = await self.rep.create(self.db, issue)
+        project.updated_at = now
 
         event = events.IssueCreatedEvent.from_model(issue, user, now)
         self.db.add(events.OutboxFactory.from_event(event))
@@ -163,6 +164,7 @@ class IssueService:
 
         issue.updated_at = now
         issue.deleted_at = now
+        issue.project.updated_at = now
 
         event = events.IssueDeleteEvent.from_model(issue, user, now)
         self.db.add(events.OutboxFactory.from_event(event))

@@ -18,6 +18,13 @@ class ProjectEventData(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class ProjectEventDataWithCounts(ProjectEventData):
+    owner: UserEventData
+    members_count: int
+    issues_count: int
+    comments_count: int
+
+
 class ProjectEvent(Event):
     aggregate_type: ClassVar[str] = "project"
 

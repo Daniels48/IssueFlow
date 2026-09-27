@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict
 from app.events import RoutingKeys
 from app.events.base import Event
 from app.events.issue import IssueEventData
-from app.events.project import ProjectEventData
+from app.events.project import ProjectEventData, ProjectEventDataWithCounts
 from app.events.user import UserEventData
 from app.infrastructure.db.models import ProjectMember, User
 from app.modules.project_members.project_role import ProjectRole
@@ -41,13 +41,25 @@ class MemberEvent(Event):
             "author": UserEventData.model_validate(author),
         }
 
-
 class MemberAddedEvent(MemberEvent):
     event_type: ClassVar[str] = RoutingKeys.PROJECT_MEMBER_ADDED
 
+    project: ProjectEventDataWithCounts
+
     @classmethod
-    def from_model(cls,member: ProjectMember,user: User, occurred_at: datetime) -> Self:
-        return cls(**cls._base_data(member=member, author=user, occurred_at=occurred_at))
+    def from_model(cls, member: ProjectMember, user: User, occurred_at: datetime,
+                   members_count: int, issues_count: int, comments_count: int) -> Self:
+        data = cls._base_data(member=member, author=user, occurred_at=occurred_at)
+
+        data["project"] = ProjectEventDataWithCounts(
+            **ProjectEventData.model_validate(member.project).model_dump(),
+            owner=UserEventData.model_validate(member.project.owner),
+            members_count=members_count,
+            issues_count=issues_count,
+            comments_count=comments_count,
+        )
+
+        return cls(**data)
 
 
 class MemberUpdatedEvent(MemberEvent):

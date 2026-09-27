@@ -96,11 +96,6 @@ class IssueRepository:
 
                 selectinload(Issue.comments).selectinload(Comment.author),
 
-                with_loader_criteria(
-                    Comment,
-                    Comment.deleted_at.is_(None),
-                    include_aliases=True,
-                ),
             )
             .where(
                 Issue.public_id == public_id,

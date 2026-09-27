@@ -337,8 +337,42 @@ class WSClient {
     }
 }
 
-window.ws = new WSClient();
+class AppEvents {
+    constructor() {
+        this.handlers = {};
+        this.wildcardHandlers = [];
+    }
 
+    on(eventType, handler) {
+        if (eventType === "*") {
+            this.wildcardHandlers.push(handler);
+            return;
+        }
+
+        if (!this.handlers[eventType]) {
+            this.handlers[eventType] = [];
+        }
+
+        this.handlers[eventType].push(handler);
+    }
+
+    emit(event) {
+        // Обработчики конкретного события
+        const handlers = this.handlers[event.event_type] ?? [];
+
+        for (const handler of handlers) {
+            handler(event);
+        }
+
+        for (const handler of this.wildcardHandlers) {
+            handler(event);
+        }
+    }
+}
+
+
+window.ws = new WSClient();
+window.appEvents = new AppEvents();
 window.api = api;
 window.logout = logout;
 window.data_url = data_url;
@@ -349,6 +383,7 @@ if (!isAuthPage) {
       ws.on("*", (event) => {
         const notification = window.NotificationFactory.fromEvent(event);
         if (notification) {window.notificationCenter.add(notification);}
+        window.appEvents.emit(event);
     });
 
     window.userPromise = (async () => {

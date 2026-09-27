@@ -19,18 +19,20 @@ class CommentResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     public_id: UUID
-    content: str
+    content: str | None = None
     author: UserShortResponse
     created_at: datetime
     updated_at: datetime
-
-class CommentCreateResponse(CommentResponse):
-    parent_comment_public_id: UUID | None = None
-    children: list[CommentResponse] = Field(default_factory=list)
+    deleted_at: datetime | None
 
 
 class CommentTreeResponse(CommentResponse):
     children: list["CommentTreeResponse"] = Field(default_factory=list)
+
+
+class CommentCreateResponse(CommentResponse):
+    parent_comment_public_id: UUID | None = None
+    children: list[CommentResponse] = Field(default_factory=list)
 
 
 CommentTreeResponse.model_rebuild()

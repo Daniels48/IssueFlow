@@ -27,12 +27,13 @@ class ProjectMemberService:
         self.db = db
 
     async def add_member(self, project_id: UUID, data: ProjectMemberCreate, user: User) -> ProjectMemberResponse:
-        result = await self.project_repository.get_by_public_id_with_current_member(self.db, project_id, user.id)
+        result = await self.project_repository.get_by_public_id_with_current_member_and_counts(
+            self.db, project_id, user.id)
 
         if result is None:
             raise AppException(ErrorCode.PROJECT_NOT_FOUND,"Project not found")
 
-        project, member_current = result
+        project, member_current, members_count, issues_count, comments_count = result
 
         context = PermissionContext(user=user, project=project, member=member_current)
         ProjectRBAC.require(permission=Permission.MEMBER_ADD, context=context)
@@ -49,10 +50,13 @@ class ProjectMemberService:
 
         now = get_now_dt()
 
+        project.updated_at = now
         member = ProjectMember(project_id=project.id, project=project, user_id=added_user.id, user=added_user, created_at=now)
         member = await self.repository.create(self.db,member)
+        members_count += 1
 
-        event = MemberAddedEvent.from_model(member=member, user=user, occurred_at=now)
+        event = MemberAddedEvent.from_model(member=member, user=user, occurred_at=now, members_count=members_count,
+                                            issues_count=issues_count, comments_count=comments_count)
         self.db.add(OutboxFactory.from_event(event))
 
         await self.db.commit()
@@ -99,6 +103,7 @@ class ProjectMemberService:
         member.role = data.role
         member.project = project
         member.updated_at = now
+        project.updated_at = now
 
         event = MemberUpdatedEvent.from_model(old_value=old_value, member=member, user=user, occurred_at=now)
         self.db.add(OutboxFactory.from_event(event))
@@ -125,6 +130,7 @@ class ProjectMemberService:
 
         now = get_now_dt()
         member.project = project
+        project.updated_at = now
 
         event = MemberDeletedEvent.from_model(member=member, user=user, occurred_at=now)
         self.db.add(OutboxFactory.from_event(event))

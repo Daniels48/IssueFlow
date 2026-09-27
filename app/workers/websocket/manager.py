@@ -58,6 +58,15 @@ class ConnectionManager:
 
         await asyncio.gather(*tasks)
 
+    async def broadcast_except(self,excluded_user_id: UUID,message: dict) -> None:
+        tasks = (
+            self.send_to_user(user_public_id, message)
+            for user_public_id in self._connections
+            if user_public_id != excluded_user_id
+        )
+
+        await asyncio.gather(*tasks)
+
     async def _safe_send(self,user_public_id: UUID, websocket: WebSocket, message: dict) -> None:
         try:
             await websocket.send_json(message)

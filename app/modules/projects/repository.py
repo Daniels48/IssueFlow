@@ -99,7 +99,7 @@ class ProjectRepository:
         return result.one_or_none()
 
     @staticmethod
-    async def get_all_by_user(db: AsyncSession, user_id: int,is_admin: bool) -> list[Row[tuple[Any, Any, Any, Any]]]:
+    def _get_counts_subquery():
         members_subq = (
             select(
                 ProjectMember.project_id.label("project_id"),
@@ -137,6 +137,13 @@ class ProjectRepository:
             .group_by(Issue.project_id)
             .subquery()
         )
+
+        return members_subq, issues_subq, comments_subq
+
+
+    @staticmethod
+    async def get_all_by_user(db: AsyncSession, user_id: int,is_admin: bool) -> list[Row[tuple[Any, Any, Any, Any]]]:
+        members_subq, issues_subq, comments_subq = ProjectRepository._get_counts_subquery()
 
         stmt = (
             select(
@@ -201,6 +208,38 @@ class ProjectRepository:
                 & (ProjectMember.user_id == user_id)
                 & (ProjectMember.deleted_at.is_(None)),
             )
+            .where(
+                Project.public_id == public_id,
+                Project.deleted_at.is_(None),
+            )
+        )
+
+        result = await db.execute(stmt)
+
+        return result.one_or_none()
+
+    @staticmethod
+    async def get_by_public_id_with_current_member_and_counts(db: AsyncSession, public_id: UUID, user_id: int,
+    ) -> tuple[Project,ProjectMember | None,int,int,int] | None:
+        members_subq, issues_subq, comments_subq = ProjectRepository._get_counts_subquery()
+        stmt = (
+            select(
+                Project,
+                ProjectMember,
+                func.coalesce(members_subq.c.members_count, 0, ).label("members_count"),
+                func.coalesce(issues_subq.c.issues_count, 0, ).label("issues_count"),
+                func.coalesce(comments_subq.c.comments_count, 0, ).label("comments_count"),
+            )
+            .options(joinedload(Project.owner))
+            .outerjoin(
+                ProjectMember,
+                (ProjectMember.project_id == Project.id)
+                & (ProjectMember.user_id == user_id)
+                & (ProjectMember.deleted_at.is_(None)),
+            )
+            .outerjoin(members_subq,members_subq.c.project_id == Project.id)
+            .outerjoin(issues_subq,issues_subq.c.project_id == Project.id)
+            .outerjoin(comments_subq,comments_subq.c.project_id == Project.id)
             .where(
                 Project.public_id == public_id,
                 Project.deleted_at.is_(None),

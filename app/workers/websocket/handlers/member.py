@@ -6,11 +6,9 @@ from app.workers.websocket.schemas import EventEnvelope
 from app import events
 
 
-
-
 @dispatcher.register(events.MemberAddedEvent)
 async def member_add(event: events.MemberAddedEvent, envelope: EventEnvelope):
-    await ProjectCache.add_member(event.project.public_id, event.member.public_id)
+    await ProjectCache.add_member(event.project.public_id, event.user.public_id)
     result = create_message(event, envelope)
     await NotificationService.notify_project(event.project.public_id, result["message"], event.author.public_id)
     event_id = envelope.event_id
@@ -18,9 +16,10 @@ async def member_add(event: events.MemberAddedEvent, envelope: EventEnvelope):
 
 @dispatcher.register(events.MemberDeletedEvent)
 async def member_remove(event: events.MemberDeletedEvent, envelope: EventEnvelope):
-    await ProjectCache.remove_member(event.project.public_id, event.member.public_id)
+    await ProjectCache.remove_member(event.project.public_id, event.user.public_id)
     result = create_message(event, envelope)
-    await NotificationService.notify_project(event.project.public_id, result["message"], event.author.public_id)
+    await NotificationService.notify_project(event.project.public_id, result["message"])
+    await NotificationService.notify_user(event.user.public_id, result["message"])
     event_id = envelope.event_id
 
 @dispatcher.register(events.MemberUpdatedEvent)

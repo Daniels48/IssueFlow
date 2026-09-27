@@ -30,6 +30,11 @@ const filterStatus = document.querySelector("#filter-status");
 const filterPriority = document.querySelector("#filter-priority");
 const filterDueDate = document.querySelector("#filter-due-date");
 const sortIssues = document.querySelector("#sort-issues");
+
+const prjct_created = document.getElementById("project-created");
+const project_owner = document.getElementById("project-owner");
+
+let project_db;
 let searchTimeout;
 let UserSearchTimeout;
 
@@ -64,52 +69,59 @@ async function loadProject() {
     const res = await api.get(window.data_url.project(projectId));
     if (!res || !res.ok) {return;}
     const project = await res.json();
-    renderDetailProject(project);
-    renderMembers(project.members, project.roles);
+    project_db = {
+        ...project,
+        members: new Map(project.members.map(member => [member.user.public_id, member])),
+        issues: new Map(project.issues.map(issue => [issue.public_id, issue]))
+    };
+    renderDetailProject();
+    renderMembers();
     renderIssues(project.issues);
 }
 
-function renderDetailProject(project) {
-    const prjct_created = document.getElementById("project-created");
-    const project_owner = document.getElementById("project-owner");
-    title.textContent = project.name;
-    description.textContent = project.description ?? "No description";
-
-    member_cnt_obj.textContent = project.members.length;
-    issues_cnt_obj.textContent = project.issues.length;
-    prjct_created.textContent =  window.formatDate(project.created_at, 4);
-    project_owner.textContent = project.owner.username;
+function renderDetailProject() {
+    title.textContent = project_db.name;
+    description.textContent = project_db.description || "No description";
+    member_cnt_obj.textContent = project_db.members.size;
+    issues_cnt_obj.textContent = project_db.issues.size;
+    prjct_created.textContent =  window.formatDate(project_db.created_at, 4);
+    project_owner.textContent = project_db.owner.username;
 }
 
-function renderMembers(members, roles, is_add=false) {
+function renderMembers() {
+    const members = [...project_db.members.values()];
+    const roles = project_db.roles;
+
     if (members.length === 0) {
-        membersContainer.innerHTML = `<div class="empty">No members</div>`;
+        membersContainer.innerHTML = `<div class="empty">No members</div>`;return;
     }
-    else {
-        let html = is_add ? membersContainer.innerHTML : "";
-        for (const member of members) {html += member_text(member);}
-        membersContainer.innerHTML = html;
 
-        function member_text(member) {
-            let text_member_action = `<span class="owner-badge">Owner</span>`;
-            if (member.role !== "owner") {
-                text_member_action = `<select class="role-select" data-user-id="${member.user.public_id}">${get_option(roles, user)}</select>
-                                      <button class="remove-btn" data-user-id="${member.user.public_id}">Remove</button>`}
+    let html = "";
+    for (const member of members) {html += member_text(member)}
+    membersContainer.innerHTML = html;
 
-              return `<div class="member">
-                        <div class="member-info"><span class="member-name">${member.user.username}</span></div>
-                        <div class="member-actions">${text_member_action}</div>
-                    </div>`
-            }
-
-        function get_option(roles, user) {
-            let options = "";
-            function capitalize(text) {return text.charAt(0) + text.slice(1).toLowerCase();}
-            for (const role of roles) {
-                options += `<option value="${role}" ${user.role === role ? "selected" : ""}>${capitalize(role)}</option>`;
-            }
-            return options
+    function member_text(member) {
+        let text_member_action = `
+            <select class="role-select" data-user-id="${member.user.public_id}">${get_option(member)}</select>
+            <button class="remove-btn" data-user-id="${member.user.public_id}">Remove</button>`;
+        if (project_db.owner.public_id === member.user.public_id) {
+            text_member_action = `<span class="owner-badge">Owner</span>`
         }
+
+        return `<div class="member">
+                    <div class="member-info"><span class="member-name">${member.user.username}</span></div>
+                    <div class="member-actions">${text_member_action}</div>
+                </div>`;
+    }
+
+
+    function get_option(member) {
+        let options = "";
+        const capitalize = text => text.charAt(0) + text.slice(1).toLowerCase();
+        for (const role of roles) {
+            options += `<option value="${role}" ${member.role === role ? "selected" : ""}>${capitalize(role)}</option>`
+        }
+        return options;
     }
 }
 
@@ -261,15 +273,14 @@ function loadIssuesDebounced(time = 400) {
 
 // --------- Project Managed ---------------------------------------
 async function editProject() {
-    const title = prompt("Project title").trim();
-    if (title === null) {return;}
-    const description = prompt("Description (optional)").trim();
-    if (description === null) {return;}
-    const res = await api.patch(window.data_url.project(projectId), {name: title, description: description});
-    if (!res || !res.ok) {
-        alert("Failed to edit project.");
-        return;
-    }
+    const titleInput = prompt("Project title");
+    if (titleInput === null) {return;}
+    const title = titleInput.trim();
+    const description = prompt("Description (optional)")?.trim() ?? "";
+    const res = await api.patch(
+        window.data_url.project(projectId), {name: title, description: description}
+    );
+    if (!res || !res.ok) {alert("Failed to edit project.");return;}
     loadProject();
 }
 
@@ -291,9 +302,11 @@ async function change_role(event) {
     if (!select) return;
     const userId = select.dataset.userId;
     const role = select.value;
-
-    const response = await window.api.patch(window.data_url.member(projectId, userId), {role: role});
-    const data_serv = await response.json();
+    const response = await window.api.patch(window.data_url.member(projectId, userId), {role: role})
+    if (!response.ok) {return;}
+    const member = await response.json();
+    project_db.members.set(member.user.public_id, member);
+    renderMembers();
 }
 
 async function delete_member(event) {
@@ -301,38 +314,39 @@ async function delete_member(event) {
     if (!button) return;
     const userId = button.dataset.userId;
     const response = await window.api.del(window.data_url.member(projectId, userId));
-    if (response.status === 204) {
-        const member = event.target.closest(".member");
-        member.remove();
-        member_cnt_obj.textContent = Number(member_cnt_obj.textContent) - 1;
-    }
+    if (response.status !== 204) {return;}
+    project_db.members.delete(userId);
+    renderMembers();
+    renderDetailProject();
 }
 
 async function add_member(event) {
     const btn_add = event.target.closest(".add-btn");
-
     if (!btn_add) return;
     const user_id = btn_add.dataset.userId;
-    const url_members = window.data_url.members(projectId);
-    const response = await window.api.post(url_members, {user_public_id: user_id});
-
+    const response = await window.api.post(window.data_url.members(projectId), {user_public_id: user_id});
     if (!response.ok) {return;}
-    const data_serv = await response.json();
-    const list_data = [data_serv];
-    renderMembers(list_data, ["admin", "member"], true);
-    member_cnt_obj.textContent = Number(member_cnt_obj.textContent) + 1;
+    const member = await response.json();
+    project_db.members.set(member.user.public_id, member);
+    renderMembers();
+    renderDetailProject();
 
     user_search_input.value = "";
-    res_search.classList.add("hidden");
-    res_search.textContent = "";
-    res_search.innerHTML = "";
+    updateSearchResults("clear");
+}
+
+function updateSearchResults(command, html = "") {
+    switch (command) {
+        case "clear":res_search.classList.add("hidden");res_search.innerHTML = "";break;
+        case "render":res_search.innerHTML = html;break;
+        case "show":res_search.classList.remove("hidden");break;
+    }
 }
 
 async function user_search_func(event) {
     const query = event.target.value.trim();
     if (query.length < 2) {
-        res_search.classList.add("hidden");
-        res_search.innerHTML = "";
+        updateSearchResults("clear")
         return;
     }
     clearTimeout(UserSearchTimeout);
