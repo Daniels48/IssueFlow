@@ -107,13 +107,13 @@ class IssueChangeAssigneeEvent(IssueEvent):
     event_type: ClassVar[str] = RoutingKeys.ISSUE_ASSIGNED
 
     old_value: UserEventData | None = None
-    new_value: UserEventData | None = None
+    new_value: UserEventData
 
     @classmethod
     def from_model(cls, old_value: User | None, new_value: User, issue: Issue, user: User, occurred_at: datetime) -> Self:
         return cls(
             **cls._base_data(issue, user, occurred_at),
-            old_value=UserEventData.model_validate(old_value),
+            old_value=(UserEventData.model_validate(old_value) if old_value is not None else None),
             new_value=UserEventData.model_validate(new_value),
         )
 

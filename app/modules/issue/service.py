@@ -18,7 +18,6 @@ from app.modules.issue.status import IssueStatus
 from app.modules.issue.transitions import ALLOWED_STATUS_TRANSITIONS
 from app.modules.project_members.repository import ProjectMemberRepository
 from app.modules.projects.repository import ProjectRepository
-from app.modules.users.repository import UserRepository
 from app.permissions import PermissionContext, Permission, ProjectRBAC
 from app.utils.func_utils import to, get_now_dt
 
@@ -28,13 +27,12 @@ ISSUE_LIST_ADAPTER = TypeAdapter(list[schema.IssueResponse])
 class IssueService:
     def __init__(self,db: AsyncSession):
         self.rep = IssueRepository()
-        self.project_rep = ProjectRepository()
-        self.member_rep = ProjectMemberRepository()
-        self.user_rep = UserRepository()
+        self.prjRep = ProjectRepository()
+        self.MemRep = ProjectMemberRepository()
         self.db = db
 
     async def create(self,project_id: UUID, data: schema.IssueCreate, user: User) -> schema.IssueResponse:
-        result = await self.project_rep.get_by_public_id_with_current_member(self.db, project_id, user.id)
+        result = await self.prjRep.get_by_public_id_with_current_member(self.db, project_id, user.id)
 
         if result is None:
             raise AppException(ErrorCode.PROJECT_NOT_FOUND, "Project not found")
@@ -55,7 +53,7 @@ class IssueService:
         assignee_id = create_data.pop("assignee_id", None)
 
         if assignee_id is not None:
-            member_assignee = await self.member_rep.get_by_project_and_user_id(self.db, project.id, assignee_id)
+            member_assignee = await self.MemRep.get_by_project_and_user_id(self.db, project.id, assignee_id)
 
             if not member_assignee:
                 raise AppException(ErrorCode.USER_IS_NOT_A_PROJECT_MEMBER,"User is not a project member")
@@ -82,7 +80,7 @@ class IssueService:
         if issue is None:
             raise AppException(ErrorCode.ISSUE_NOT_FOUND, "Issue not found")
 
-        member = await self.member_rep.get_by_project_and_user(self.db, issue.project.id, user.id)
+        member = await self.MemRep.get_by_project_and_user(self.db, issue.project.id, user.id)
 
         context = PermissionContext(user=user, project=issue.project, member=member, resource=issue)
         ProjectRBAC.require(permission=Permission.ISSUE_VIEW, context=context)
@@ -96,12 +94,12 @@ class IssueService:
         )
 
     async def list(self, project_id: UUID, user: User, filters: schema.IssueFilters) -> list[schema.IssueResponse]:
-        project = await self.project_rep.get_by_public_id(self.db, project_id)
+        project = await self.prjRep.get_by_public_id(self.db, project_id)
 
         if not project:
             raise AppException(ErrorCode.PROJECT_NOT_FOUND, "Project not found")
 
-        member = await self.member_rep.get_by_project_and_user(self.db,project.id,user.id)
+        member = await self.MemRep.get_by_project_and_user(self.db,project.id,user.id)
 
         context = PermissionContext(user=user, project=project, member=member)
         ProjectRBAC.require(permission=Permission.ISSUE_VIEW, context=context)
@@ -201,8 +199,12 @@ class IssueService:
 
         return to(schema.IssueDueDateResponse, issue)
 
-    async def update_assignee(self, issue_id: UUID,data: schema.IssueAssigneeUpdate,user: User) \
-            -> schema.IssueAssigneeResponse:
+    async def update_assignee(self, issue_id: UUID,data: schema.IssueAssigneeUpdate,user: User):
+        def set_assignee(assignee_value: ProjectMember | None):
+            issue.assignee = assignee_value.user if assignee_value is not None else None
+            issue.assignee_id = assignee_value.user_id if assignee_value is not None else None
+            issue.updated_at = now
+
         result = await self.rep.get_by_public_id_with_current_member_and_assignee(self.db, issue_id,user.id)
 
         if result is None:
@@ -211,35 +213,18 @@ class IssueService:
         issue, member_current = result
 
         IssueService.ensure_not_closed(issue)
-
         context = PermissionContext(user=user, project=issue.project, member=member_current, resource=issue)
-        ProjectRBAC.require(permission=Permission.ISSUE_ASSIGNED, context=context)
 
         now = get_now_dt()
-
         old_value = issue.assignee
 
-        def set_assignee(assignee_value: ProjectMember | None):
-            issue.assignee = assignee_value.user if assignee_value is not None else None
-            issue.assignee_id = assignee_value.user_id if assignee_value is not None else None
-            issue.updated_at = now
+        if data.assignee_id is not None:
+            ProjectRBAC.require(permission=Permission.ISSUE_ASSIGNED, context=context)
 
-        if data.assignee_id is None:
-
-            if issue.assignee_id is None:
-                return to(schema.IssueAssigneeResponse, issue)
-
-            set_assignee(None)
-
-            event = events.IssueUnAssigneeEvent.from_model(old_value, issue, user, now)
-
-        else:
-            member_assignee = await self.member_rep.get_by_project_and_user_id(
-                self.db, issue.project_id, data.assignee_id
-            )
+            member_assignee = await self.MemRep.get_by_project_and_user_id(self.db, issue.project_id, data.assignee_id)
 
             if member_assignee is None:
-                raise AppException(ErrorCode.USER_IS_NOT_A_PROJECT_MEMBER,"User is not a project member")
+                raise AppException(ErrorCode.USER_IS_NOT_A_PROJECT_MEMBER, "User is not a project member")
 
             if issue.assignee_id == member_assignee.user_id:
                 return to(schema.IssueAssigneeResponse, issue)
@@ -247,6 +232,15 @@ class IssueService:
             set_assignee(member_assignee)
 
             event = events.IssueChangeAssigneeEvent.from_model(old_value, member_assignee.user, issue, user, now)
+        else:
+            ProjectRBAC.require(permission=Permission.ISSUE_UNASSIGNED, context=context)
+
+            if issue.assignee_id is None:
+                return to(schema.IssueAssigneeResponse, issue)
+
+            set_assignee(None)
+
+            event = events.IssueUnAssigneeEvent.from_model(old_value, issue, user, now)
 
 
         self.db.add(events.OutboxFactory.from_event(event))

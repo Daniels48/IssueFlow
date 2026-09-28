@@ -28,6 +28,7 @@ class Permission(StrEnum):
     ISSUE_CLOSE = "issue:close"
     ISSUE_REOPEN = "issue:reopen"
     ISSUE_ASSIGNED = "issue:assigned"
+    ISSUE_UNASSIGNED = "issue:unassigned"
 
     COMMENT_VIEW = "comment:view"
     COMMENT_CREATE = "comment:create"

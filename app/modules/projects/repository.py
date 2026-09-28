@@ -43,47 +43,10 @@ class ProjectRepository:
             .scalar_subquery()
         )
 
-        issue_value = func.jsonb_build_object(
-                            "public_id", Issue.public_id,
-                            "title", Issue.title,
-                            "description", Issue.description,
-                            "status", Issue.status,
-                            "priority", Issue.priority,
-                            "due_date", Issue.due_date,
-                            "created_at", Issue.created_at,
-                            "updated_at", Issue.updated_at,
-
-                            "reporter", func.jsonb_build_object(
-                                "public_id", Reporter.public_id,
-                                "username", Reporter.username,
-                            ),
-
-                            "assignee", case((Assignee.id.is_not(None),
-                                func.jsonb_build_object(
-                                    "public_id", Assignee.public_id,
-                                    "username", Assignee.username,
-                                ),
-                            ),else_=None,),
-                        )
-
-        issues_subq = (
-            select(func.coalesce(func.jsonb_agg(issue_value).filter(Issue.id.is_not(None)), cast(literal("[]"), JSONB),))
-            .select_from(Issue)
-            .join(Reporter, Reporter.id == Issue.reporter_id)
-            .outerjoin(Assignee, Assignee.id == Issue.assignee_id)
-            .where(
-                Issue.project_id == Project.id,
-                Issue.deleted_at.is_(None),
-            )
-            .correlate(Project)
-            .scalar_subquery()
-        )
-
         stmt = (
             select(
                 Project,
                 members_subq.label("members"),
-                issues_subq.label("issues"),
             )
             .options(
                 joinedload(Project.owner)

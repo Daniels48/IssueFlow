@@ -8,7 +8,10 @@ const user_header = document.getElementById("username");
 document.getElementById("logout").addEventListener("click", window.logout);
 
 const joinUrl = (str, value) =>
-    `${String(str).replace(/\/+$/, "")}/${String(value).replace(/^\/+|\/+$/g, "")}`;
+    `${String(str)
+        .replace(/\/+$/, "")
+    }/${String(value)
+        .replace(/^\/+|\/+$/g, "")}`;
 
 const url_api = "/api";
 const url_login = "/login";
@@ -211,27 +214,14 @@ function formatRelativeDate(dateString, prefix = "") {
 
 function formatDate(dateString, year = 0, time = false) {
     if (!dateString) return "—";
-
     const date = new Date(dateString);
+    const dateOptions = {day: "numeric", month: "short",};
 
-    const dateOptions = {
-        day: "numeric",
-        month: "short",
-    };
+    if (year === 2) {dateOptions.year = "2-digit"}
+    if (year === 4) {dateOptions.year = "numeric"}
 
-    if (year === 2) {
-        dateOptions.year = "2-digit";
-    }
-    if (year === 4) {
-        dateOptions.year = "numeric";
-    }
-
-    const datePart = new Intl.DateTimeFormat("en-US", dateOptions)
-        .format(date);
-
-    if (!time) {
-        return datePart;
-    }
+    const datePart = new Intl.DateTimeFormat("en-US", dateOptions).format(date);
+    if (!time) {return datePart;}
 
     const timePart = new Intl.DateTimeFormat("en-US", {
         hour: "2-digit",
@@ -240,6 +230,18 @@ function formatDate(dateString, year = 0, time = false) {
     }).format(date);
 
     return `${datePart} • ${timePart}`;
+}
+
+const to_UTC = (date) => date ? new Date(date).toISOString() : null;
+
+function debounce(func, defaultDelay = 400) {
+    let timeout;
+    return (...args) => {
+        let delay = defaultDelay;
+        if (typeof args[0] === "number") {delay = args.shift();}
+        clearTimeout(timeout);
+        timeout = setTimeout(() => {func(...args);}, delay);
+    };
 }
 
 const api = {
@@ -377,7 +379,9 @@ window.api = api;
 window.logout = logout;
 window.data_url = data_url;
 window.relativeDate = formatRelativeDate;
-window.formatDate = formatDate
+window.formatDate = formatDate;
+window.debounce = debounce;
+window.toUTC = to_UTC;
 
 if (!isAuthPage) {
       ws.on("*", (event) => {
@@ -400,4 +404,3 @@ if (!isAuthPage) {
         window.ws.connect();
     });
 }
-

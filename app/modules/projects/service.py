@@ -64,7 +64,7 @@ class ProjectService:
         if result is None:
             raise AppException(ErrorCode.PROJECT_NOT_FOUND, "Project not found.")
 
-        project, members, issues = result
+        project, members = result
 
         member_current = await self.mem_rep.get_by_project_and_user_id(self.db, project.id, user.public_id)
 
@@ -74,7 +74,6 @@ class ProjectService:
         return schema.ProjectDetailResponse(
             **to(schema.ProjectBaseDetailResponse, project).model_dump(),
             members=[ProjectMemberResponse.model_validate(member) for member in members],
-            issues=[IssueResponse.model_validate(issue) for issue in issues],
         )
 
     async def update(self, public_id: UUID, data: schema.ProjectUpdate, user: User) -> schema.ProjectUpdateResponse:

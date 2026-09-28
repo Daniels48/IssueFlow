@@ -857,9 +857,8 @@ function editDueDate() {
     `;
 
     const input = document.querySelector("#field-due-date");
-    const get_dueDate = (input) =>  input.value ? new Date(input.value).toISOString() : null;
 
-    fieldModalSave.onclick = async () => {await updateDueDate(get_dueDate(input));};
+    fieldModalSave.onclick = async () => {await updateDueDate(window.toUTC(input.value));};
 
     fieldModal.classList.remove("hidden");
 
