@@ -128,25 +128,33 @@ class IssueStatusBaseResponse(BaseModel):
 class IssueStatusResponse(IssueStatusBaseResponse):
     allowed_statuses: IssueStatusTransitions
 
-
 class DueDateFilter(str, Enum):
     OVERDUE = "overdue"
     TODAY = "today"
     UPCOMING = "upcoming"
 
 class IssueSort(str, Enum):
-    DUE_DATE_ASC = "due_date_asc"
-    DUE_DATE_DESC = "due_date_desc"
+    STATUS_ASC = "status_asc"
+    STATUS_DESC = "status_desc"
 
     PRIORITY_ASC = "priority_asc"
     PRIORITY_DESC = "priority_desc"
 
-    NEWEST = "newest"
-    OLDEST = "oldest"
+    DUE_DATE_ASC = "due_date_asc"
+    DUE_DATE_DESC = "due_date_desc"
+
 
 class IssueFilters(BaseModel):
     search: str | None = None
     status: IssueStatus | None = None
     priority: IssuePriority | None = None
     due_date: DueDateFilter | None = None
-    sort: IssueSort | None = None
+    sort: list[IssueSort] | None = None
+
+class IssueListResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    items: list[IssueResponse]
+    total: int
+    filtered_total: int
+    page: int
+    per_page: int

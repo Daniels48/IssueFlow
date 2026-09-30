@@ -93,7 +93,7 @@ class IssueService:
             allowed_statuses=schema.IssueStatusTransitions.from_status(issue.status)
         )
 
-    async def list(self, project_id: UUID, user: User, filters: schema.IssueFilters) -> list[schema.IssueResponse]:
+    async def list(self, project_id: UUID, user: User, filters: schema.IssueFilters, page: int, per_page: int):
         project = await self.prjRep.get_by_public_id(self.db, project_id)
 
         if not project:
@@ -104,9 +104,9 @@ class IssueService:
         context = PermissionContext(user=user, project=project, member=member)
         ProjectRBAC.require(permission=Permission.ISSUE_VIEW, context=context)
 
-        list_issues = await self.rep.get_all_by_project(self.db, project.id, filters)
+        result = await self.rep.get_all_by_project(self.db, project.id, filters, page, per_page)
 
-        return ISSUE_LIST_ADAPTER.validate_python(list_issues)
+        return to(schema.IssueListResponse, result)
 
     async def update(self, public_id: UUID, data: schema.IssueUpdate, user: User) -> schema.IssueUpdateResponse:
         result = await self.rep.get_by_public_id_with_current_member(self.db, public_id, user.id)
@@ -392,14 +392,14 @@ async def get_issue_service(db: DBSession) -> IssueService:
 
 issue_service = Annotated[IssueService,Depends(get_issue_service)]
 
-
 def get_issue_filters(
     search: str | None = Query(default=None, min_length=1),
     status: IssueStatus | None = None,
     priority: IssuePriority | None = None,
-    due_date: str | None = None,
-    sort: str | None = None,
+    due_date: schema.DueDateFilter | None = None,
+    sort: list[schema.IssueSort] | None = Query(default=None),
 ) -> schema.IssueFilters:
     return schema.IssueFilters(search=search,status=status, priority=priority,due_date=due_date, sort=sort)
 
 issue_filters = Annotated[schema.IssueFilters, Depends(get_issue_filters)]
+

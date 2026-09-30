@@ -27,7 +27,12 @@ const url_ws = joinUrl(location.host, "ws");
 
 const getQuery = (params) => {
     const query = new URLSearchParams();
-    for (const [key, value] of Object.entries(params)) {if (value) {query.set(key, value)}}
+
+    for (const [key, value] of Object.entries(params)) {
+        if (!value) {continue;}
+        if (Array.isArray(value)) {value.forEach(item => query.append(key, item));}
+        else {query.set(key, value);}
+    }
     const string = query.toString();
     return string ? `?${string}` : "";
 };

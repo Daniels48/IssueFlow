@@ -201,7 +201,7 @@ main{
 .filter-row {
     display: flex;
     align-items: center;
-    gap: 10px;
+    justify-content: space-between;
     width: 100%;
 }
 
@@ -232,4 +232,211 @@ main{
 /* Sort уходит вправо */
 #sort-issues {
     margin-left: auto;
+}
+
+.sort-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.sort-title {
+    flex-shrink: 0;
+
+    color: #94a3b8;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.sort-list {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.sort-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+
+    height: 40px;
+    padding: 0 9px;
+
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 6px;
+
+    font-size: 16px;
+
+    cursor: pointer;
+    color: #94a3b8;
+}
+
+.sort-item:hover {
+    border-color: #475569;
+    background: #243147;
+}
+
+.sort-remove {
+    color: #64748b;
+    font-size: 15px;
+    line-height: 1;
+}
+
+.sort-remove:hover {
+    color: #f87171;
+}
+
+.sort-add {
+    height: 40px;
+    padding: 0 9px;
+
+    background: transparent;
+    border: 1px dashed #475569;
+    border-radius: 6px;
+
+    color: #60a5fa;
+    font-size: 16px;
+
+    cursor: pointer;
+}
+
+.sort-add:hover {
+    background: #1e293b;
+    border-color: #60a5fa;
+}
+
+.sort-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    margin-left: auto;
+}
+
+.sort-reset,
+.sort-save {
+    height: 40px;
+    padding: 0 11px;
+
+    border-radius: 6px;
+    font-size: 16px;
+
+    cursor: pointer;
+}
+
+.sort-reset {
+    background: transparent;
+    border: 1px solid #475569;
+    color: #cbd5e1;
+}
+
+.sort-reset:hover {
+    background: #243147;
+}
+
+.sort-save {
+    background: #3b82f6;
+    border: 1px solid #3b82f6;
+    color: white;
+}
+
+.sort-save:hover {
+    background: #2563eb;
+}
+
+.sort-add-container {
+    position: relative;
+}
+
+.sorting-menu {
+    position: absolute;
+    top: calc(100% + 5px);
+    left: 0;
+
+    min-width: 140px;
+    padding: 4px;
+
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 6px;
+
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+
+    z-index: 100;
+}
+
+.sorting-menu.hidden {
+    display: none;
+}
+
+.sorting-menu button {
+    display: block;
+    width: 100%;
+
+    padding: 7px 9px;
+
+    background: transparent;
+    border: 0;
+    border-radius: 4px;
+
+    color: #cbd5e1;
+    text-align: left;
+    font-size: 13px;
+
+    cursor: pointer;
+}
+
+.sorting-menu button:hover {
+    background: #2b3a52;
+    color: #fff;
+}
+
+#sort-add-container{
+    position: relative;
+}
+.sort-item.dragging {
+    opacity: 0.85;
+}
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    margin-top: 20px;
+}
+
+.pagination button {
+    height: 46px;
+    min-width: 60px;
+    padding: 0 9px;
+
+    border: 1px solid #334155;
+    border-radius: 6px;
+    background: #1e293b;
+    color: #94a3b8;
+
+    font-size: 20px;
+    cursor: pointer;
+}
+
+.pagination button.active {
+    background: #3b82f6;
+    border-color: #3b82f6;
+    color: white;
+}
+
+.pagination button:hover:not(.active):not(:disabled) {
+    background: #263449;
+    color: #e2e8f0;
+}
+
+.pagination button:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+#count-issues{
+    margin-left:10px;
+    font-size: 1.9rem;
 }

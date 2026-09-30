@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, status, Query
 
 from app.modules.auth.dependencies import CurrentUser
 from app.modules.issue import schema as schema
@@ -14,9 +14,10 @@ async def create(project_id: UUID, data: schema.IssueCreate, user: CurrentUser, 
     return await service.create(project_id=project_id, data=data, user=user)
 
 
-@router.get( "", response_model=list[schema.IssueResponse])
-async def get_all(project_id: UUID, user: CurrentUser, service: issue_service, filters: issue_filters):
-    return await service.list(project_id=project_id, user=user, filters=filters)
+@router.get( "", response_model=schema.IssueListResponse)
+async def get_all(project_id: UUID, user: CurrentUser, service: issue_service, filters: issue_filters,
+                  page: int = Query(default=1, ge=1), per_page: int = Query(default=20, ge=1, le=100)):
+    return await service.list(project_id=project_id, user=user, filters=filters, page=page, per_page=per_page)
 
 
 @router.get("/{issue_id}",response_model=schema.IssueResponseDetail)

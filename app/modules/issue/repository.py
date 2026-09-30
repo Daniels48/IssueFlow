@@ -1,7 +1,7 @@
 from datetime import datetime, timezone, timedelta, time
 from uuid import UUID
 
-from sqlalchemy import select, or_, nulls_last, case
+from sqlalchemy import select, or_, nulls_last, case, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload, with_loader_criteria, joinedload, contains_eager
 
@@ -153,7 +153,10 @@ class IssueRepository:
         return stmt
 
     @staticmethod
-    def _apply_issue_sort(stmt, sort: IssueSort | None):
+    def _apply_issue_sort(stmt, sort: list[IssueSort] | None):
+        if not sort:
+            return stmt
+
         priority_order = case(
             (Issue.priority == IssuePriority.LOW, 1),
             (Issue.priority == IssuePriority.MEDIUM, 2),
@@ -161,28 +164,31 @@ class IssueRepository:
             (Issue.priority == IssuePriority.CRITICAL, 4),
         )
 
-        if sort == IssueSort.DUE_DATE_ASC:
-            stmt = stmt.order_by(nulls_last(Issue.due_date.asc()))
+        for item in sort:
 
-        elif sort == IssueSort.DUE_DATE_DESC:
-            stmt = stmt.order_by(nulls_last(Issue.due_date.desc()))
+            if item == IssueSort.STATUS_ASC:
+                stmt = stmt.order_by(Issue.status.asc())
 
-        elif sort == IssueSort.PRIORITY_ASC:
-            stmt = stmt.order_by(priority_order.asc())
+            elif item == IssueSort.STATUS_DESC:
+                stmt = stmt.order_by(Issue.status.desc())
 
-        elif sort == IssueSort.PRIORITY_DESC:
-            stmt = stmt.order_by(priority_order.desc())
+            elif item == IssueSort.PRIORITY_ASC:
+                stmt = stmt.order_by(priority_order.asc())
 
-        elif sort == IssueSort.NEWEST:
-            stmt = stmt.order_by(Issue.created_at.desc())
+            elif item == IssueSort.PRIORITY_DESC:
+                stmt = stmt.order_by(priority_order.desc())
 
-        elif sort == IssueSort.OLDEST:
-            stmt = stmt.order_by(Issue.created_at.asc())
+            elif item == IssueSort.DUE_DATE_ASC:
+                stmt = stmt.order_by(nulls_last(Issue.due_date.asc()))
+
+            elif item == IssueSort.DUE_DATE_DESC:
+                stmt = stmt.order_by(nulls_last(Issue.due_date.desc()))
 
         return stmt
 
     @staticmethod
-    async def get_all_by_project(db: AsyncSession, project_id: int, filters: IssueFilters) -> list[Issue]:
+    async def get_all_by_project(db: AsyncSession, project_id: int, filters: IssueFilters, page:int, per_page:int):
+        offset = (page - 1) * per_page
         stmt = (
             select(Issue)
             .options(
@@ -198,6 +204,40 @@ class IssueRepository:
         stmt = IssueRepository._apply_issue_filters(stmt, filters)
         stmt = IssueRepository._apply_issue_sort(stmt, filters.sort)
 
-        result = await db.execute(stmt)
+        stmt = stmt.offset(offset).limit(per_page)
+        # ------------
+        total_count_stmt = (
+            select(func.count(Issue.id))
+            .where(
+                Issue.project_id == project_id,
+                Issue.deleted_at.is_(None),
+            )
+        )
 
-        return list(result.scalars().all())
+        # -------------------
+
+        filtered_count_stmt = (
+            select(func.count(Issue.id))
+            .where(
+                Issue.project_id == project_id,
+                Issue.deleted_at.is_(None),
+            )
+        )
+
+        filtered_count_stmt = IssueRepository._apply_issue_filters(filtered_count_stmt, filters)
+        
+
+        result1 = await db.execute(stmt)
+
+        result2 = await db.execute(total_count_stmt)
+
+        result3 = await db.execute(filtered_count_stmt)
+
+
+        return {
+            "items": list(result1.scalars().all()),
+            "total": result2.scalar_one(),
+            "filtered_total": result3.scalar_one(),
+            "page": page,
+            "per_page": per_page,
+        }

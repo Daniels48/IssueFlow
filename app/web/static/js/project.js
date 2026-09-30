@@ -29,12 +29,20 @@ const issue_assignee = document.getElementById("issue-assignee");
 const filterStatus = document.querySelector("#filter-status");
 const filterPriority = document.querySelector("#filter-priority");
 const filterDueDate = document.querySelector("#filter-due-date");
-const sortIssues = document.querySelector("#sort-issues");
+
+const addSorting = document.getElementById("add-sorting");
+const sortingMenu = document.getElementById("sorting-menu");
+const sortList = document.getElementById("sort-list");
 
 const prjct_created = document.getElementById("project-created");
 const project_owner = document.getElementById("project-owner");
 
+const pagination = document.getElementById("pagination");
+const count_issues_filtered = document.getElementById("count-issues");
+
 let project_db;
+let dragged_button = null;
+let dragOffsetX = 0;
 
 // --------- Event Managed -----------------------------------------
 edit_btn.addEventListener("click", editProject);
@@ -52,15 +60,146 @@ form_issue.addEventListener("submit", createIssue);
 cancel_issue_form.addEventListener("click", clear_new_issue_form);
 modal_issue.addEventListener("click", handleIssueModalBackdropClick);
 
-const issueFilters = new IssueFilters(projectId);
+pagination.addEventListener("click", action_page_pagination);
+
+// --------------------------------------------------------------------
+
 
 // -----------------------HEAD----------------------------------------
+class IssueFilters {
+    constructor(projectId) {
+        this.key = `issue_filters_${projectId}`;
+        this.filters = this.getUrl() ?? this.getLocalStorage();
+        this.sortFields = {status: "Status", priority: "Priority", due_date: "Due date"};
+        if (!Array.isArray(this.filters.sort)) {this.filters.sort = [];}
+    }
+
+    getUrl() {
+        const params = new URLSearchParams(window.location.search);
+
+        if (params.size === 0) {
+            return null;
+        }
+
+        const filters = {};
+
+        for (const [key, value] of params) {
+            if (key === "sort") {
+                const lastUnderscore = value.lastIndexOf("_");
+
+                const field = value.slice(0, lastUnderscore);
+                const direction = value.slice(lastUnderscore + 1);
+                (filters.sort ??= []).push({field, direction});
+            } else {
+                filters[key] = value;
+            }
+        }
+
+        return filters;
+    }
+
+    getLocalStorage() {return JSON.parse(localStorage.getItem(this.key) || "{}");}
+
+    setLocalStorage() {
+        const exclude = ["search","page", "per_page"]
+        const filters = {...this.filters};
+        const emptyValues = ["", null, undefined];
+
+        for (const key of exclude) {delete filters[key];}
+
+        for (const [key, value] of Object.entries(filters)) {
+            let empty_array = Array.isArray(value) && value.length === 0;
+            if (emptyValues.includes(value) || empty_array) {
+                delete filters[key];
+            }
+        }
+        localStorage.setItem(this.key, JSON.stringify(filters));
+    }
+
+    get() {return this.filters;}
+
+    change(key, value) {
+        this.filters[key] = value;
+        this.setLocalStorage();
+    }
+
+    setUi() {
+        issue_search.value = this.filters.search ?? "";
+        filterStatus.value = this.filters.status ?? "";
+        filterPriority.value = this.filters.priority ?? "";
+        filterDueDate.value = this.filters.due_date ?? "";
+    }
+
+    setUrl(page) {
+        const params = new URLSearchParams();
+        for (const [key, value] of Object.entries(this.filters)) {
+            if (key === "sort") {
+                value.forEach(item => {
+                    const sort = `${item.field}_${item.direction}`;
+                    params.append("sort", sort);
+                });
+                continue;
+            }
+
+            if (value && (key !== "search" || value.length >= 2)) {params.set(key, value);}
+        }
+        if (page > 1) {params.set("page", page);}
+        const query = params.toString().replaceAll("%5F", "_");
+        const url = query ? `${window.location.pathname}?${query}` : window.location.pathname;
+        history.replaceState(null, "", url);
+    }
+
+    addSort(field) {
+        if (this.filters.sort.some(item => item.field === field)) {return;}
+        this.filters.sort.push({field: field, direction: "asc"});
+        this.setLocalStorage();
+        renderSort();
+    }
+
+    removeSort(field) {
+        this.filters.sort = this.filters.sort.filter(item => item.field !== field);
+        this.setLocalStorage();
+        renderSort();
+    }
+
+    toggleSort(field) {
+        const sort = this.filters.sort.find(item => item.field === field);
+        if (!sort) {return;}
+        sort.direction = sort.direction === "asc" ? "desc" : "asc";
+        this.setLocalStorage();
+        renderSort();
+    }
+
+    resetSort() {
+        this.filters.sort = [];
+        this.setLocalStorage();
+        renderSort();
+    }
+
+    getSortFields() {return this.sortFields}
+
+    getSortValues() {return this.filters.sort}
+
+    getApiFilters() {
+        const filters = {...this.filters};
+
+        if (filters.sort?.length) {
+            filters.sort = filters.sort.map(item => `${item.field}_${item.direction}`);
+        }
+
+        return filters;
+    }
+}
+
+const issueFilters = new IssueFilters(projectId);
+
 async function loadProject() {
     issueFilters.setUi();
     issueFilters.setUrl();
+    renderSort();
 
     const task_project = api.get(window.data_url.project(projectId));
-    const task_issue = api.get(window.data_url.issues(projectId, issueFilters.get()));
+    const task_issue = api.get(window.data_url.issues(projectId, issueFilters.getApiFilters()));
 
     const [projectRes, issuesRes] = await Promise.all([task_project,task_issue]);
 
@@ -71,78 +210,190 @@ async function loadProject() {
 
     project_db = {...project,
         members: new Map(project.members.map(member => [member.user.public_id, member])),
-        issues: new Map(issues.map(issue => [issue.public_id, issue]))
+        issues: new Map(issues.items.map(issue => [issue.public_id, issue])),
+        pagination: {
+            total: issues.total,
+            filteredTotal: issues.filtered_total,
+            page: issues.page,
+            perPage: issues.per_page
+        }
     };
 
     renderDetailProject();
     renderMembers();
-    renderIssues(issues);
+    renderIssues(issues.items);
+
+    const totalPages = Math.ceil(issues.filtered_total / issues.per_page);
+
+    renderPagination(issues.page, totalPages);
 }
 
-const loadIssues = window.debounce(async () => {
-    const search = issue_search.value.trim();
-    issueFilters.changeSearch(search.length >= 2 ? search : "");
-    issueFilters.setUrl()
+const loadIssues = window.debounce(async (page= 1, per_page=20) => {
+    issueFilters.setUrl(page)
 
-    const response = await window.api.get(window.data_url.issues(projectId, issueFilters.get()));
+    const params = {...issueFilters.getApiFilters()};
+
+    const response = await window.api.get(window.data_url.issues(projectId, params));
     if (!response.ok) return;
     const issues = await response.json();
-    renderIssues(issues);
+    project_db.issues = new Map(issues.items.map(issue => [issue.public_id, issue]));
+    project_db.pagination = {
+        total: issues.total,
+        filteredTotal: issues.filtered_total,
+        page: issues.page,
+        perPage: issues.per_page
+    };
+    renderIssues(issues.items);
+    const totalPages = Math.ceil(issues.filtered_total / issues.per_page);
+
+    renderPagination(issues.page, totalPages);
 })
 
-class IssueFilters {
-    constructor(projectId) {
-        this.key = `issue_filters_${projectId}`;
-        this.filters = this.getUrl() ?? this.getLocalStorage();
-    }
-
-    getUrl() {
-        const params = new URLSearchParams(window.location.search);
-        if (params.size === 0) {return null;}
-        return Object.fromEntries(params.entries());
-    }
-
-    getLocalStorage() {return JSON.parse(localStorage.getItem(this.key) || "{}");}
-
-    setLocalStorage() {localStorage.setItem(this.key, JSON.stringify(this.filters));}
-
-    setUrl() {
-        const params = new URLSearchParams();
-        for (const [key, value] of Object.entries(this.filters)) {
-            if (value && (key !== "search" || value.length >= 2)) {params.set(key, value);}
-        }
-        const query = params.toString();
-        const url = query ? `${window.location.pathname}?${query}` : window.location.pathname;
-        history.replaceState(null, "", url);
-    }
-
-    setUi() {
-        issue_search.value = this.filters.search ?? "";
-        filterStatus.value = this.filters.status ?? "";
-        filterPriority.value = this.filters.priority ?? "";
-        filterDueDate.value = this.filters.due_date ?? "";
-        sortIssues.value = this.filters.sort ?? "";
-    }
-
-    change(key, value) {
-        this.filters[key] = value;
-        this.setLocalStorage();
-    }
-
-    changeSearch(value) {this.filters.search = value;}
-
-    get() {return this.filters;}
-}
+issue_search.addEventListener("input", () => {
+    const value = issue_search.value.trim();
+    const search = value.length > 1 ? value : "";
+    issueFilters.change("search", search)
+    if (value.length === 1) {return;}
+    loadIssues();
+});
 
 function changeFilter(key, value) {issueFilters.change(key, value);loadIssues();}
-
-issue_search.addEventListener("input", loadIssues);
-
 filterStatus.addEventListener("change", () => changeFilter("status", filterStatus.value));
 filterPriority.addEventListener("change", () => changeFilter("priority", filterPriority.value));
 filterDueDate.addEventListener("change", () => changeFilter("due_date", filterDueDate.value));
-sortIssues.addEventListener("change", () => changeFilter("sort", sortIssues.value));
-// -------------------------------------------------------------------
+
+function create_span(cls, str){return `<span class="${cls}">${str}</span>`;}
+// --------------------------------------------------------------------
+
+
+// ----------------------------SORT------------------------------------
+function except_field_add_sort(event) {
+    const button = event.target.closest("[data-sort]");
+    if (!button) {return;}
+
+    const field = button.dataset.sort;
+
+    sortingMenu.classList.add("hidden");
+
+    issueFilters.addSort(field);
+}
+
+function renderSort() {
+    sortList.innerHTML = "";
+    let html = "";
+    issueFilters.getSortValues().forEach(sort => {html += create_filter_element(sort)});
+    sortList.innerHTML = html;
+
+    addSorting.hidden = issueFilters.getSortValues().length > 2;
+
+    const list_buttons_sort = sortList.querySelectorAll(".sort-item");
+    list_buttons_sort.forEach(element => {
+        element.addEventListener("click", click_action_sort);
+
+        const handle = element.querySelector(".drag-drop");
+
+        handle.draggable = true;
+
+        handle.addEventListener("dragstart", drag_start);
+        handle.addEventListener("dragend", drag_end);
+    });
+
+    const selected = issueFilters.getSortValues().map(item => item.field);
+
+    sortingMenu.querySelectorAll("[data-sort]").forEach(button => {
+        if (selected.includes(button.dataset.sort)) {
+            button.classList.add("hidden");
+        } else {
+            button.classList.remove("hidden");
+        }
+    });
+
+    issueFilters.setUrl();
+
+    function create_filter_element(sort) {
+        return `<button class="sort-item" type="button" data-field="${sort.field}">
+                    ${create_span("drag-drop", "☷")}
+                    ${create_span("value", issueFilters.getSortFields()[sort.field])}
+                    ${create_span("direction", sort.direction === "asc" ? "↑" : "↓")}
+                    ${create_span("sort-remove", "×")}
+                </button>`;
+    }
+}
+
+function click_action_sort(event) {
+    const button = event.currentTarget;
+    const field = button.dataset.field;
+
+    if (event.target.classList.contains("sort-remove")) {issueFilters.removeSort(field);
+    } else if (!event.target.classList.contains("drag-drop")) {issueFilters.toggleSort(field);}
+}
+
+function updateSortOrder() {
+    const fields = [...sortList.querySelectorAll(".sort-item")].map(element => element.dataset.field);
+
+    issueFilters.getSortValues().sort((a, b) => {return fields.indexOf(a.field) - fields.indexOf(b.field);});
+
+    issueFilters.setLocalStorage();
+    issueFilters.setUrl();
+}
+
+function drag_start(event) {
+    dragged_button = event.currentTarget.closest(".sort-item");
+    dragged_button.classList.add("dragging");
+    const rect = dragged_button.getBoundingClientRect();
+    dragOffsetX = event.clientX - rect.left;
+    const offsetY = event.clientY - rect.top;
+    event.dataTransfer.setDragImage(dragged_button, dragOffsetX, offsetY);
+    event.dataTransfer.effectAllowed = "move";
+}
+
+function drag_end() {
+    if (!dragged_button) {return;}
+    dragged_button.classList.remove("dragging");
+    dragged_button = null;
+}
+
+function drag_over(event) {
+    event.preventDefault();
+    if (!dragged_button) {return;}
+
+    const ghostCenterX = event.clientX - dragOffsetX + dragged_button.offsetWidth / 2;
+
+    const items = [...sortList.querySelectorAll(".sort-item")];
+
+    const draggedIndex = items.indexOf(dragged_button);
+    if (draggedIndex === -1) {return;}
+
+    // Тащим вправо
+    if (draggedIndex < items.length - 1) {
+        const next = items[draggedIndex + 1];
+        const rect = next.getBoundingClientRect();
+        if (ghostCenterX >= rect.left) {sortList.insertBefore(dragged_button, next.nextSibling);return;}
+    }
+
+    // Тащим влево
+    if (draggedIndex > 0) {
+        const prev = items[draggedIndex - 1];
+        const rect = prev.getBoundingClientRect();
+
+        if (ghostCenterX <= rect.right) {sortList.insertBefore(dragged_button, prev);}
+    }
+}
+
+function drop(event) {
+    event.preventDefault();
+    if (!dragged_button) {return;}
+    updateSortOrder();
+}
+
+document.getElementById("reset-filters").addEventListener("click", (event) => issueFilters.resetSort())
+
+document.addEventListener("dragover", drag_over);
+document.addEventListener("drop", drop);
+addSorting.addEventListener("click", () => {sortingMenu.classList.toggle("hidden");});
+sortingMenu.addEventListener("click", except_field_add_sort)
+document.getElementById("save-filters").addEventListener("click", loadIssues)
+// --------------------------------------------------------------------
 
 
 // -------------------------RENDER_UI----------------------------------
@@ -150,9 +401,10 @@ function renderDetailProject() {
     title.textContent = project_db.name;
     description.textContent = project_db.description || "No description";
     member_cnt_obj.textContent = project_db.members.size;
-    issues_cnt_obj.textContent = project_db.issues.size;
+    issues_cnt_obj.textContent = project_db.pagination.total;
     prjct_created.textContent =  window.formatDate(project_db.created_at, 4);
     project_owner.textContent = project_db.owner.username;
+    count_issues_filtered.textContent = `(${project_db.pagination.filteredTotal})`;
 }
 
 function renderMembers() {
@@ -206,7 +458,6 @@ function renderIssues(issues) {
 
     function issue_text(issue) {
       const assignee = issue.assignee?.username ?? "Unassigned";
-      const create_span = (cls, str) => `<span class="${cls}">${str}</span>`;
       return `<a href="/projects/${projectId}/issues/${issue.public_id}" data-id="${issue.public_id}" class="issue">
                 <div>
                     <h3>${issue.title}</h3>
@@ -219,6 +470,50 @@ function renderIssues(issues) {
                 </div>
             </a>`
     }
+}
+
+function renderPagination(currentPage, totalPages) {
+    pagination.innerHTML = "";
+
+    const pages = getPages(currentPage, totalPages);
+
+    pages.forEach(page => {
+        if (page === "...") {
+            let dots = `<span class="pagination-dots">...</span>`
+            pagination.insertAdjacentHTML("beforeend", dots);
+            return;
+        }
+        let cls = page === currentPage ? "active" : ""
+        let btn = `<button type="button" class="${cls}" data-page="${page}">${page}</button>`
+        pagination.insertAdjacentHTML("beforeend", btn);
+    });
+
+    function getPages(currentPage, totalPages) {
+        if (totalPages <= 7) {return Array.from({length: totalPages}, (_, i) => i + 1);}
+        const pages = [];
+
+        pages.push(1);
+
+        if (currentPage > 4) {pages.push("...");}
+
+        const start = Math.max(2, currentPage - 2);
+        const end = Math.min(totalPages - 1, currentPage + 2);
+
+        for (let page = start; page <= end; page++) {pages.push(page);}
+
+        if (currentPage < totalPages - 3) {pages.push("...");}
+        pages.push(totalPages);
+
+        return pages;
+    }
+}
+
+function action_page_pagination(event) {
+    const button = event.target.closest("[data-page]");
+    if (!button) {return;}
+    const page = Number(button.dataset.page);
+    if (!page) {return;}
+    loadIssues(400, page);
 }
 // --------------------------------------------------------------------
 
@@ -347,11 +642,11 @@ const user_search_func = window.debounce(async (event) => {
     }
 })
 
-user_search_input.addEventListener('input', user_search_func);
-
 function manage_members() {modal.classList.toggle("hidden")}
 
 function modal_members(e) { if (e.target === modal) {modal.classList.add("hidden")}}
+
+user_search_input.addEventListener('input', user_search_func);
 // ----------------------------------------------------------------
 
 

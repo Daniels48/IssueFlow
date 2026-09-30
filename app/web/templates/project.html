@@ -21,7 +21,10 @@
                 </div>
             </section>
             <section class="issues-header">
-                <h2>Issues</h2>
+                <div style="display: flex;flex-direction: row">
+                    <h2>Issues</h2>
+                    <span id="count-issues">(23)</span>
+                </div>
                 <button id="create-issue">+ New Issue</button>
             </section>
 
@@ -29,43 +32,68 @@
                 <input id="search_issues" class="search" type="text" placeholder="Search issues...">
 
                 <div class="filter-row">
-                    <select id="filter-status">
-                        <option value="">Status</option>
-                        <option value="open">Open</option>
-                        <option value="in_progress">In Progress</option>
-                        <option value="review">Review</option>
-                        <option value="done">Done</option>
-                        <option value="closed">Closed</option>
-                    </select>
+                    <div class="filter_one">
+                        <select id="filter-status">
+                            <option value="">Status</option>
+                            <option value="open">Open</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="review">Review</option>
+                            <option value="done">Done</option>
+                            <option value="closed">Closed</option>
+                        </select>
 
-                    <select id="filter-priority">
-                        <option value="">Priority</option>
-                        <option value="critical">Critical</option>
-                        <option value="high">High</option>
-                        <option value="medium">Medium</option>
-                        <option value="low">Low</option>
-                    </select>
+                        <select id="filter-priority">
+                            <option value="">Priority</option>
+                            <option value="critical">Critical</option>
+                            <option value="high">High</option>
+                            <option value="medium">Medium</option>
+                            <option value="low">Low</option>
+                        </select>
 
-                    <select id="filter-due-date">
-                        <option value="">Due date</option>
-                        <option value="overdue">Overdue</option>
-                        <option value="today">Today</option>
-                        <option value="upcoming">Upcoming</option>
-                    </select>
+                        <select id="filter-due-date">
+                            <option value="">Due date</option>
+                            <option value="overdue">Overdue</option>
+                            <option value="today">Today</option>
+                            <option value="upcoming">Upcoming</option>
+                        </select>
+                    </div>
 
-                    <select id="sort-issues">
-                         <option value="">No sort</option>
-                        <option value="due_date_asc">Due date ↑</option>
-                        <option value="due_date_desc">Due date ↓</option>
-                        <option value="priority_asc">Priority ↑</option>
-                        <option value="priority_desc">Priority ↓</option>
-                        <option value="newest">Newest</option>
-                        <option value="oldest">Oldest</option>
-                    </select>
+                    <div class="filter_sort">
+                        <div class="sort-row">
+                            <span class="sort-title">Sort by:</span>
+                            <div id="sort-list" class="sort-list"></div>
+                            <div id="sort-add-container">
+                                    <button id="add-sorting" class="sort-add" type="button">
+                                        + Add sorting
+                                    </button>
+                                        <div id="sorting-menu" class="sorting-menu hidden">
+                                            <button type="button" data-sort="status">Status</button>
+                                            <button type="button" data-sort="priority">Priority</button>
+                                            <button type="button" data-sort="due_date">Due date</button>
+                                        </div>
+                                </div>
+                            <div class="sort-actions">
+                                <button id="reset-filters" class="sort-reset" type="button">Reset</button>
+                                <button id="save-filters" class="sort-save" type="button">Save</button>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </section>
 
             <section class="issues" id="issues"></section>
+            <div class="pages">
+                <nav class="pagination" id="pagination">
+                    <button class="pagination-prev" type="button">←</button>
+
+                    <button class="pagination-page active" type="button">1</button>
+                    <button class="pagination-page" type="button">2</button>
+                    <button class="pagination-page" type="button">3</button>
+
+                    <button class="pagination-next" type="button">→</button>
+                </nav>
+            </div>
         </main>
         <div id="members-modal" class="modal hidden">
             <div class="modal-card">
