@@ -39,6 +39,11 @@ const project_owner = document.getElementById("project-owner");
 
 const pagination = document.getElementById("pagination");
 const count_issues_filtered = document.getElementById("count-issues");
+const paginationInfo = document.querySelector(".pagination-info");
+const reset_filter = document.getElementById("reset-filters");
+const save_filters = document.getElementById("save-filters")
+const perPageSelect = document.querySelector("#per-page");
+
 
 let project_db;
 let dragged_button = null;
@@ -62,6 +67,7 @@ modal_issue.addEventListener("click", handleIssueModalBackdropClick);
 
 pagination.addEventListener("click", action_page_pagination);
 
+
 // --------------------------------------------------------------------
 
 
@@ -71,15 +77,12 @@ class IssueFilters {
         this.key = `issue_filters_${projectId}`;
         this.filters = this.getUrl() ?? this.getLocalStorage();
         this.sortFields = {status: "Status", priority: "Priority", due_date: "Due date"};
-        if (!Array.isArray(this.filters.sort)) {this.filters.sort = [];}
+        this.appliedFilters = structuredClone(this.filters);
     }
 
     getUrl() {
         const params = new URLSearchParams(window.location.search);
-
-        if (params.size === 0) {
-            return null;
-        }
+        if (params.size === 0) {return null;}
 
         const filters = {};
 
@@ -101,26 +104,25 @@ class IssueFilters {
     getLocalStorage() {return JSON.parse(localStorage.getItem(this.key) || "{}");}
 
     setLocalStorage() {
-        const exclude = ["search","page", "per_page"]
+        const exclude = ["search", "page"];
         const filters = {...this.filters};
-        const emptyValues = ["", null, undefined];
-
         for (const key of exclude) {delete filters[key];}
-
-        for (const [key, value] of Object.entries(filters)) {
-            let empty_array = Array.isArray(value) && value.length === 0;
-            if (emptyValues.includes(value) || empty_array) {
-                delete filters[key];
-            }
-        }
-        localStorage.setItem(this.key, JSON.stringify(filters));
+        if (Object.keys(filters).length === 0) {localStorage.removeItem(this.key)}
+        else {localStorage.setItem(this.key, JSON.stringify(filters))}
     }
 
-    get() {return this.filters;}
-
     change(key, value) {
-        this.filters[key] = value;
-        this.setLocalStorage();
+        let is_empty_list = Array.isArray(value) && value.length === 0;
+        let is_empty_value = ["", undefined, null].includes(value);
+
+        if (is_empty_value || is_empty_list) {
+            delete this.filters[key];
+        } else {
+            this.filters[key] = value;
+        }
+
+        this.resetPageFilter(key)
+        this.updateButtons();
     }
 
     setUi() {
@@ -130,73 +132,111 @@ class IssueFilters {
         filterDueDate.value = this.filters.due_date ?? "";
     }
 
-    setUrl(page) {
+    setUrl() {
         const params = new URLSearchParams();
         for (const [key, value] of Object.entries(this.filters)) {
             if (key === "sort") {
-                value.forEach(item => {
-                    const sort = `${item.field}_${item.direction}`;
-                    params.append("sort", sort);
-                });
+                value.forEach(item => {params.append("sort", this.serializeSort(item));});
                 continue;
             }
 
-            if (value && (key !== "search" || value.length >= 2)) {params.set(key, value);}
+            if (value && (key !== "search" || value.length > 1)) {params.set(key, value);}
         }
-        if (page > 1) {params.set("page", page);}
         const query = params.toString().replaceAll("%5F", "_");
         const url = query ? `${window.location.pathname}?${query}` : window.location.pathname;
         history.replaceState(null, "", url);
     }
 
     addSort(field) {
+        if (!Array.isArray(this.filters.sort)) {this.filters.sort = [];}
         if (this.filters.sort.some(item => item.field === field)) {return;}
-        this.filters.sort.push({field: field, direction: "asc"});
-        this.setLocalStorage();
-        renderSort();
+        this.filters.sort.push({field, direction: "asc"});
+        this.change("sort", this.filters.sort);
     }
 
     removeSort(field) {
+        if (!Array.isArray(this.filters.sort)) {return;}
         this.filters.sort = this.filters.sort.filter(item => item.field !== field);
-        this.setLocalStorage();
-        renderSort();
+        this.change("sort", this.filters.sort);
     }
 
     toggleSort(field) {
+        if (!Array.isArray(this.filters.sort)) {return;}
         const sort = this.filters.sort.find(item => item.field === field);
         if (!sort) {return;}
         sort.direction = sort.direction === "asc" ? "desc" : "asc";
-        this.setLocalStorage();
-        renderSort();
+        this.change("sort", this.filters.sort);
     }
 
-    resetSort() {
-        this.filters.sort = [];
+    resetFilters() {
+        const { per_page } = this.filters;
+        this.filters = {};
+        if (per_page !== undefined) {this.filters.per_page = per_page;}
+        this.appliedFilters = structuredClone(this.filters);
+        this.setUi();
         this.setLocalStorage();
-        renderSort();
+        this.setUrl();
+        this.updateButtons();
     }
 
     getSortFields() {return this.sortFields}
 
-    getSortValues() {return this.filters.sort}
+    getSortValues() {return this.filters.sort || []}
 
-    getApiFilters() {
-        const filters = {...this.filters};
+    serializeSort(item) {return `${item.field}_${item.direction}`}
 
-        if (filters.sort?.length) {
-            filters.sort = filters.sort.map(item => `${item.field}_${item.direction}`);
+    getListSerializeSort() {
+        if (!this.filters.sort?.length) {return [];}
+        return this.filters.sort.map(item => this.serializeSort(item));
+    }
+
+    getApiFilters() {return {...this.filters, sort: this.getListSerializeSort()}}
+
+    init_filters() {
+        this.setUi();
+        this.setUrl();
+        this.updateButtons();
+        renderSort();
+    }
+
+    isEqual(a, b) {
+        const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+
+        for (const key of keys) {
+            if (["page", "per_page"].includes(key)) {continue;}
+            let is_Equal = JSON.stringify(a[key]) !== JSON.stringify(b[key]);
+            if (is_Equal) {return false;}
         }
 
-        return filters;
+        return true;
+    }
+
+    resetPageFilter(key) {
+        const resetPageKeys = ["search", "status", "priority", "due_date", "sort", "per_page"];
+        if (resetPageKeys.includes(key)) {delete this.filters.page;}
+    }
+
+    hasFilters() {return Object.keys(this.filters).some(key => !["page", "per_page"].includes(key));}
+
+    hasChanges() {return !this.isEqual(this.filters, this.appliedFilters);}
+
+    updateButtons() {
+        save_filters.disabled = !this.hasChanges();
+        reset_filter.disabled = !this.hasFilters();
+    }
+
+    apply_save_filters() {
+        this.appliedFilters = structuredClone(this.filters);
+        this.setLocalStorage();
+        this.setUrl();
+        this.updateButtons();
     }
 }
 
 const issueFilters = new IssueFilters(projectId);
 
 async function loadProject() {
-    issueFilters.setUi();
-    issueFilters.setUrl();
-    renderSort();
+    issueFilters.init_filters();
 
     const task_project = api.get(window.data_url.project(projectId));
     const task_issue = api.get(window.data_url.issues(projectId, issueFilters.getApiFilters()));
@@ -219,23 +259,21 @@ async function loadProject() {
         }
     };
 
+    const totalPages = Math.ceil(issues.filtered_total / issues.per_page);
+
     renderDetailProject();
     renderMembers();
     renderIssues(issues.items);
 
-    const totalPages = Math.ceil(issues.filtered_total / issues.per_page);
-
     renderPagination(issues.page, totalPages);
+    renderPaginationInfo(issues);
 }
 
-const loadIssues = window.debounce(async (page= 1, per_page=20) => {
-    issueFilters.setUrl(page)
-
-    const params = {...issueFilters.getApiFilters()};
-
-    const response = await window.api.get(window.data_url.issues(projectId, params));
+const loadIssues = window.debounce(async () => {
+    const response = await window.api.get(window.data_url.issues(projectId, issueFilters.getApiFilters()));
     if (!response.ok) return;
     const issues = await response.json();
+
     project_db.issues = new Map(issues.items.map(issue => [issue.public_id, issue]));
     project_db.pagination = {
         total: issues.total,
@@ -243,10 +281,13 @@ const loadIssues = window.debounce(async (page= 1, per_page=20) => {
         page: issues.page,
         perPage: issues.per_page
     };
+
     renderIssues(issues.items);
     const totalPages = Math.ceil(issues.filtered_total / issues.per_page);
+    renderDetailProject();
 
     renderPagination(issues.page, totalPages);
+    renderPaginationInfo(issues);
 })
 
 issue_search.addEventListener("input", () => {
@@ -255,9 +296,10 @@ issue_search.addEventListener("input", () => {
     issueFilters.change("search", search)
     if (value.length === 1) {return;}
     loadIssues();
+    issueFilters.setUrl();
 });
 
-function changeFilter(key, value) {issueFilters.change(key, value);loadIssues();}
+function changeFilter(key, value) {issueFilters.change(key, value)}
 filterStatus.addEventListener("change", () => changeFilter("status", filterStatus.value));
 filterPriority.addEventListener("change", () => changeFilter("priority", filterPriority.value));
 filterDueDate.addEventListener("change", () => changeFilter("due_date", filterDueDate.value));
@@ -276,6 +318,7 @@ function except_field_add_sort(event) {
     sortingMenu.classList.add("hidden");
 
     issueFilters.addSort(field);
+    renderSort();
 }
 
 function renderSort() {
@@ -308,8 +351,6 @@ function renderSort() {
         }
     });
 
-    issueFilters.setUrl();
-
     function create_filter_element(sort) {
         return `<button class="sort-item" type="button" data-field="${sort.field}">
                     ${create_span("drag-drop", "☷")}
@@ -324,17 +365,15 @@ function click_action_sort(event) {
     const button = event.currentTarget;
     const field = button.dataset.field;
 
-    if (event.target.classList.contains("sort-remove")) {issueFilters.removeSort(field);
-    } else if (!event.target.classList.contains("drag-drop")) {issueFilters.toggleSort(field);}
+    if (event.target.classList.contains("sort-remove")) {issueFilters.removeSort(field);renderSort();}
+    else if (!event.target.classList.contains("drag-drop")) {issueFilters.toggleSort(field);renderSort();}
 }
 
 function updateSortOrder() {
     const fields = [...sortList.querySelectorAll(".sort-item")].map(element => element.dataset.field);
-
-    issueFilters.getSortValues().sort((a, b) => {return fields.indexOf(a.field) - fields.indexOf(b.field);});
-
-    issueFilters.setLocalStorage();
-    issueFilters.setUrl();
+    const list_sort = issueFilters.getSortValues()
+    list_sort.sort((a, b) => {return fields.indexOf(a.field) - fields.indexOf(b.field);});
+    issueFilters.change("sort",list_sort);
 }
 
 function drag_start(event) {
@@ -386,13 +425,25 @@ function drop(event) {
     updateSortOrder();
 }
 
-document.getElementById("reset-filters").addEventListener("click", (event) => issueFilters.resetSort())
+function reset_sort_filters(event) {issueFilters.resetFilters(); loadIssues(); renderSort();}
 
+function save_filters_and_reload(event) {loadIssues();issueFilters.apply_save_filters();}
+
+function per_page_change(event) {
+    issueFilters.change("per_page", Number(perPageSelect.value));
+    issueFilters.setLocalStorage();
+    issueFilters.setUrl();
+    loadIssues();
+}
+
+
+reset_filter.addEventListener("click", reset_sort_filters);
+save_filters.addEventListener("click", save_filters_and_reload);
 document.addEventListener("dragover", drag_over);
 document.addEventListener("drop", drop);
 addSorting.addEventListener("click", () => {sortingMenu.classList.toggle("hidden");});
-sortingMenu.addEventListener("click", except_field_add_sort)
-document.getElementById("save-filters").addEventListener("click", loadIssues)
+sortingMenu.addEventListener("click", except_field_add_sort);
+perPageSelect.addEventListener("change", per_page_change);
 // --------------------------------------------------------------------
 
 
@@ -453,10 +504,20 @@ function renderMembers() {
 function renderIssues(issues) {
     if (issues.length === 0) {issuesContainer.innerHTML = `<div class="empty">No issues</div>`;return;}
     let html = "";
+    const isOverdue = issue =>  issue.due_date && new Date(issue.due_date) < new Date() && issue.status !== "done";
+
     for (const issue of issues) {html += issue_text(issue);}
+
     issuesContainer.innerHTML = html;
 
+    function formatEnum(value) {
+        return value
+            .replaceAll("_", " ")
+            .replace(/\b\w/g, c => c.toUpperCase());
+    }
+
     function issue_text(issue) {
+      const is_overdue =  isOverdue(issue);
       const assignee = issue.assignee?.username ?? "Unassigned";
       return `<a href="/projects/${projectId}/issues/${issue.public_id}" data-id="${issue.public_id}" class="issue">
                 <div>
@@ -464,9 +525,10 @@ function renderIssues(issues) {
                     ${create_span("assignee-name",`Assigned to ${assignee} • Reported by ${issue.reporter.username}`)}
                 </div>
                 <div class="badges">
-                    ${create_span("due",window.formatDate(issue.due_date))}
-                    ${create_span("progress",issue.status.toUpperCase())}
+                    ${create_span(is_overdue? "overdue due" :"due",window.formatDate(issue.due_date, 0, true))}
+                    ${is_overdue? create_span("issue-overdue", "Overdue"): ""}
                     ${create_span(issue.priority.toLowerCase(),issue.priority.toUpperCase())}
+                    ${create_span(issue.status,formatEnum(issue.status.toUpperCase()))}
                 </div>
             </a>`
     }
@@ -479,13 +541,15 @@ function renderPagination(currentPage, totalPages) {
 
     pages.forEach(page => {
         if (page === "...") {
-            let dots = `<span class="pagination-dots">...</span>`
-            pagination.insertAdjacentHTML("beforeend", dots);
+            pagination.insertAdjacentHTML("beforeend", `<span class="pagination-dots">...</span>`);
             return;
         }
-        let cls = page === currentPage ? "active" : ""
-        let btn = `<button type="button" class="${cls}" data-page="${page}">${page}</button>`
-        pagination.insertAdjacentHTML("beforeend", btn);
+
+        const cls = page === currentPage ? "active" : "";
+
+        pagination.insertAdjacentHTML(
+            "beforeend", `<button type="button" class="${cls}" data-page="${page}" >${page}</button>`
+        );
     });
 
     function getPages(currentPage, totalPages) {
@@ -513,7 +577,25 @@ function action_page_pagination(event) {
     if (!button) {return;}
     const page = Number(button.dataset.page);
     if (!page) {return;}
-    loadIssues(400, page);
+    issueFilters.change("page", page);
+    loadIssues();
+    issueFilters.setUrl();
+}
+
+function renderPaginationInfo(issues) {
+    const {page, per_page, filtered_total} = issues;
+
+    perPageSelect.value = per_page;
+
+    if (filtered_total === 0) {
+        paginationInfo.textContent = "No issues";
+        return;
+    }
+
+    const start = (page - 1) * per_page + 1;
+    const end = Math.min(page * per_page, filtered_total);
+
+    paginationInfo.textContent = `Showing ${start}–${end} of ${filtered_total} issues`;
 }
 // --------------------------------------------------------------------
 
@@ -538,6 +620,7 @@ async function createIssue(event) {
     renderDetailProject();
     renderIssues([...project_db.issues.values()]);
     closeIssueModal();
+    loadIssues();
 }
 
 function view_new_issue_modal(event) {modal_issue.classList.remove("hidden")}
@@ -737,14 +820,15 @@ function all_project_event(event) {
                 public_id: data.author.public_id
             }
         };
-        project_db.issues.set(new_issue.public_id, new_issue);
-        renderIssues([...project_db.issues.values()]);
+        loadIssues();
         renderDetailProject();
     }
 
     function issue_delete(event) {
-        project_db.issues.delete(event.payload.issue.public_id);
-        renderIssues([...project_db.issues.values()]);
+        // project_db.issues.delete(event.payload.issue.public_id);
+        // renderIssues([...project_db.issues.values()]);
+        // renderDetailProject();
+        loadIssues();
         renderDetailProject();
     }
 
@@ -771,32 +855,40 @@ function all_project_event(event) {
     }
 
     function issue_status_change(event) {
-        const data = event.payload;
-        const issue = project_db.issues.get(data.issue.public_id);
-        issue.status = data.new_value;
-        renderIssues([...project_db.issues.values()]);
+        // const data = event.payload;
+        // const issue = project_db.issues.get(data.issue.public_id);
+        // issue.status = data.new_value;
+        // renderIssues([...project_db.issues.values()]);
+        loadIssues();
+        renderDetailProject();
     }
 
     function issue_priority_change(event) {
-        const data = event.payload;
-        const issue = project_db.issues.get(data.issue.public_id);
-        issue.priority = data.new_value;
-        renderIssues([...project_db.issues.values()]);
+        // const data = event.payload;
+        // const issue = project_db.issues.get(data.issue.public_id);
+        // issue.priority = data.new_value;
+        // renderIssues([...project_db.issues.values()]);
+        loadIssues();
+        renderDetailProject();
     }
 
     function issue_due_date_change(event) {
-        const data = event.payload;
-        const issue = project_db.issues.get(data.issue.public_id);
-        issue.due_date = data.new_value;
-        renderIssues([...project_db.issues.values()]);
+        // const data = event.payload;
+        // const issue = project_db.issues.get(data.issue.public_id);
+        // issue.due_date = data.new_value;
+        // renderIssues([...project_db.issues.values()]);
+        loadIssues();
+        renderDetailProject();
     }
 
     function issue_closed(event) {
-
+        loadIssues();
+        renderDetailProject();
     }
 
     function issue_reopen(event) {
-
+        loadIssues();
+        renderDetailProject();
     }
 }
 

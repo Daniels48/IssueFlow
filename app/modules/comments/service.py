@@ -1,7 +1,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import Depends
+from fastapi import Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.events import CommentCreatedEvent, CommentDeletedEvent, CommentUpdatedEvent, OutboxFactory
@@ -12,6 +12,7 @@ from app.modules.comments.repository import CommentRepository
 from app.modules.comments import schema as schema
 from app.modules.issue.repository import IssueRepository
 from app.modules.issue.status import IssueStatus
+from app.modules.users.schema import UserShortResponse
 from app.permissions import PermissionContext, Permission, ProjectRBAC
 from app.utils.func_utils import to, get_now_dt
 
@@ -63,7 +64,6 @@ class CommentService:
 
         return roots
 
-
     async def create(self, issue_id: UUID, data: schema.CommentCreate, user: User) -> schema.CommentCreateResponse:
         result = await self.issue_repository.get_by_public_id_with_current_member(self.db, issue_id, user.id)
 
@@ -92,6 +92,8 @@ class CommentService:
 
             parent_comment_id = parent_comment.id
 
+            parent_comment.replies_count += 1
+
         now = get_now_dt()
 
         comment = Comment(
@@ -117,8 +119,54 @@ class CommentService:
             parent_comment_public_id=parent_comment.public_id if parent_comment else None,
         )
 
+    @staticmethod
+    def to_comment_response(comment: Comment) -> schema.CommentResponse:
+        return schema.CommentResponse(
+            public_id=comment.public_id,
+            content=None if comment.deleted_at else comment.content,
+            author=UserShortResponse.model_validate(comment.author),
+            created_at=comment.created_at,
+            updated_at=comment.updated_at,
+            deleted_at=comment.deleted_at,
+            replies_count=comment.replies_count,
+        )
+
+    async def get_comments(self,issue_id: UUID,user: User,page: int,per_page: int):
+        result = await self.issue_repository.get_by_public_id_with_current_member(self.db,issue_id,user.id)
+
+        if result is None:
+            raise AppException(ErrorCode.ISSUE_NOT_FOUND,"Issue not found")
+
+        issue, member = result
+
+        context = PermissionContext(user=user,project=issue.project,member=member,resource=issue)
+        ProjectRBAC.require(permission=Permission.COMMENT_VIEW,context=context)
+
+        result = await self.repository.get_comments_by_issue_id(self.db,issue.id,page,per_page)
+
+        result["items"] = [ self.to_comment_response(comment)for comment in result["items"]]
+
+        return result
+
+    async def get_replies(self, comment_id: UUID, page: int, per_page: int, user: User):
+        result = await self.repository.get_by_public_id_with_current_member(self.db,comment_id,user.id)
+
+        if result is None:
+            raise AppException(ErrorCode.COMMENT_NOT_FOUND,"Comment not found")
+
+        comment, member = result
+
+        context = PermissionContext(user=user,project=comment.issue.project,member=member,resource=comment)
+        ProjectRBAC.require(permission=Permission.COMMENT_VIEW,context=context)
+
+        result = await self.repository.get_replies(self.db,comment.id,page,per_page)
+
+        result["items"] = [self.to_comment_response(comment)for comment in result["items"]]
+
+        return result
+
     async def update(self, comment_id: UUID, data: schema.CommentUpdate, user: User) -> schema.CommentResponse:
-        result = await self.repository.get_by_public_id_with_current_member(self.db, comment_id, user.id)
+        result = await self.repository.get_active_by_public_id_with_current_member(self.db, comment_id, user.id)
 
         if result is None:
             raise AppException(ErrorCode.COMMENT_NOT_FOUND,"Comment not found")
@@ -148,24 +196,34 @@ class CommentService:
         return to(schema.CommentResponse, comment)
 
     async def delete(self, comment_id: UUID, user: User) -> None:
-        result = await self.repository.get_by_public_id_with_current_member(self.db, comment_id, user.id)
+        result = await self.repository.get_active_by_public_id_with_current_member(self.db,comment_id,user.id)
 
         if result is None:
-            raise AppException(ErrorCode.COMMENT_NOT_FOUND, "Comment not found")
+            raise AppException(ErrorCode.COMMENT_NOT_FOUND,"Comment not found")
 
         comment, member = result
 
         if comment.issue.status == IssueStatus.CLOSED:
             raise AppException(ErrorCode.ISSUE_CLOSED,"Issue already closed")
 
-        context = PermissionContext(user=user, project=comment.issue.project, member=member, resource=comment)
-        ProjectRBAC.require(permission=Permission.COMMENT_DELETE, context=context)
+        context = PermissionContext(user=user, project=comment.issue.project, member=member,resource=comment)
+        ProjectRBAC.require(permission=Permission.COMMENT_DELETE,context=context,)
 
         now = get_now_dt()
 
         comment.deleted_at = now
 
+        if comment.parent_comment_id is not None:
+            has_alive_descendants = await self.repository.has_alive_descendants(self.db,comment.id)
+
+            if not has_alive_descendants:
+                parent = await self.repository.get_by_id(self.db,comment.parent_comment_id)
+
+                if parent is not None:
+                    parent.replies_count -= 1
+
         event = CommentDeletedEvent.from_model(comment=comment,user=user,occurred_at=now)
+
         self.db.add(OutboxFactory.from_event(event))
 
         await self.db.commit()
@@ -175,5 +233,7 @@ async def get_comments_service(db: DBSession) -> CommentService:
     return CommentService(repository=CommentRepository(), issue_repository=IssueRepository(), db=db)
 
 comments_service = Annotated[CommentService, Depends(get_comments_service)]
+PageQuery = Annotated[int, Query(ge=1)]
+PerPageQuery = Annotated[int, Query(ge=1, le=100)]
     
     

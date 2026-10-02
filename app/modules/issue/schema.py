@@ -55,7 +55,7 @@ class IssueResponse(BaseModel):
 class IssueResponseDetail(IssueResponse):
     model_config = ConfigDict(from_attributes=True)
 
-    comments: list[CommentTreeResponse]
+    # comments: list[CommentTreeResponse]
     members: list[UserShortResponse]
     allowed_statuses: IssueStatusTransitions
     priorities: list[IssuePriority]
@@ -150,6 +150,8 @@ class IssueFilters(BaseModel):
     priority: IssuePriority | None = None
     due_date: DueDateFilter | None = None
     sort: list[IssueSort] | None = None
+    page: int
+    per_page: int
 
 class IssueListResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)

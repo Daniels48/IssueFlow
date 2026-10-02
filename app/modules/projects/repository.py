@@ -17,10 +17,7 @@ class ProjectRepository:
         return project
 
     @staticmethod
-    async def get_by_public_id_detail_aggregate(db: AsyncSession,public_id: UUID) -> Row[tuple[Any, Any, Any]] | None:
-
-        Reporter = aliased(User)
-        Assignee = aliased(User)
+    async def get_by_public_id_detail_aggregate(db: AsyncSession,public_id: UUID) -> Row[tuple[Project, Any]] | None:
 
         member_value = func.jsonb_build_object(
                             "public_id", ProjectMember.public_id,

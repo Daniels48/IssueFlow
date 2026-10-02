@@ -187,8 +187,10 @@ class IssueRepository:
         return stmt
 
     @staticmethod
-    async def get_all_by_project(db: AsyncSession, project_id: int, filters: IssueFilters, page:int, per_page:int):
-        offset = (page - 1) * per_page
+    async def get_all_by_project(db: AsyncSession,project_id: int,filters: IssueFilters):
+        offset = (filters.page - 1) * filters.per_page
+
+        # Items
         stmt = (
             select(Issue)
             .options(
@@ -204,8 +206,9 @@ class IssueRepository:
         stmt = IssueRepository._apply_issue_filters(stmt, filters)
         stmt = IssueRepository._apply_issue_sort(stmt, filters.sort)
 
-        stmt = stmt.offset(offset).limit(per_page)
-        # ------------
+        stmt = stmt.offset(offset).limit(filters.per_page)
+
+        # Total
         total_count_stmt = (
             select(func.count(Issue.id))
             .where(
@@ -214,8 +217,7 @@ class IssueRepository:
             )
         )
 
-        # -------------------
-
+        # Filtered total
         filtered_count_stmt = (
             select(func.count(Issue.id))
             .where(
@@ -224,20 +226,16 @@ class IssueRepository:
             )
         )
 
-        filtered_count_stmt = IssueRepository._apply_issue_filters(filtered_count_stmt, filters)
-        
+        filtered_count_stmt = IssueRepository._apply_issue_filters(filtered_count_stmt,filters)
 
-        result1 = await db.execute(stmt)
-
-        result2 = await db.execute(total_count_stmt)
-
-        result3 = await db.execute(filtered_count_stmt)
-
+        result_items = await db.execute(stmt)
+        result_total = await db.execute(total_count_stmt)
+        result_filtered = await db.execute(filtered_count_stmt)
 
         return {
-            "items": list(result1.scalars().all()),
-            "total": result2.scalar_one(),
-            "filtered_total": result3.scalar_one(),
-            "page": page,
-            "per_page": per_page,
+            "items": list(result_items.scalars().all()),
+            "total": result_total.scalar_one(),
+            "filtered_total": result_filtered.scalar_one(),
+            "page": filters.page,
+            "per_page": filters.per_page,
         }

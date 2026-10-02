@@ -23,7 +23,7 @@
             <section class="issues-header">
                 <div style="display: flex;flex-direction: row">
                     <h2>Issues</h2>
-                    <span id="count-issues">(23)</span>
+                    <span id="count-issues"></span>
                 </div>
                 <button id="create-issue">+ New Issue</button>
             </section>
@@ -74,7 +74,7 @@
                                 </div>
                             <div class="sort-actions">
                                 <button id="reset-filters" class="sort-reset" type="button">Reset</button>
-                                <button id="save-filters" class="sort-save" type="button">Save</button>
+                                <button id="save-filters" disabled class="sort-save" type="button">Save</button>
                             </div>
                         </div>
                     </div>
@@ -84,15 +84,21 @@
 
             <section class="issues" id="issues"></section>
             <div class="pages">
-                <nav class="pagination" id="pagination">
-                    <button class="pagination-prev" type="button">←</button>
+                <div class="pagination-container">
+                    <span class="pagination-info">Showing 1–20 of 35 issues</span>
 
-                    <button class="pagination-page active" type="button">1</button>
-                    <button class="pagination-page" type="button">2</button>
-                    <button class="pagination-page" type="button">3</button>
+                    <nav class="pagination" id="pagination"></nav>
 
-                    <button class="pagination-next" type="button">→</button>
-                </nav>
+                    <label class="per-page">
+                        Issues per page:
+                        <select id="per-page">
+                            <option value="10">10</option>
+                            <option value="20" selected>20</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                    </label>
+                </div>
             </div>
         </main>
         <div id="members-modal" class="modal hidden">

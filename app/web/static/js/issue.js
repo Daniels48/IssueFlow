@@ -85,6 +85,83 @@ let issue_comments = false
 
 
 // ---------------------------------------Head----------------------------------------------
+function setCommentActionsVisibility(value) {
+    const action = value === "closed" ? "add" : "remove";
+    const cls = "hidden";
+
+    document.querySelectorAll(".comment-actions").forEach(element => element.classList[action](cls));
+    document.querySelectorAll("span.arrow").forEach(element => element.classList[action](cls))
+    document.querySelector("section.new-comment").classList[action](cls);
+    document.querySelector("#edit-issue").classList[action](cls)
+}
+let comments_page = 0
+let comments_has_more = false;
+async function loadIssue() {
+    const [issueRes, commentsRes] = await Promise.all([
+        api.get(window.data_url.issue(projectId, IssueId)),
+        api.get(window.data_url.comments(projectId, IssueId)),
+    ]);
+
+    if (!issueRes || !issueRes.ok) {return}
+
+    const Issue = await issueRes.json();
+    renderIssueDetails(Issue, true);
+    // renderComments(Issue.comments);
+    issue_full = Issue;
+    issue_assignee = Issue.members;
+    issue_priority = Issue.priorities;
+    issue_statuses = Issue.allowed_statuses;
+    issue_comments = Issue.comments;
+
+    if (commentsRes && commentsRes.ok) {
+        const commentsData = await commentsRes.json();
+
+        issue_comments = commentsData.items;
+
+        comments_page = commentsData.page;
+        comments_has_more = commentsData.has_more;
+
+        renderComments(commentsData.items);
+    }
+
+    setCommentActionsVisibility(Issue.status)
+    drawCommentLines()
+}
+
+function renderIssueDetails(issue, offload=false) {
+    reporter.textContent = issue.reporter.username;
+    created_time.textContent = window.formatDate(issue.created_at, 4);
+
+    change_UI_updated_time(issue)
+    change_UI_assignee(issue)
+    change_UI_priority(issue)
+    change_UI_due_time(issue)
+    change_UI_title_and_description(issue)
+    change_UI_status_issue(issue)
+
+    if (offload !== false) {
+        // const count = countComments(issue.comments);
+        // set_count_comments(count);
+    }
+
+
+    function countComments(comments) {
+        return comments.reduce((count, comment) => {
+            return count + 1 + countComments(comment.children);
+        }, 0);
+    }
+}
+
+function addTextNoComments() {
+    const empty_text = `<div class="empty">No comments</div>`;
+    commentsContainer.insertAdjacentHTML("beforeend", empty_text);
+}
+
+
+const set_count_comments = count => len_comments.textContent = `${count} comment${count === 1 ? "" : "s"}`;
+// -----------------------------------------------------------------------------------------
+
+// ------------------------------------RENDER-----------------------------------------------
 function change_UI_status_issue(issue) {
     head_status.textContent = formatEnum(issue.status).toUpperCase();
     status.textContent = formatEnum(issue.status).toUpperCase();
@@ -118,72 +195,10 @@ function change_UI_assignee(issue) {
     assignee.dataset.publicId = issue.assignee?.public_id ?? "";
 }
 
-function change_UI_updated_time(issue) {
-    updated_time.textContent = window.relativeDate(issue.updated_at);
-}
-
-function setCommentActionsVisibility(value) {
-    const action = value === "closed" ? "add" : "remove";
-    const cls = "hidden";
-
-    document.querySelectorAll(".comment-actions").forEach(element => element.classList[action](cls));
-    document.querySelectorAll("span.arrow").forEach(element => element.classList[action](cls))
-    document.querySelector("section.new-comment").classList[action](cls);
-    document.querySelector("#edit-issue").classList[action](cls)
-}
-
-async function loadIssue() {
-    const res = await api.get(window.data_url.issue(projectId, IssueId));
-    if (!res || !res.ok) {
-        return;
-    }
-    const Issue = await res.json();
-    renderIssueDetails(Issue, true);
-    renderComments(Issue.comments);
-    issue_full = Issue;
-    issue_assignee = Issue.members;
-    issue_priority = Issue.priorities;
-    issue_statuses = Issue.allowed_statuses;
-    issue_comments = Issue.comments;
-
-    setCommentActionsVisibility(Issue.status)
-    drawCommentLines()
-}
-
-function renderIssueDetails(issue, offload=false) {
-    reporter.textContent = issue.reporter.username;
-    created_time.textContent = window.formatDate(issue.created_at, 4);
-
-    change_UI_updated_time(issue)
-    change_UI_assignee(issue)
-    change_UI_priority(issue)
-    change_UI_due_time(issue)
-    change_UI_title_and_description(issue)
-    change_UI_status_issue(issue)
-
-    if (offload !== false) {
-        const count = countComments(issue.comments);
-        set_count_comments(count);
-    }
-
-
-    function countComments(comments) {
-        return comments.reduce((count, comment) => {
-            return count + 1 + countComments(comment.children);
-        }, 0);
-    }
-}
-
-function addTextNoComments() {
-    const empty_text = `<div class="empty">No comments</div>`;
-    commentsContainer.insertAdjacentHTML("beforeend", empty_text);
-}
+function change_UI_updated_time(issue) {updated_time.textContent = window.relativeDate(issue.updated_at);}
 
 function renderComments(comments) {
-    if (comments.length === 0) {
-        addTextNoComments()
-        return;
-    }
+    if (comments.length === 0) {addTextNoComments();return;}
 
     commentsContainer.insertAdjacentHTML("beforeend", renderTree(comments));
     drawCommentLines()
@@ -200,11 +215,21 @@ function renderComments(comments) {
 
 function commentHtml(comment, level, parent) {
     const visualLevel = Math.min(level, 8);
+    const cls_content = comment.content === null ? "deleted" : "";
+    const text_content = comment.content ?? "Comment deleted"
+    const owner = comment.author.username;
+    const text_replies = comment.replies_count;
+    const parent_id = parent ? `data-parent="${parent.public_id}"` : ""
+    const data_id = `data-id="${comment.public_id}"`;
+    const atr_artcle = `class="comment card2" ${parent_id} ${data_id} ${getChildren_ids(comment)}`
 
-    function getChildrenAttribute(comment) {
+
+    function getChildren_ids(comment) {
         if (!comment.children?.length) return "";
 
         const ids = [];
+
+        walk(comment);
 
         function walk(node) {
             for (const child of node.children) {
@@ -213,12 +238,8 @@ function commentHtml(comment, level, parent) {
             }
         }
 
-        walk(comment);
-
         return `data-list-ids='${JSON.stringify(ids)}'`;
     }
-
-    const set_parent_id = parent => parent ? `data-parent="${parent.public_id}"` : "";
 
     function commentReply(parent, is_par=true) {
         if (is_par) return "";
@@ -234,45 +255,143 @@ function commentHtml(comment, level, parent) {
         return isEdited ? window.relativeDate(comment.updated_at, "edited") : window.relativeDate(comment.created_at);
     }
 
-    function setArticleAttributes(parent, comment, visualLevel) {
-        return`
-        ${set_parent_id(parent)} ${getChildrenAttribute(comment)} 
-        data-id="${comment.public_id}" class="comment level-${visualLevel} card2"`
-    }
-
-    let z = `<button class="toggle-replies">▼ 4 replies</button>`
 
     return `
-    <article ${setArticleAttributes(parent, comment, visualLevel)}>
-            <div class="avatar">${comment.author.username.charAt(0).toUpperCase() || ""}</div>
-            <div class="comment-content">
-                <div class="comment-header">
-                    <strong class="comment-owner" data-owner="${comment.author.username}">@${comment.author.username}</strong>
-                    <span class="comment-create-date">${getUpdateTime(comment)}</span>
-                </div>
-                
-                ${parent ? commentReply(parent) : ""}
-                
-                <div class="comment-head">
-                    <p class="content-comment" data-text="${comment.content}">${comment.content}</p>
-                    <div class="comment-actions">
-                        <button class="btn_reply">Reply</button>
-                        <button class="btn_edit">Edit</button>
-                        <button class="btn_delete">Delete</button>
+    <div class="comment-node level-${visualLevel}">
+        <article ${setArticleAttributes(parent, comment)}>
+                <div class="avatar">${owner.charAt(0).toUpperCase() || ""}</div>
+                <div class="comment-content">
+                    <div class="comment-header">
+                        <strong class="comment-owner" data-owner="${owner}">@${owner}</strong>
+                        <span class="comment-create-date">${getUpdateTime(comment)}</span>
                     </div>
-                </div>
-                
-                <div class="comment-edit hidden">
-                    <textarea class="comment-area">${comment.content}</textarea>
-                    <div class="edit-actions">
-                        <button class="btn-save">Save</button>
-                        <button class="btn-cancel">Cancel</button>
+                    
+                    ${parent ? commentReply(parent) : ""}
+                    
+                    <div class="comment-head">
+                        <p class="content-comment ${cls_content}">${text_content}</p>
+                        <div class="comment-actions">
+                            <button class="btn_reply">Reply</button>
+                            <button class="btn_edit">Edit</button>
+                            <button class="btn_delete">Delete</button>
+                        </div>
                     </div>
+                    
+                    <div class="comment-edit hidden">
+                        <textarea class="comment-area">${comment.content}</textarea>
+                        <div class="edit-actions">
+                            <button class="btn-save">Save</button>
+                            <button class="btn-cancel">Cancel</button>
+                        </div>
+                    </div>
+                    
                 </div>
-                
-            </div>
-        </article>`;
+            </article>
+        <button class="toggle-replies hidden">▼ 20 replies</button>
+        <div class="comment-children"></div>
+    </div>`;
 }
+
+
+
+
+//
+// function renderComments(comments) {
+//     if (comments.length === 0) {addTextNoComments();return;}
+//
+//     commentsContainer.insertAdjacentHTML("beforeend", renderTree(comments));
+//     drawCommentLines()
+//
+//     function renderTree(comments, level = 0, parent = null) {
+//         let html = ``;
+//         for (const comment of comments) {
+//             html += commentHtml(comment, level, parent);
+//             if (comment.children.length) {html += renderTree(comment.children, level + 1, comment)}
+//         }
+//         return html;
+//     }
+// }
+//
+// function commentHtml(comment, level, parent) {
+//     const visualLevel = Math.min(level, 8);
+//
+//     function getChildrenAttribute(comment) {
+//         if (!comment.children?.length) return "";
+//
+//         const ids = [];
+//
+//         function walk(node) {
+//             for (const child of node.children) {
+//                 ids.push(child.public_id);
+//                 walk(child);
+//             }
+//         }
+//
+//         walk(comment);
+//
+//         return `data-list-ids='${JSON.stringify(ids)}'`;
+//     }
+//
+//     const set_parent_id = parent => parent ? `data-parent="${parent.public_id}"` : "";
+//
+//     function commentReply(parent, is_par=true) {
+//         if (is_par) return "";
+//         return `<div class="reply-preview">
+//                     <span>Replying to ${parent.author.username}</span>
+//                     <blockquote>${parent.content}</blockquote>
+//                 </div>`;
+//     }
+//
+//     function getUpdateTime(comment) {
+//         if (!comment.updated_at) return "";
+//         const isEdited = Math.abs(new Date(comment.updated_at) - new Date(comment.created_at)) > 1000;
+//         return isEdited ? window.relativeDate(comment.updated_at, "edited") : window.relativeDate(comment.created_at);
+//     }
+//
+//     function setArticleAttributes(parent, comment) {
+//         return`${set_parent_id(parent)} ${getChildrenAttribute(comment)}
+//         data-id="${comment.public_id}" class="comment card2"`
+//     }
+//
+//     return `
+//     <div class="comment-node level-${visualLevel}">
+//         <article ${setArticleAttributes(parent, comment)}>
+//                 <div class="avatar">${comment.author.username.charAt(0).toUpperCase() || ""}</div>
+//                 <div class="comment-content">
+//                     <div class="comment-header">
+//                         <strong class="comment-owner" data-owner="${comment.author.username}">@${comment.author.username}</strong>
+//                         <span class="comment-create-date">${getUpdateTime(comment)}</span>
+//                     </div>
+//
+//                     ${parent ? commentReply(parent) : ""}
+//
+//                     <div class="comment-head">
+//                         <p class="content-comment ${comment.content === null ? "deleted" : ""}">${comment.content ?? "Comment deleted"}</p>
+//                         <div class="comment-actions">
+//                             <button class="btn_reply">Reply</button>
+//                             <button class="btn_edit">Edit</button>
+//                             <button class="btn_delete">Delete</button>
+//                         </div>
+//                     </div>
+//
+//                     <div class="comment-edit hidden">
+//                         <textarea class="comment-area">${comment.content}</textarea>
+//                         <div class="edit-actions">
+//                             <button class="btn-save">Save</button>
+//                             <button class="btn-cancel">Cancel</button>
+//                         </div>
+//                     </div>
+//
+//                 </div>
+//             </article>
+//         <button class="toggle-replies">▼ 20 replies</button>
+//
+//         <div class="comment-children"></div>
+//     </div>
+//         `;
+// }
+
+
 
 function drawCommentLines() {
     const svg = document.querySelector("#comment-lines");
@@ -339,12 +458,7 @@ function drawCommentLines() {
             return path;
     }
 }
-
-const set_count_comments = count => len_comments.textContent = `${count} comment${count === 1 ? "" : "s"}`;
 // -----------------------------------------------------------------------------------------
-
-
-
 
 // ------------------------------------Comments Action--------------------------------------
 async function comments_action(event) {
@@ -398,7 +512,7 @@ async function save_edit_comment(data) {
     const dict = {
         content: data.textarea.value,
     }
-    const res = await api.patch(window.data_url.comments(projectId, IssueId, data.id), dict);
+    const res = await api.patch(window.data_url.comment(projectId, IssueId, data.id), dict);
     if (!res || !res.ok) {return;}
     else {
         alert("Comment success update!")
@@ -549,7 +663,7 @@ function add_comment_in_ui(comment) {
 }
 
 async function delete_comment(data) {
-    const res = await api.del(window.data_url.comments(projectId,IssueId, data.id));
+    const res = await api.del(window.data_url.comment(projectId,IssueId, data.id));
     if (!res || !res.ok) {return;}
     if (res.status === 204) {
         alert("Delete Complete!")
@@ -560,7 +674,7 @@ async function delete_comment(data) {
 async function post_comment(event) {
     if (!text_area_comment.value.trim()) return;
 
-    const url = window.data_url.comment(projectId,IssueId)
+    const url = window.data_url.comments(projectId,IssueId)
     const res = await api.post(url, {
         content: text_area_comment.value,
         parent_comment_public_id: text_area_comment.dataset.id || null,

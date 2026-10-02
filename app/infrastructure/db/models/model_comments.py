@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, Text
+from sqlalchemy import ForeignKey, Text, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.db.base import BaseModel
@@ -23,6 +23,8 @@ class Comment(BaseModel):
     )
 
     content: Mapped[str] = mapped_column(Text,nullable=False)
+
+    replies_count: Mapped[int] = mapped_column(Integer,nullable=False,default=0,server_default="0")
 
     issue: Mapped["Issue"] = relationship(back_populates="comments",)
     author: Mapped["User"] = relationship(back_populates="comments",)

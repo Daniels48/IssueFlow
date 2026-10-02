@@ -24,6 +24,16 @@ class CommentResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     deleted_at: datetime | None
+    replies_count: int = 0
+    children: list["CommentResponse"] = Field(default_factory=list)
+
+
+class CommentPageResponse(BaseModel):
+    items: list[CommentResponse]
+    total: int
+    page: int = Field(ge=1)
+    per_page: int = Field(ge=1)
+    has_more: bool
 
 
 class CommentTreeResponse(CommentResponse):

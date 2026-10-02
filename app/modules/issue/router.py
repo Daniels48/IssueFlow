@@ -15,9 +15,8 @@ async def create(project_id: UUID, data: schema.IssueCreate, user: CurrentUser, 
 
 
 @router.get( "", response_model=schema.IssueListResponse)
-async def get_all(project_id: UUID, user: CurrentUser, service: issue_service, filters: issue_filters,
-                  page: int = Query(default=1, ge=1), per_page: int = Query(default=20, ge=1, le=100)):
-    return await service.list(project_id=project_id, user=user, filters=filters, page=page, per_page=per_page)
+async def get_all(project_id: UUID, user: CurrentUser, service: issue_service, filters: issue_filters):
+    return await service.list(project_id=project_id, user=user, filters=filters)
 
 
 @router.get("/{issue_id}",response_model=schema.IssueResponseDetail)

@@ -85,8 +85,12 @@ const data_url = {
     issueClose: (projectId, issueId) => joinUrl(data_url.issue(projectId, issueId), "close"),
     issueReopen: (projectId, issueId) => joinUrl(data_url.issue(projectId, issueId), "reopen"),
 
-    comment: (projectId, issueId) => joinUrl(data_url.issue(projectId, issueId), "comments"),
-    comments: (projectId, issueId, comId) => joinUrl(data_url.comment(projectId, issueId), comId),
+    comments: (projectId, issueId, params={}) =>
+        joinUrl(data_url.issue(projectId, issueId), "comments") + getQuery(params),
+    comment: (projectId, issueId, comId) =>
+        joinUrl(data_url.comments(projectId, issueId), comId),
+    comment_replies: (projectId, issueId, comId, params = {}) =>
+        joinUrl(data_url.comment(projectId, issueId,comId), "replies") + getQuery(params),
 };
 
 const authPages = new Set([

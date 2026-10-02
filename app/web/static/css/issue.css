@@ -66,6 +66,7 @@
     display: flex;
     gap: 18px;
     margin-bottom: 18px;
+    z-index: 10;
 }
 .comment:hover {
     border-color: rgba(59,130,246,.3);
@@ -860,9 +861,7 @@ main {
     background: #151a23;
     opacity: 0.6;
 }
-.comment {
-    position: relative;
-}
+
 .level-1 { margin-left: 50px; }
 .level-2 { margin-left: 100px; }
 .level-3 { margin-left: 150px; }
@@ -886,23 +885,6 @@ main {
     z-index: 10;
 }
 
-.comment {
-    position: relative;
-    z-index: 20;
-}
-
-#comment-lines {
-    z-index: 10;
-}
-
-.comment {
-    z-index: 20;
-}
-
-.comments {
-    position: relative;
-}
-
 #comment-lines {
     position: absolute;
     inset: 0;
@@ -913,10 +895,6 @@ main {
     z-index: 100;
 }
 
-.comment {
-    position: relative;
-    z-index: 10;
-}
 
 .card2 {
     background: var(--surface);
@@ -934,4 +912,29 @@ main {
 
 .btn-secondary:hover {
     background: #334155;
+}
+
+.content-comment.deleted {
+    color: #7f8a9a;
+    font-style: italic;
+    opacity: 0.7;
+}
+
+
+.toggle-replies {
+    margin-left: 66px;
+    padding: 0;
+
+    border: 0;
+    background: transparent;
+
+    color: #2563eb;
+    font-size: 16px;
+    font-weight: 500;
+
+    cursor: pointer;
+}
+
+.toggle-replies:hover {
+    text-decoration: underline;
 }
