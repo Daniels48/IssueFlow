@@ -922,8 +922,10 @@ main {
 
 
 .toggle-replies {
-    margin-left: 66px;
+    margin-left: 78px;
     padding: 0;
+
+    margin-bottom: 18px;
 
     border: 0;
     background: transparent;
