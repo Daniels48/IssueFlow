@@ -940,3 +940,37 @@ main {
 .toggle-replies:hover {
     text-decoration: underline;
 }
+
+.load-more-comments {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    margin: 24px auto 0;
+    padding: 8px 14px;
+
+    border: none;
+    background: transparent;
+
+    color: #3b82f6;
+    font-size: 18px;
+    font-weight: 500;
+
+    cursor: pointer;
+}
+
+.load-more-comments:hover {
+    color: #60a5fa;
+}
+
+.load-more-arrow {
+    font-size: 20px;
+    line-height: 1;
+
+    transition: transform 0.2s ease;
+}
+
+.load-more-comments:hover .load-more-arrow {
+    transform: translateY(2px);
+}

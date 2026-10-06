@@ -115,7 +115,7 @@ async function loadIssue() {
     };
 
     renderIssueDetails(Issue, true);
-    renderComments(Issue.comments.items, commentsContainer, 1, Issue.comments.has_more);
+    renderComments(Issue.comments.items.values(), commentsContainer, 0, false, !Issue.comments.has_more);
 
     issue_comments = Issue_inner.comments;
 
@@ -181,23 +181,23 @@ function change_UI_assignee(issue) {
 
 function change_UI_updated_time(issue) {updated_time.textContent = window.relativeDate(issue.updated_at);}
 
-function renderComments(comments, container, level2, has_more) {
+function renderComments(comments, container, level, data_dict) {
     if (comments.length === 0) {addTextNoComments();return;}
 
-    container.insertAdjacentHTML("beforeend", renderTree(comments));
-    drawCommentLines()
 
-    function renderTree(comments, level = 0, parent = null) {
-        let html = ``;
-        for (const comment of comments) {
-            html += commentHtml(comment, level2, parent);
-            if (comment.children.length) {html += renderTree(comment.children, level + 1, comment)}
-        }
-        return html;
-    }
+    let html = ``;
+    const text_added = `<button class="load-more-comments">
+        <span class="load-more-arrow">↓</span>
+        <span>Load more comments</span>
+    </button>`;
+    for (const comment of comments) {html += commentHtml(comment, level, data_dict.parent);}
+    if (data_dict.has_more) html += text_added;
+    container.insertAdjacentHTML("beforeend", html);
+    drawCommentLines()
 }
 
 function commentHtml(comment, level, parent) {
+    console.log(comment)
     const cls_content = comment.content === null ? "deleted" : "";
     const text_content = comment.content ?? "Comment deleted"
     const owner = comment.author.username;
