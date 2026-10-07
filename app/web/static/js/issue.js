@@ -73,11 +73,12 @@ i_apply.addEventListener("click", applyEditTitle_and_Description);
 commentsContainer.addEventListener("click", comments_action);
 cancelReply.addEventListener("click", cancel_reply_comment);
 btn_post_comment.addEventListener("click", post_comment);
-commentsContainer.addEventListener("click", container_action)
+commentsContainer.addEventListener("click", loadComments)
 
 back_url.href = back_url.href + projectId;
 
 let Issue = {};
+const issue_per_page = 5;
 
 let issue_comments = false
 
@@ -96,7 +97,7 @@ function setCommentActionsVisibility(value) {
 async function loadIssue() {
     const [issueRes, commentsRes] = await Promise.all([
         api.get(window.data_url.issue(projectId, IssueId)),
-        api.get(window.data_url.comments(projectId, IssueId)),
+        api.get(window.data_url.comments(projectId, IssueId, {per_page: issue_per_page})),
     ]);
 
     if (!issueRes || !issueRes.ok) {return}
@@ -115,7 +116,7 @@ async function loadIssue() {
     };
 
     renderIssueDetails(Issue, true);
-    renderComments(Issue.comments.items.values(), commentsContainer, 0, false, !Issue.comments.has_more);
+    renderComments(Issue.comments.items.values(), commentsContainer, commentsData);
 
     issue_comments = Issue_inner.comments;
 
@@ -133,7 +134,7 @@ function renderIssueDetails(issue) {
     change_UI_due_time(issue)
     change_UI_title_and_description(issue)
     change_UI_status_issue(issue)
-    set_count_comments(issue.comments.total);
+    // set_count_comments(issue.comments.total);
 }
 
 function addTextNoComments() {
@@ -181,28 +182,80 @@ function change_UI_assignee(issue) {
 
 function change_UI_updated_time(issue) {updated_time.textContent = window.relativeDate(issue.updated_at);}
 
-function renderComments(comments, container, level, data_dict) {
-    if (comments.length === 0) {addTextNoComments();return;}
+async function loadComments(event) {
+    const toggleButton = event.target.closest(".toggle-replies");
+    const loadMoreButton = event.target.closest(".load-more-comments");
 
+    const isToggleReplies = !!toggleButton;
+    const button = toggleButton || loadMoreButton;
 
-    let html = ``;
-    const text_added = `<button class="load-more-comments">
-        <span class="load-more-arrow">↓</span>
-        <span>Load more comments</span>
-    </button>`;
-    for (const comment of comments) {html += commentHtml(comment, level, data_dict.parent);}
-    if (data_dict.has_more) html += text_added;
-    container.insertAdjacentHTML("beforeend", html);
-    drawCommentLines()
+    if (!button) return;
+
+    const container = isToggleReplies ? button.nextElementSibling : button.parentElement;
+
+    const params = {page: button.dataset.page, per_page: issue_per_page};
+
+    let url = window.data_url.comments(projectId, IssueId, params);
+
+    if (button.dataset.type === "replies") {
+        url = window.data_url.comment_replies(projectId, IssueId, button.dataset.id, params);
+    }
+
+    const response = await api.get(url);
+
+    if (!response?.ok) return;
+    const data = await response.json();
+
+    renderComments(data.items, container, data);
+
+    if (isToggleReplies) {button.remove();}
+    drawCommentLines();
 }
 
-function commentHtml(comment, level, parent) {
-    console.log(comment)
+function htmlToElement(html) {
+    const template = document.createElement("template");
+    template.innerHTML = html.trim();
+
+    return template.content.firstElementChild;
+}
+
+function renderComments(comments, container, data_dict) {
+    if (comments.length === 0) {addTextNoComments();return;}
+
+    const level = Math.min(Number(container.dataset.level), 8);
+
+    container.querySelector("button.load-more-comments")?.remove();
+
+    const type = container.dataset.type;
+
+    for (const comment of comments) {container.append(commentHtml(comment, level))}
+    if (data_dict.has_more) {container.append(createLoadMoreButton(data_dict));}
+
+    function createLoadMoreButton(data) {
+        const remaining = data.total - (data.page * data.per_page);
+        const text_add = type === "replies" ? "replies" : "comments";
+
+        const text = `Load ${remaining} more ${text_add}`;
+        const id_attr = type === "replies" ? `data-id="${container.dataset.id}"` : "";
+
+        return htmlToElement(`<button 
+                                    class="load-more-comments" 
+                                    data-type="${type}" 
+                                    data-page="${data_dict.page + 1}"
+                                    data-per_page="${data_dict.per_page}"
+                                    ${id_attr}
+                                    >
+                                       <span class="load-more-arrow">↓</span>
+                                       <span>${text}</span>
+                                    </button>`
+        );
+    }
+}
+
+function commentHtml(comment, level) {
     const cls_content = comment.content === null ? "deleted" : "";
     const text_content = comment.content ?? "Comment deleted"
     const owner = comment.author.username;
-    const parent_id = parent ? `data-parent="${parent.public_id}"` : ""
-    const data_id = `data-id="${comment.public_id}"`;
     const cls_reply = comment.replies_count > 0 ? "": "hidden";
     const text_replies = comment.replies_count > 0?`▼ ${comment.replies_count} replies`: "";
 
@@ -212,65 +265,42 @@ function commentHtml(comment, level, parent) {
         return isEdited ? window.relativeDate(comment.updated_at, "edited") : window.relativeDate(comment.created_at);
     }
 
-    return `<div class="comment-node level-${Math.min(level, 8)}">
-                <article class="comment card2" ${parent_id} ${data_id}>
-                    <div class="avatar">${owner.charAt(0).toUpperCase() || ""}</div>
-                    <div class="comment-content">
-                        <div class="comment-header">
-                            <strong class="comment-owner" data-owner="${owner}">@${owner}</strong>
-                            <span class="comment-create-date">${getUpdateTime(comment)}</span>
-                        </div>
-                        <div class="comment-head">
-                            <p class="content-comment ${cls_content}">${text_content}</p>
-                            <div class="comment-actions">
-                                <button class="btn_reply">Reply</button>
-                                <button class="btn_edit">Edit</button>
-                                <button class="btn_delete">Delete</button>
-                            </div>
-                        </div>
-                        <div class="comment-edit hidden">
-                            <textarea class="comment-area">${comment.content}</textarea>
-                            <div class="edit-actions">
-                                <button class="btn-save">Save</button>
-                                <button class="btn-cancel">Cancel</button>
-                            </div>
-                        </div>
-                    </div>
-                </article>
-                <button class="toggle-replies ${cls_reply}" ${data_id}>${text_replies}</button>
-                <div class="comment-children"></div>
-            </div>`;
-}
+    const html = `<div class="comment-node level-${level}">
+                            <article class="comment card2" data-id="${comment.public_id}" data-replies="${comment.replies_count}">
+                                <div class="avatar">${owner.charAt(0).toUpperCase() || ""}</div>
+                                <div class="comment-content">
+                                    <div class="comment-header">
+                                        <strong class="comment-owner" data-owner="${owner}">@${owner}</strong>
+                                        <span class="comment-create-date">${getUpdateTime(comment)}</span>
+                                    </div>
+                                    <div class="comment-head">
+                                        <p class="content-comment ${cls_content}">${text_content}</p>
+                                        <div class="comment-actions">
+                                            <button class="btn_reply">Reply</button>
+                                            <button class="btn_edit">Edit</button>
+                                            <button class="btn_delete">Delete</button>
+                                        </div>
+                                    </div>
+                                    <div class="comment-edit hidden">
+                                        <textarea class="comment-area">${comment.content}</textarea>
+                                        <div class="edit-actions">
+                                            <button class="btn-save">Save</button>
+                                            <button class="btn-cancel">Cancel</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </article>
+                            <button class="toggle-replies ${cls_reply}" data-type="replies" data-page="1" data-id="${comment.public_id}">
+                                ${text_replies}
+                            </button>
+                            <div class="comment-children" data-level="${level+1}" 
+                                                          data-id="${comment.public_id}" 
+                                                          data-type="replies"
+                                                          
+                            ></div>
+                        </div>`;
 
-async function container_action(event) {
-    const button = event.target.closest(".toggle-replies");
-
-    if (!button) return;
-
-    const node = button.closest(".comment-node");
-
-    if (!node) return;
-
-    const container_children =node.querySelector("div.comment-children")
-
-    if (!container_children) return;
-
-    const commentId = button.dataset.id;
-
-    const page = 1;
-
-    const params = {
-        page: page,
-        per_page: 20,
-    }
-
-    const comment_res = await api.get(window.data_url.comment_replies(projectId, IssueId, commentId, params));
-
-    if (!comment_res.ok) {return}
-
-    const comments_reply = await comment_res.json();
-
-    renderComments(comments_reply.items, container_children, page+1);
+    return htmlToElement(html)
 }
 
 function drawCommentLines() {
@@ -284,14 +314,16 @@ function drawCommentLines() {
 
         if (!rects) continue;
 
-        const coords = getCommentLineCoordinates(rects.parentRect, rects.childRect, svg.getBoundingClientRect())
+        const svgRect = svg.getBoundingClientRect();
+
+        const coords = getCommentLineCoordinates(rects.parentRect, rects.childRect, svgRect);
         const path = createCommentLine(coords)
         svg.appendChild(path);
     }
 
 
     function getCommentRects(child) {
-        const parentId = child.dataset.parent;
+        const parentId = child.parentElement.parentElement.previousElementSibling.dataset.id
 
         if (!parentId) return null;
 
@@ -304,10 +336,10 @@ function drawCommentLines() {
 
         if (!parentAvatar || !childAvatar) return null;
 
-        return {
-            parentRect: parentAvatar.getBoundingClientRect(),
-            childRect: childAvatar.getBoundingClientRect()
-        };
+       const parentRect = parentAvatar.getBoundingClientRect();
+       const childRect = childAvatar.getBoundingClientRect();
+
+       return {parentRect, childRect}
     }
 
     function getCommentLineCoordinates(parentRect, childRect, svgRect, gap=10) {
@@ -317,16 +349,19 @@ function drawCommentLines() {
         const x2 = childRect.left - svgRect.left - gap;
         const y2 = childRect.top + childRect.height / 2 - svgRect.top;
 
-        return {x1: x1, y1: y1, x2: x2, y2: y2}
+        return { x1, y1, x2, y2 };
     }
 
     function createCommentLine(coords) {
             const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            const radius = 12;
+
             path.setAttribute("d", `
                 M ${coords.x1} ${coords.y1}
-                V ${coords.y2}
-                H ${coords.x2}`
-            );
+                V ${coords.y2 - radius}
+                Q ${coords.x1} ${coords.y2} ${coords.x1 + radius} ${coords.y2}
+                H ${coords.x2}
+            `);
 
             path.setAttribute("fill", "none");
             path.setAttribute("stroke", "#64748b");
@@ -350,7 +385,7 @@ async function comments_action(event) {
 
     const data = {
         id: container.dataset.id,
-        value: obj_comment.dataset.text,
+        value: obj_comment.textContent,
         owner: owner_comment.dataset.owner,
         container: container,
         textarea: container.querySelector(".comment-area"),
@@ -393,27 +428,16 @@ async function save_edit_comment(data) {
         content: data.textarea.value,
     }
     const res = await api.patch(window.data_url.comment(projectId, IssueId, data.id), dict);
-    if (!res || !res.ok) {return;}
-    else {
-        alert("Comment success update!")
-        const comment = await res.json();
-        const edit_string = data.container.querySelector(".comment-meta");
-        edit_string.textContent = window.relativeDate(comment.updated_at, "edited");
-        close_edit_comment(data);
-        const obj_comment = data.container.querySelector("p.content-comment");
-        obj_comment.dataset.text = comment.content;
-        obj_comment.textContent = comment.content;
-        const id_comment = data.id;
-        if (id_comment) {
-            const elements = document.querySelectorAll(`[data-parent="${id_comment}"]`);
-            if (elements.length) {
-                for (const element of elements) {
-                    let container_element = element.querySelector("blockquote")
-                    container_element.textContent = comment.content;
-                }
-            }
-        }
-    }
+    if (!res || !res.ok) return;
+
+    alert("Comment success update!")
+    const comment = await res.json();
+    const edit_string = data.container.querySelector(".comment-create-date");
+    edit_string.textContent = window.relativeDate(comment.updated_at, "edited");
+    close_edit_comment(data);
+    const obj_comment = data.container.querySelector("p.content-comment");
+    obj_comment.dataset.text = comment.content;
+    obj_comment.textContent = comment.content;
 }
 
 function reply_comment(data) {
@@ -432,7 +456,7 @@ function cancel_reply_comment() {
 }
 
 function findCommentElement(id) {
-    return commentsContainer.querySelector(`[data-id="${id}"]`);
+    return commentsContainer.querySelector(`article[data-id="${id}"]`);
 }
 
 function delete_comment_in_ui(id) {
@@ -443,12 +467,20 @@ function delete_comment_in_ui(id) {
     for (const childId of listIds) {findCommentElement(childId)?.remove()}
 
     const idsToRemove = [...new Set([...listIds, id])];
-    updateChildIdsInParents(element, idsToRemove, "-")
-    deleteComment_in_js(issue_comments, id)
+    // updateChildIdsInParents(element, idsToRemove, "-")
+    // deleteComment_in_js(issue_comments, id)
 
-    element.remove();
+    if (element.dataset.replies > 0) {
+        let text_element = element.querySelector("p.content-comment")
+        if (!text_element) return;
+        text_element.classList.add("deleted")
+        text_element.textContent = "Comment deleted";
+    } else {
+        element.remove();
+    }
+
     const count = commentsContainer.children.length - 1;
-    set_count_comments(count);
+    // set_count_comments(count);
     if (count === 0) {addTextNoComments()}
     drawCommentLines()
 
@@ -473,26 +505,26 @@ function add_comment_in_ui(comment) {
     }
 
     let added;
-
-    if (comment.parent_comment_public_id) {added = addReplyComment(comment)}
-    else {added = addNewComment(comment);}
-
-    if (!added) return;
-
-    set_count_comments(count + 1);
-    drawCommentLines()
+    //
+    // if (comment.parent_comment_public_id) {added = addReplyComment(comment)}
+    // else {added = addNewComment(comment);}
+    //
+    // if (!added) return;
+    //
+    // set_count_comments(count + 1);
+    // drawCommentLines()
 
     function addReplyComment(comment) {
         const parentElement = findCommentElement(comment.parent_comment_public_id)
         if (!parentElement) return;
 
-        const parent = findComment(issue_comments, comment.parent_comment_public_id)
-        if (!parent) return false;
-        parent.children.push(comment);
+        // const parent = findComment(issue_comments, comment.parent_comment_public_id)
+        // if (!parent) return false;
+        // parent.children.push(comment);
 
-        const html = commentHtml(comment, getLevel(parentElement) + 1, parent);
+        const html = commentHtml(comment, getLevel(parentElement) + 1);
         insertReplyComment(parentElement, html);
-        updateChildIdsInParents(parentElement, [comment.public_id]);
+        // updateChildIdsInParents(parentElement, [comment.public_id]);
 
         function insertReplyComment(parentElement, html) {
             const parentLevel = getLevel(parentElement);

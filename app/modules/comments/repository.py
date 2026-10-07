@@ -138,7 +138,7 @@ class CommentRepository:
             select(Comment)
             .where(Comment.parent_comment_id == comment_id, visible_filter)
             .options(selectinload(Comment.author))
-            .order_by(Comment.created_at.asc())
+            .order_by(Comment.created_at.desc())
             .offset((page - 1) * per_page)
             .limit(per_page)
         )

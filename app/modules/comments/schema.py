@@ -25,7 +25,7 @@ class CommentResponse(BaseModel):
     updated_at: datetime
     deleted_at: datetime | None
     replies_count: int = 0
-    children: list["CommentResponse"] = Field(default_factory=list)
+    # children: list["CommentResponse"] = Field(default_factory=list)
 
 
 class CommentPageResponse(BaseModel):
@@ -42,7 +42,7 @@ class CommentTreeResponse(CommentResponse):
 
 class CommentCreateResponse(CommentResponse):
     parent_comment_public_id: UUID | None = None
-    children: list[CommentResponse] = Field(default_factory=list)
+    # children: list[CommentResponse] = Field(default_factory=list)
 
 
 CommentTreeResponse.model_rebuild()

@@ -105,6 +105,7 @@ class CommentService:
             author=user,
             created_at=now,
             updated_at=now,
+            children=[],
         )
 
         comment = await self.repository.create(self.db, comment)
@@ -144,7 +145,7 @@ class CommentService:
 
         result = await self.repository.get_comments_by_issue_id(self.db,issue.id,page,per_page)
 
-        result["items"] = [ self.to_comment_response(comment)for comment in result["items"]]
+        result["items"] = [self.to_comment_response(comment) for comment in result["items"]]
 
         return result
 

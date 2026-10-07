@@ -1,7 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, status, Query
-
+from fastapi import APIRouter, status
 from app.modules.auth.dependencies import CurrentUser
 from app.modules.comments import schema as schema
 from app.modules.comments.service import comments_service, PageQuery, PerPageQuery

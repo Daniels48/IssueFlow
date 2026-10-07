@@ -9,7 +9,7 @@ celery
 jinja2
 aiosmtplib
 
-sqlalchemy
+sqlalchemy[asyncio]
 asyncpg
 alembic
 

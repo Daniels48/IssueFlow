@@ -1,6 +1,7 @@
+from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, Text, Integer
+from sqlalchemy import ForeignKey, Text, Integer, DateTime, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.db.base import BaseModel
@@ -32,3 +33,7 @@ class Comment(BaseModel):
     parent: Mapped["Comment | None"] = relationship( remote_side="Comment.id",back_populates="children")
 
     children: Mapped[list["Comment"]] = relationship(back_populates="parent",cascade="all, delete-orphan")
+
+    updated_at: Mapped[datetime] = (
+        mapped_column(DateTime(timezone=True),server_default=func.now(), nullable=False)
+    )
