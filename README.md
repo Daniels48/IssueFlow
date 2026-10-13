@@ -84,7 +84,7 @@ make upgrade
 **Windows :**
 
 ```bash
-docker compose exec api alembic -c app/infrastructure/db/alembic.ini upgrade head
+docker compose exec api alembic upgrade head
 ```
 
 ### 5️⃣ Загрузить тестовые данные
