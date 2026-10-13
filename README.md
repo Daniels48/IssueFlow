@@ -127,13 +127,14 @@ docker compose exec api pytest -v
 Пароль для всех пользователей:
 
 ```text
-password123
+DemoPass123!
 ```
 
-| Email | Роль | Статус |
+| Email | Роль | Логин |
 |---|---|---|
-| `admin@example.com` | Admin | Подтверждён |
-| `owner@example.com` | Владелец досок | Подтверждён |
-| `editor@example.com` | Editor | Подтверждён |
-| `viewer@example.com` | Viewer | Подтверждён |
-| `unverified@example.com` | User | Не подтверждён |
+| `demo_admin@example.com` | Администратор | demo_admin |
+| `demo_developer@example.com` | Разработчик | demo_developer |
+| `demo_qa@example.com` | QA-тестировщик | demo_qa |
+| `demo_manager@example.com` | Менеджер | demo_manager |
+| `demo_reporter@example.com` | Автор задач | demo_reporter |
+| `demo_developer2@example.com` | Второй разработчик | demo_developer2 |
