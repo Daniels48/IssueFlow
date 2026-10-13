@@ -943,9 +943,9 @@ function all_issue_event(event) {
 
         "project.deleted":project_deleted,
 
-        "project.member.added":other,
-        "project.member.removed":other,
-        "project.member.role.changed":other,
+        "project.member.added":member_add,
+        "project.member.removed":member_remove,
+        "project.member.role.changed":member_change,
 
 
         "user.logged.out":other,
@@ -1095,6 +1095,35 @@ function all_issue_event(event) {
 
         if (payload.project.public_id === projectId) {
             window.location.href = window.data_url.projects_web
+        }
+    }
+
+    function member_add(event) {
+        const { payload } = event;
+
+        if (payload.project.public_id === projectId) {
+            const { email, ...user } = payload.user;
+
+            Issue.members.set(payload.user.public_id, user);
+        }
+    }
+
+    function member_remove(event) {
+        const { payload } = event;
+
+        if (payload.project.public_id === projectId) {
+            Issue.members.delete(payload.user.public_id)
+        }
+
+    }
+
+    function member_change(event) {
+        const { payload } = event;
+
+        if (payload.project.public_id === projectId) {
+            const { email, ...user } = payload.user;
+
+            Issue.members.set(payload.user.public_id, user);
         }
     }
 

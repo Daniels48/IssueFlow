@@ -50,8 +50,6 @@ async def test_add_member_success(client: AsyncClient):
         "member@example.com",
     )
 
-    # Сейчас cookies принадлежат member.
-    # Переключаемся на owner.
     client.cookies.clear()
 
     response = await client.post(

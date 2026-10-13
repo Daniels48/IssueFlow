@@ -3,6 +3,20 @@ from httpx import AsyncClient
 
 from tests.test_members import register_user, create_project
 
+async def login_user(
+    client: AsyncClient,
+    username: str,
+    password: str,
+):
+    response = await client.post(
+        "/api/auth/login",
+        json={
+            "username": username,
+            "password": password,
+        },
+    )
+
+    assert response.status_code == 204, response.text
 
 @pytest.mark.asyncio
 async def test_get_me(client: AsyncClient):
@@ -140,7 +154,7 @@ async def test_search_users_project_not_found(client: AsyncClient):
     )
 
     assert response.status_code == 404
-    assert response.json() == []
+    assert response.json() == {"detail": "Project not found"}
 
 
 @pytest.mark.asyncio
@@ -156,20 +170,24 @@ async def test_search_users_without_auth(client: AsyncClient):
     assert response.status_code == 401
 
 @pytest.mark.asyncio
-async def test_search_users_without_project_membership(client: AsyncClient):
+async def test_search_users_without_project_membership(
+    client: AsyncClient,
+):
     await register_user(
         client,
         "owner",
         "owner@example.com",
     )
 
-    other = await register_user(
+    project = await create_project(client)
+
+    await register_user(
         client,
         "other",
         "other@example.com",
     )
 
-    project = await create_project(client)
+    await login_user(client, "other", "password123")
 
     response = await client.get(
         "/api/users/search",
@@ -179,4 +197,4 @@ async def test_search_users_without_project_membership(client: AsyncClient):
         },
     )
 
-    assert response.status_code == 403
+    assert response.status_code == 404

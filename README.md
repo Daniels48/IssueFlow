@@ -104,13 +104,13 @@ docker compose exec api python -m scripts.seed
 ### 6️⃣ Открыть приложение
 
 ```text
-http://localhost:8000
+http://localhost
 ```
 
 ### 7️⃣ API документация
 
 ```text
-http://localhost:8000/docs
+http://localhost/docs
 ```
 
 

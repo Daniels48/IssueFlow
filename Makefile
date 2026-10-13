@@ -24,3 +24,6 @@ lint:
 
 format:
 	docker compose exec api ruff format .
+
+seed:
+	docker compose exec api python -m scripts.seed
