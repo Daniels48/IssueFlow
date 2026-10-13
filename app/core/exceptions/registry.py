@@ -9,31 +9,31 @@ class ErrorDefinition:
 
 
 COMMON_ERRORS = {
-    ErrorCode.NOT_FOUND: ErrorDefinition(404, "Not found"),
-    ErrorCode.VALIDATION_ERROR: ErrorDefinition(422, "Validation error"),
-    ErrorCode.BAD_REQUEST: ErrorDefinition(400, "Bad request"),
-    ErrorCode.UNAUTHORIZED: ErrorDefinition(401, "Unauthorized"),
-    ErrorCode.FORBIDDEN: ErrorDefinition(403, "Forbidden"),
-    ErrorCode.CONFLICT: ErrorDefinition(409, "Conflict"),
-    ErrorCode.PERMISSION_DENIED: ErrorDefinition(403, "Forbidden"),
-    ErrorCode.TOO_MANY_REQUESTS: ErrorDefinition(429, "Too many requests"),
-    ErrorCode.INTERNAL_ERROR: ErrorDefinition(500, "Internal server error"),
-    ErrorCode.SERVICE_UNAVAILABLE: ErrorDefinition(503, "Service unavailable"),
+    ErrorCode.NOT_FOUND:ErrorDefinition(404, "Not found"),
+    ErrorCode.VALIDATION_ERROR:ErrorDefinition(422, "Validation error"),
+    ErrorCode.BAD_REQUEST:ErrorDefinition(400, "Bad request"),
+    ErrorCode.UNAUTHORIZED:ErrorDefinition(401, "Unauthorized"),
+    ErrorCode.FORBIDDEN:ErrorDefinition(403, "Forbidden"),
+    ErrorCode.CONFLICT:ErrorDefinition(409, "Conflict"),
+    ErrorCode.PERMISSION_DENIED:ErrorDefinition(403, "Forbidden"),
+    ErrorCode.TOO_MANY_REQUESTS:ErrorDefinition(429, "Too many requests"),
+    ErrorCode.INTERNAL_ERROR:ErrorDefinition(500, "Internal server error"),
+    ErrorCode.SERVICE_UNAVAILABLE:ErrorDefinition(503, "Service unavailable"),
 }
 
 AUTH_ERRORS = {
-    ErrorCode.INVALID_TOKEN: ErrorDefinition(403, "Forbidden"),
-    ErrorCode.TOKEN_EXPIRED: ErrorDefinition(403, "Forbidden"),
-    ErrorCode.INVALID_TOKEN_TYPE: ErrorDefinition(403, "Forbidden"),
-    ErrorCode.REFRESH_TOKEN_NOT_FOUND: ErrorDefinition(403, "Forbidden"),
-    ErrorCode.USERNAME_NOT_FOUND: ErrorDefinition(403,"Invalid credentials"),
-    ErrorCode.PASSWORD_INVALID: ErrorDefinition(403,"Invalid credentials"),
+    ErrorCode.INVALID_TOKEN:ErrorDefinition(401, "Invalid token"),
+    ErrorCode.TOKEN_EXPIRED:ErrorDefinition(401, "Token expired"),
+    ErrorCode.INVALID_TOKEN_TYPE:ErrorDefinition(401, "Invalid token"),
+    ErrorCode.REFRESH_TOKEN_NOT_FOUND:ErrorDefinition(401, "Refresh token required"),
+    ErrorCode.USERNAME_NOT_FOUND:ErrorDefinition(401, "Invalid credentials"),
+    ErrorCode.PASSWORD_INVALID:ErrorDefinition(401, "Invalid credentials"),
 }
 
 SESSION_ERRORS = {
-    ErrorCode.SESSION_EXPIRED: ErrorDefinition(403,"Forbidden"),
-    ErrorCode.SESSION_NOT_FOUND: ErrorDefinition( 403,"Forbidden"),
-    ErrorCode.SESSION_REVOKED: ErrorDefinition(403,"Forbidden"),
+    ErrorCode.SESSION_EXPIRED:ErrorDefinition(401, "Session expired"),
+    ErrorCode.SESSION_NOT_FOUND:ErrorDefinition(401, "Session not found"),
+    ErrorCode.SESSION_REVOKED:ErrorDefinition(401, "Session revoked"),
 }
 
 USER_ERRORS = {
@@ -75,8 +75,8 @@ PROJECT_ERRORS = {
 }
 
 MEMBER_ERRORS = {
-    ErrorCode.USER_IS_NOT_A_PROJECT_MEMBER: ErrorDefinition(403,"Forbidden"),
-    ErrorCode.MEMBER_ALREADY_IN_PROJECT: ErrorDefinition(403,"Forbidden"),
+    ErrorCode.USER_IS_NOT_A_PROJECT_MEMBER: ErrorDefinition(404,"Forbidden"),
+    ErrorCode.MEMBER_ALREADY_IN_PROJECT: ErrorDefinition(409,"Forbidden"),
 }
 
 
@@ -89,5 +89,5 @@ ERROR_REGISTRY: dict[ErrorCode, ErrorDefinition] = {
     **COMMENT_ERRORS,
     **ISSUE_ERRORS,
     **MEMBER_ERRORS,
-
+    **PROJECT_ERRORS,
 }

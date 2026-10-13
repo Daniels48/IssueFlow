@@ -15,7 +15,7 @@ class CommentRepository:
         return comment
 
     @staticmethod
-    async def get_by_public_id(db: AsyncSession, public_id: UUID) -> Comment:
+    async def get_by_public_id(db: AsyncSession, public_id: UUID) -> Comment | None:
         result = await db.execute(
             select(Comment)
             .options(selectinload(Comment.author))
@@ -25,7 +25,7 @@ class CommentRepository:
             )
         )
 
-        return result.scalar_one()
+        return result.scalar_one_or_none()
 
     @staticmethod
     async def get_by_id(db: AsyncSession, comment_id: int) -> Comment:

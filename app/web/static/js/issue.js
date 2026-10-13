@@ -148,6 +148,7 @@ const set_count_comments = count => len_comments.textContent = `${count} comment
 
 // ------------------------------------RENDER-----------------------------------------------
 function change_UI_status_issue(issue) {
+    Object.assign(Issue, issue);
     head_status.textContent = formatEnum(issue.status).toUpperCase();
     status.textContent = formatEnum(issue.status).toUpperCase();
     const get_action = (element) => element.status === "closed" ? "reopen" : "close";
@@ -158,29 +159,41 @@ function change_UI_status_issue(issue) {
 
     setCommentActionsVisibility(issue.status);
     drawCommentLines();
+    change_UI_updated_time(Issue);
 }
 
 function change_UI_title_and_description(issue) {
+    Object.assign(Issue, issue);
     title.textContent = issue.title;
     description.textContent = issue.description;
+    change_UI_updated_time(Issue);
 }
 
 function change_UI_due_time(issue) {
+    Object.assign(Issue, issue);
     due_time.textContent = issue.due_date ? window.formatDate(issue.due_date, 0, true) : "No due date";
     due_time.dataset.value = issue.due_date || "";
+    change_UI_updated_time(Issue);
 }
 
 function change_UI_priority(issue) {
+    Object.assign(Issue, issue);
     priority.textContent = issue.priority.toUpperCase();
     head_priority.textContent = issue.priority.toUpperCase();
+    change_UI_updated_time(Issue);
 }
 
 function change_UI_assignee(issue) {
+    Object.assign(Issue, issue);
     assignee.textContent = issue.assignee?.username ?? "Unassigned";
     assignee.dataset.publicId = issue.assignee?.public_id ?? "";
+    change_UI_updated_time(Issue);
 }
 
-function change_UI_updated_time(issue) {updated_time.textContent = window.relativeDate(issue.updated_at);}
+function change_UI_updated_time(issue) {
+    Object.assign(Issue, issue);
+    updated_time.textContent = window.relativeDate(issue.updated_at);
+}
 
 async function loadComments(event) {
     const toggleButton = event.target.closest(".toggle-replies");
@@ -722,7 +735,6 @@ async function issue_action(event) {
 
     if (!res || !res.ok) {return;}
     const issue = await res.json();
-
     change_UI_status_issue(issue)
 }
 
@@ -823,6 +835,7 @@ function editStatus() {
         const res = await api.patch(url, data);
         if (!res || !res.ok) {return;}
         const issue = await res.json();
+
         change_UI_status_issue(issue)
         closeFieldModal();
     }
@@ -853,7 +866,7 @@ function editPriority() {
 
 async function editAssignee() {
     const currentAssignee = document.querySelector("#assignee").dataset.publicId;
-    const list_assignee = create_map_list(issue_assignee, true);
+    const list_assignee = create_map_list(Issue.members.values(), true);
 
     const select = set_modal_data("Assignee", list_assignee, currentAssignee)
 
@@ -867,7 +880,7 @@ async function editAssignee() {
 
         if (!res || !res.ok) {return;}
         const issue = await res.json();
-        change_UI_assignee(issue)
+        change_UI_assignee(issue);
         closeFieldModal();
     }
 }
@@ -909,6 +922,186 @@ function editDueDate() {
     }
 }
 
+function all_issue_event(event) {
+    const handlers = {
+        "issue.updated": update_issue,
+        "issue.deleted": other,
+
+        "issue.assigned":assigned,
+        "issue.unassigned":unassigned,
+
+        "issue.status.changed":change_status,
+        "issue.priority.changed":change_priority,
+        "issue.due_date.changed":change_due_date,
+
+        "issue.closed":close,
+        "issue.reopened":reopen,
+
+        "issue.comment.created":create_comment,
+        "issue.comment.updated":edit_comment,
+        "issue.comment.deleted":delete_comment,
+
+        "project.deleted":project_deleted,
+
+        "project.member.added":other,
+        "project.member.removed":other,
+        "project.member.role.changed":other,
+
+
+        "user.logged.out":other,
+        "user.logged.out.all":other,
+
+        "user.deleted":other,
+    }
+
+    function other(event) {
+        console.log(event)
+    }
+
+    function update_issue(event) {
+        const { payload } = event;
+        if (payload.issue.public_id === Issue.public_id) {
+            let issue = payload.issue;
+            issue.updated_at = payload.occurred_at;
+            change_UI_title_and_description(issue);
+            change_UI_updated_time(Issue);
+        }
+    }
+
+    function unassigned(event) {
+        const { payload } = event;
+
+        if (payload.issue.public_id === Issue.public_id) {
+            change_UI_assignee({
+                updated_at: payload.occurred_at,
+                assignee: null
+            });
+        }
+    }
+
+    function assigned(event) {
+        const { payload } = event;
+
+        if (payload.issue.public_id === Issue.public_id) {
+            change_UI_assignee({
+                updated_at: payload.occurred_at,
+                assignee: payload.new_value,
+            });
+        }
+    }
+
+    function _get_allowed_status(status) {
+        function _get_status(status, offset = 0) {
+            const list_statuses = ["open", "in_progress", "review", "done", null, "closed", null];
+            const index = list_statuses.indexOf(status);
+
+            if (index === -1) return null;
+
+            const new_index = index + offset;
+
+            return new_index >= 0 && new_index < list_statuses.length ? list_statuses[new_index] : null;
+        }
+        return {
+            previous: _get_status(status, -1),
+            current: _get_status(status),
+            next: _get_status(status, +1),
+        }
+    }
+
+    function change_status(event) {
+        const { payload } = event;
+
+        if (payload.issue.public_id === Issue.public_id) {
+            change_UI_status_issue({
+                updated_at: payload.occurred_at,
+                status: payload.new_value,
+                allowed_statuses: _get_allowed_status(payload.new_value),
+            });
+        }
+    }
+
+    function change_due_date(event) {
+        const { payload } = event;
+
+        if (payload.issue.public_id === Issue.public_id) {
+            change_UI_due_time({
+                updated_at: payload.occurred_at,
+                due_date: payload.new_value,
+            });
+        }
+    }
+
+    function change_priority(event) {
+        const { payload } = event;
+
+        if (payload.issue.public_id === Issue.public_id) {
+            change_UI_priority({
+                updated_at: payload.occurred_at,
+                priority: payload.new_value,
+            });
+        }
+    }
+
+    function close(event) {
+        const { payload } = event;
+
+        if (payload.issue.public_id === Issue.public_id) {
+            change_UI_status_issue({
+                updated_at: payload.occurred_at,
+                status: "closed",
+                allowed_statuses: _get_allowed_status("closed"),
+            });
+        }
+    }
+
+    function reopen(event) {
+        const { payload } = event;
+
+        if (payload.issue.public_id === Issue.public_id) {
+            change_UI_status_issue({
+                updated_at: payload.occurred_at,
+                status: "open",
+                allowed_statuses: _get_allowed_status("open"),
+            });
+        }
+    }
+
+    function create_comment(event) {
+        const { payload } = event;
+
+        if (payload.issue.public_id === Issue.public_id) {
+            console.log(payload)
+        }
+    }
+
+    function delete_comment(event) {
+        const { payload } = event;
+
+        if (payload.issue.public_id === Issue.public_id) {
+            console.log(payload)
+        }
+    }
+
+    function edit_comment(event) {
+        const { payload } = event;
+
+        if (payload.issue.public_id === Issue.public_id) {
+            console.log(payload)
+        }
+    }
+
+    function project_deleted(event) {
+        const { payload } = event;
+
+        if (payload.project.public_id === projectId) {
+            window.location.href = window.data_url.projects_web
+        }
+    }
+
+    const handler = handlers[event.event_type];
+    if (handler) {handler(event);}
+}
+
 fieldModalClose.addEventListener("click", closeFieldModal);
 fieldModalCancel.addEventListener("click", closeFieldModal);
 
@@ -920,6 +1113,10 @@ fieldModal.addEventListener("click", (event) => {
 
 // -----------------------------------------------------------------------------------------
 
+window.appEvents.on("*", (event) => {
+    const handler = all_issue_event;
+    if (handler) {handler(event);}
+});
 
 loadIssue();
 initIssueFieldEditors()

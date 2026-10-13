@@ -2,10 +2,6 @@ from datetime import datetime
 from uuid import UUID
 from pydantic import BaseModel, Field, ConfigDict, computed_field
 
-from app.modules.issue.priority import IssuePriority
-from app.modules.issue.schema import IssueResponse
-from app.modules.issue.status import IssueStatus
-
 from app.modules.project_members.project_role import ProjectRole
 from app.modules.project_members.schema import ProjectMemberResponse
 from app.modules.users.schema import UserShortResponse

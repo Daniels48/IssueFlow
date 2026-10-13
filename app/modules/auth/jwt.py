@@ -3,6 +3,7 @@ import hmac
 import secrets
 from datetime import timedelta, datetime
 from uuid import UUID
+from uuid6 import uuid7
 
 from jose import JWTError, ExpiredSignatureError, jwt
 from pydantic import ValidationError
@@ -25,6 +26,7 @@ class JWTService:
             "sub": str(public_id),
             "iat": now,
             "sid": str(session_id),
+            "jti": str(uuid7()),
             "exp": now + timedelta(minutes=cls.expire_minutes),
         }
 

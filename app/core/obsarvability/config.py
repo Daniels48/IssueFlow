@@ -5,7 +5,7 @@ import time
 from app.core.obsarvability.filter import ContextFilter
 from app.core.obsarvability.formatter import CustomJsonFormatter
 
-LOG_LEVEL = "INFO"
+LOG_LEVEL = "WARNING"
 
 
 LOGGING_CONFIG = {

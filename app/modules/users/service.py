@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.exceptions import AppException, ErrorCode
 from app.infrastructure.db.database import DBSession
 from app.modules.project_members.repository import ProjectMemberRepository
 from app.modules.projects.repository import ProjectRepository
@@ -19,10 +20,10 @@ class UserService:
     async def search_users(self, query: str, project_id: UUID, current_user_id:int) -> list[UserShortResponse]:
         project = await ProjectRepository.get_by_public_id(self.db, project_id)
         if not project:
-            return []
+            raise AppException(ErrorCode.PROJECT_NOT_FOUND,"Project not found")
         Member_is = await ProjectMemberRepository.user_in_project(self.db, project.id, current_user_id)
         if not Member_is:
-            pass
+            raise AppException(ErrorCode.USER_IS_NOT_A_PROJECT_MEMBER,"User is not a project member")
         return await self.repository.get_list_users_in_project(self.db, query, project.id, current_user_id)
 
 

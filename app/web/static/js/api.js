@@ -72,6 +72,7 @@ const data_url = {
 
     projects: url_projects,
     project: (projectId) => joinUrl(url_projects, projectId),
+    projects_web: "/projects",
 
     members: (projectId) => joinUrl(data_url.project(projectId), "members"),
     member: (projectId, userId) => joinUrl(data_url.members(projectId), userId),
@@ -380,6 +381,47 @@ class AppEvents {
         }
     }
 }
+
+const handlers = {
+        "issue.created": 1,
+        "issue.updated": 1,
+        "issue.deleted": 1,
+
+        "issue.assigned":1,
+        "issue.unassigned":1,
+
+        "issue.status.changed":1,
+        "issue.priority.changed":1,
+        "issue.due_date.changed":1,
+
+        "issue.closed":1,
+        "issue.reopened":1,
+
+        "issue.comment.created":1,
+        "issue.comment.updated":1,
+        "issue.comment.deleted":1,
+
+        "project.created":1,
+        "project.updated":1,
+        "project.deleted":1,
+
+        "project.member.added":1,
+        "project.member.removed":1,
+        "project.member.role.changed":1,
+
+        "user.registered":1,
+        "user.email.verified":1,
+        "user.email.changed":1,
+        "user.password.changed":1,
+        "user.email.verification.requested":1,
+        "user.password.reset.requested":1,
+
+        "user.logged.in":1,
+        "user.logged.out":1,
+        "user.logged.out.all":1,
+
+        "user.deleted":1,
+    }
 
 
 window.ws = new WSClient();

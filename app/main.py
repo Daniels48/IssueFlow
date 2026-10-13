@@ -51,15 +51,6 @@ app.include_router(api_router)
 app.include_router(web_router)
 
 
-# @asynccontextmanager
-# async def lifespan(app: FastAPI):
-#     await RabbitConsumer.subscribe(
-#         queue_name="email_queue",
-#         routing_key="issue.created",
-#         handler=email_handler,
-#     )
-#
-#     yield
-#
-#     await RabbitConsumer.close()
-#     await RabbitConnection.close()
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}

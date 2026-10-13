@@ -29,6 +29,16 @@ class CustomJsonFormatter(json.JsonFormatter):
         }
         log_record["log"] = log
 
+        error = {
+            "code": getattr(record, "error_code", None),
+            "message": getattr(record, "error_message", None),
+            "public_message": getattr(record, "public_message", None),
+            "status_code": getattr(record, "exception_status_code", None),
+        }
+
+        if any(value is not None for value in error.values()):
+            log_record["error"] = error
+
         service = {"name": getattr(record, "service", None), "version": getattr(record, "version", None)}
 
         log_record["service"] = service

@@ -1,5 +1,5 @@
 from app.core.exceptions import AppException, ErrorCode
-from app.infrastructure.db.models import User, Project, ProjectMember, Comment, Issue
+from app.infrastructure.db.models import Comment, Issue
 from app.modules.project_members.project_role import ProjectRole
 from app.permissions.context import PermissionContext
 from app.permissions.enums import Permission, Role
@@ -100,6 +100,12 @@ class ProjectRBAC:
     def require(permission: Permission, context: PermissionContext) -> None:
 
         roles = ProjectRBAC.get_roles(context)
+
+        print("USER:", context.user.id)
+        print("PROJECT OWNER:", context.project.owner_id)
+        print("MEMBER:", context.member)
+        print("ROLES:", roles)
+        print("PERMISSION:", permission)
 
         permissions = (permission in ProjectRBAC.get_permissions_for_role(role) for role in roles)
 

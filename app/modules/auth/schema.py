@@ -20,6 +20,7 @@ class AccessTokenPayload(BaseModel):
     exp: datetime
     iat: datetime
     sid: UUID
+    jti: UUID
 
 
 class SessionModel(BaseModel):

@@ -10,7 +10,6 @@ from app.events.issue import IssueEventData
 from app.core.exceptions import AppException, ErrorCode
 from app.infrastructure.db.database import DBSession
 from app.infrastructure.db.models import User, Issue, ProjectMember
-from app.modules.comments.service import CommentService
 from app.modules.issue.priority import IssuePriority
 from app.modules.issue import schema as schema
 from app.modules.issue.repository import IssueRepository
@@ -169,8 +168,7 @@ class IssueService:
 
         await self.db.commit()
 
-    async def update_due_date(self, issue_id: UUID, data: schema.IssueDueDateUpdate, user: User) \
-            -> schema.IssueDueDateResponse:
+    async def update_due_date(self, issue_id: UUID, data: schema.IssueDueDateUpdate, user: User):
         result = await self.rep.get_by_public_id_with_current_member(self.db, issue_id,user.id)
 
         if result is None:
@@ -248,8 +246,7 @@ class IssueService:
 
         return to(schema.IssueAssigneeResponse, issue)
 
-    async def update_priority(self,issue_id: UUID,data: schema.IssuePriorityUpdate,user: User) \
-            -> schema.IssuePriorityResponse:
+    async def update_priority(self,issue_id: UUID,data: schema.IssuePriorityUpdate,user: User):
         result = await self.rep.get_by_public_id_with_current_member(self.db,issue_id,user.id)
 
         if result is None:
@@ -279,8 +276,7 @@ class IssueService:
 
         return to(schema.IssuePriorityResponse, issue)
 
-    async def update_status(self, issue_id: UUID, data: schema.IssueStatusUpdate, user: User) \
-            -> schema.IssueStatusResponse:
+    async def update_status(self, issue_id: UUID, data: schema.IssueStatusUpdate, user: User):
         result = await self.rep.get_by_public_id_with_current_member(self.db,issue_id,user.id)
 
         if result is None:

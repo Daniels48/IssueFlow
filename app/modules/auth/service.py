@@ -45,7 +45,6 @@ def _check_valid_session(session: Session | None, now: datetime) -> Session | No
 
     return session
 
-
 def _check_valid_user(user: User | None) -> User | None:
     if not user:
         raise AppException(ErrorCode.USER_NOT_FOUND, "User not found")
@@ -54,7 +53,6 @@ def _check_valid_user(user: User | None) -> User | None:
         raise AppException(ErrorCode.USER_NOT_ACTIVE, "User not active")
 
     return user
-
 
 def get_session_client_data(request: Request) -> dict:
     user_agent = request.headers.get("user-agent")
@@ -66,7 +64,6 @@ def get_session_client_data(request: Request) -> dict:
     ci = get_client_info(client_info)
 
     return {**ua, **ci, "ip_address":ip}
-
 
 def update_session_client_data(session: Session, request: Request) -> None:
 
@@ -134,9 +131,6 @@ class AuthService:
 
         return AuthResult(user=user, tokens=result.tokens)
 
-        # await VerifyEmailService.send(user)
-        # await RabbitPublisher.publish(UserRegisteredEvent.from_models(author=user, session=result.session))
-
     async def login(self, request: Request, username: str, password: str) -> AuthTokens:
         user = await self.repository.get_by_username(self.db, username)
 
@@ -161,8 +155,6 @@ class AuthService:
             logger.exception("Failed to set session in Redis", extra={"session_id": str(result.session.public_id)})
 
         return result.tokens
-
-        # await RabbitPublisher.publish(UserLoggedInEvent.from_models(author=user, session=result.session))
 
     async def refresh(self, refresh_token: str) -> str:
         refresh_hash = JWTService.hash_refresh_token(refresh_token)
@@ -197,8 +189,6 @@ class AuthService:
         except CacheUnavailableError:
             logger.exception("Failed to del session in Redis", extra={"session_id": str(session.public_id)})
 
-        # await RabbitPublisher.publish(UserLoggedOutEvent.from_models(author=user, session=session))
-
     async def revoke_session(self, session_id: UUID, user: User) -> None:
         session = await SessionRepository.get_by_session_id(db=self.db,session_id=session_id)
         now = get_now_dt()
@@ -218,8 +208,6 @@ class AuthService:
             await SessionCache.delete(session.public_id)
         except CacheUnavailableError:
             logger.exception("Failed to del session in Redis", extra={"session_id": str(session.public_id)})
-
-        # await RabbitPublisher.publish(UserLoggedOutEvent.from_models(author=user, session=session))
 
     async def revoke_other_sessions(self, user: User, session_id: UUID) -> None:
         now = get_now_dt()
@@ -245,8 +233,6 @@ class AuthService:
                 await SessionCache.delete(session.public_id)
             except CacheUnavailableError:
                 logger.exception("Failed to del session in Redis", extra={"session_id": str(session.public_id)})
-
-        # await RabbitPublisher.publish(UserLoggedOutAllEvent.from_models(author=user,session=sessions[0]))
 
     async def get_all_session(self, user: User, session_id: UUID) -> list[SessionModel]:
         now = get_now_dt()
@@ -293,8 +279,6 @@ class AuthService:
             except CacheUnavailableError:
                 logger.exception("Failed to del session in Redis", extra={"session_id": str(session.public_id)})
 
-        # await RabbitPublisher.publish(UserPasswordChangedEvent.from_models(author=user, session=sessions[0]))
-
     async def verify_email(self, user: User, code: str) -> None:
         if user.email_verified_at:
             raise AppException( ErrorCode.EMAIL_VERIFIED_ALREADY,"Email already verified")
@@ -331,8 +315,6 @@ class AuthService:
 
         await self.db.commit()
 
-        # await VerifyEmailService.send(user)
-
     async def change_email(self, user: User, email: str) -> None:
         if user.email == email:
             raise AppException(ErrorCode.NEW_EMAIL_SAME, "New email must be different")
@@ -357,8 +339,6 @@ class AuthService:
 
         await self.db.commit()
 
-        # await VerifyEmailService.send(user)
-
     async def request_password_reset(self, email: str) -> None:
         user = await self.repository.get_by_email(self.db, email)
 
@@ -369,8 +349,6 @@ class AuthService:
         self.db.add(OutboxFactory.from_event(event))
 
         await self.db.commit()
-
-        # await PasswordResetService.send(user) тут create_PasswordResetCache
 
     async def verify_reset_code(self, email: str, code: str) -> PasswordForgotVerifyResponse:
         user = await self.repository.get_by_email(self.db,email)
@@ -441,4 +419,3 @@ class AuthService:
             await PasswordResetTokenCache.delete(reset_token)
         except CacheUnavailableError:
             logger.exception("Failed to delete reset_token from Redis")
-
