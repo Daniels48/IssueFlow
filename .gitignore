@@ -10,6 +10,7 @@ __pycache__/
 *$py.class
 app/money.py
 
+
 # Tests and coverage
 .pytest_cache/
 .coverage
