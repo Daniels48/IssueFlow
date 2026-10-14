@@ -179,7 +179,6 @@ async def test_create_issue_with_assignee(client: AsyncClient):
         },
     )
 
-    print(response.status_code, response.json())
 
     assert response.status_code == 201
 

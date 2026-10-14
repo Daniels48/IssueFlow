@@ -50,7 +50,8 @@ class CommentRepository:
             )
             .options(
                 contains_eager(Comment.issue)
-                .contains_eager(Issue.project)
+                .contains_eager(Issue.project),
+                selectinload(Comment.author),
             )
             .where(Comment.public_id == public_id,)
         )
@@ -72,8 +73,9 @@ class CommentRepository:
         return comment, member_current
 
     @staticmethod
-    async def get_active_by_public_id_with_current_member(db: AsyncSession, public_id: UUID, user_id: int,
-    ) -> tuple[Comment, ProjectMember | None] | None:
+    async def get_active_by_public_id_with_current_member(db: AsyncSession, public_id: UUID, user_id: int)\
+            -> tuple[Comment, ProjectMember | None] | None:
+
         stmt = CommentRepository._get_by_public_id_with_current_member_smt(public_id, user_id)
 
         stmt = stmt.where(Comment.deleted_at.is_(None))

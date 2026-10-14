@@ -101,11 +101,6 @@ class ProjectRBAC:
 
         roles = ProjectRBAC.get_roles(context)
 
-        print("USER:", context.user.id)
-        print("PROJECT OWNER:", context.project.owner_id)
-        print("MEMBER:", context.member)
-        print("ROLES:", roles)
-        print("PERMISSION:", permission)
 
         permissions = (permission in ProjectRBAC.get_permissions_for_role(role) for role in roles)
 
